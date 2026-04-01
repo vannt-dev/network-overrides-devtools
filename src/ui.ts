@@ -523,7 +523,7 @@ namespace NetworkOverridesUi {
     };
   }
 
-  function escapeHtml(value: string): string {
+  export function escapeHtml(value: string): string {
     const replacements: Record<string, string> = {
       '&': '&amp;',
       '<': '&lt;',
@@ -535,7 +535,7 @@ namespace NetworkOverridesUi {
     return value.replace(/[&<>"']/g, (char) => replacements[char] || char);
   }
 
-  function highlightApiLabel(url: string, rawSearchTerm: string): string {
+  export function highlightApiLabel(url: string, rawSearchTerm: string): string {
     const label = formatApiLabel(url);
     const searchTerm = rawSearchTerm.trim().toLowerCase();
     if (!searchTerm) {
@@ -554,7 +554,7 @@ namespace NetworkOverridesUi {
     return `${before}<mark class="api-match">${match}</mark>${after}`;
   }
 
-  function formatApiLabel(url: string): string {
+  export function formatApiLabel(url: string): string {
     if (!url.startsWith('data:')) {
       return url;
     }
@@ -565,7 +565,7 @@ namespace NetworkOverridesUi {
     return `[data URL: ${mediaType}]`;
   }
 
-  function formatJsonIfPossible(value: string): string {
+  export function formatJsonIfPossible(value: string): string {
     try {
       const parsed = JSON.parse(value);
       return JSON.stringify(parsed, null, 2);
@@ -574,11 +574,11 @@ namespace NetworkOverridesUi {
     }
   }
 
-  function isRegexPattern(pattern: string): boolean {
+  export function isRegexPattern(pattern: string): boolean {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
-  function patternMatches(pattern: string, url: string): boolean {
+  export function patternMatches(pattern: string, url: string): boolean {
     const trimmedPattern = pattern.trim();
     if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
       return true;
@@ -598,7 +598,7 @@ namespace NetworkOverridesUi {
     return url.includes(trimmedPattern);
   }
 
-  function normalizeApiType(type: string): string {
+  export function normalizeApiType(type: string): string {
     const normalized = (type || 'other').toLowerCase();
     if (normalized === 'xmlhttprequest') {
       return 'xhr';

@@ -3,10 +3,26 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "coverage": "npm run build && c8 --reporter=text --reporter=lcov --reporter=html --report-dir coverage node --test tests/*.test.mjs",
+    "ci:test": "npm run coverage",
+    "package:store": "npm run build && node scripts/package-store.mjs"
+  },
+  "c8": {
+    "all": true,
+    "exclude": [
+      "tests/**/*.mjs"
+    ],
+    "include": [
+      "dist/**/*.js"
+    ],
+    "report-dir": "coverage"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "@types/chrome": "^0.0.178"
+    "@types/chrome": "^0.0.178",
+    "c8": "^11.0.0",
+    "jsdom": "^29.0.1",
+    "typescript": "^5.5.0"
   }
 }

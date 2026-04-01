@@ -12,94 +12,94 @@ namespace NetworkOverridesBackground {
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
 
-  function isRegexPattern(pattern: string): boolean {
-  return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
-}
-
-function normalizeBody(body: string, isBase64: boolean): string {
-  try {
-    if (isBase64) {
-      const decoded = atob(body);
-      // Convert binary string to UTF-8 text
-      return decodeURIComponent(escape(decoded));
-    }
-    return body;
-  } catch {
-    return body;
-  }
-}
-
-function storeResponseBody(tabId: number, url: string, requestId: string, callback: () => void): void {
-  chrome.debugger.sendCommand({ tabId }, 'Fetch.getResponseBody', { requestId }, (response: any) => {
-    if (!chrome.runtime.lastError && response && typeof response.body === 'string') {
-      const rawBody = normalizeBody(response.body, response.base64Encoded);
-      let map = recentApiBodiesMap.get(tabId);
-      if (!map) {
-        map = new Map<string, string>();
-      }
-      if (map.has(url)) {
-        map.delete(url);
-      }
-      map.set(url, rawBody);
-      if (map.size > RECENT_API_BODIES_LIMIT) {
-        const arr = Array.from(map.entries()).slice(-RECENT_API_BODIES_LIMIT);
-        map = new Map(arr);
-      }
-      recentApiBodiesMap.set(tabId, map);
-
-      const persisted = Object.fromEntries(map.entries());
-      const storageKey = `recentApiBodies_${tabId}`;
-      chrome.storage.local.set({ [storageKey]: persisted });
-    }
-    callback();
-  });
-}
-
-function persistRecentApis(tabId: number, apis: Map<string, string>): void {
-  const persisted = Object.fromEntries(apis.entries());
-  const storageKey = `recentApis_${tabId}`;
-  chrome.storage.local.set({ [storageKey]: persisted });
-}
-
-function setRecentApi(tabId: number, url: string, type: string): void {
-  let apis = recentApisMap.get(tabId);
-  if (!apis) {
-    apis = new Map<string, string>();
+  export function isRegexPattern(pattern: string): boolean {
+    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
-  if (apis.has(url)) {
-    apis.delete(url);
-  }
-  apis.set(url, type);
-  if (apis.size > RECENT_APIS_LIMIT) {
-    const arr = Array.from(apis.entries()).slice(-RECENT_APIS_LIMIT);
-    apis = new Map(arr);
-  }
-
-  recentApisMap.set(tabId, apis);
-  persistRecentApis(tabId, apis);
-}
-
-function patternMatches(pattern: string, url: string): boolean {
-  const trimmedPattern = pattern.trim();
-  if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
-    return true;
-  }
-
-  if (isRegexPattern(trimmedPattern)) {
-    const lastSlash = trimmedPattern.lastIndexOf('/');
-    const source = trimmedPattern.slice(1, lastSlash);
-    const flags = trimmedPattern.slice(lastSlash + 1);
+  export function normalizeBody(body: string, isBase64: boolean): string {
     try {
-      const regex = new RegExp(source, flags);
-      return regex.test(url);
+      if (isBase64) {
+        const decoded = atob(body);
+        // Convert binary string to UTF-8 text
+        return decodeURIComponent(escape(decoded));
+      }
+      return body;
     } catch {
-      return false;
+      return body;
     }
   }
 
-  return url.includes(trimmedPattern);
-}
+  function storeResponseBody(tabId: number, url: string, requestId: string, callback: () => void): void {
+    chrome.debugger.sendCommand({ tabId }, 'Fetch.getResponseBody', { requestId }, (response: any) => {
+      if (!chrome.runtime.lastError && response && typeof response.body === 'string') {
+        const rawBody = normalizeBody(response.body, response.base64Encoded);
+        let map = recentApiBodiesMap.get(tabId);
+        if (!map) {
+          map = new Map<string, string>();
+        }
+        if (map.has(url)) {
+          map.delete(url);
+        }
+        map.set(url, rawBody);
+        if (map.size > RECENT_API_BODIES_LIMIT) {
+          const arr = Array.from(map.entries()).slice(-RECENT_API_BODIES_LIMIT);
+          map = new Map(arr);
+        }
+        recentApiBodiesMap.set(tabId, map);
+
+        const persisted = Object.fromEntries(map.entries());
+        const storageKey = `recentApiBodies_${tabId}`;
+        chrome.storage.local.set({ [storageKey]: persisted });
+      }
+      callback();
+    });
+  }
+
+  function persistRecentApis(tabId: number, apis: Map<string, string>): void {
+    const persisted = Object.fromEntries(apis.entries());
+    const storageKey = `recentApis_${tabId}`;
+    chrome.storage.local.set({ [storageKey]: persisted });
+  }
+
+  function setRecentApi(tabId: number, url: string, type: string): void {
+    let apis = recentApisMap.get(tabId);
+    if (!apis) {
+      apis = new Map<string, string>();
+    }
+
+    if (apis.has(url)) {
+      apis.delete(url);
+    }
+    apis.set(url, type);
+    if (apis.size > RECENT_APIS_LIMIT) {
+      const arr = Array.from(apis.entries()).slice(-RECENT_APIS_LIMIT);
+      apis = new Map(arr);
+    }
+
+    recentApisMap.set(tabId, apis);
+    persistRecentApis(tabId, apis);
+  }
+
+  export function patternMatches(pattern: string, url: string): boolean {
+    const trimmedPattern = pattern.trim();
+    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
+      return true;
+    }
+
+    if (isRegexPattern(trimmedPattern)) {
+      const lastSlash = trimmedPattern.lastIndexOf('/');
+      const source = trimmedPattern.slice(1, lastSlash);
+      const flags = trimmedPattern.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(source, flags);
+        return regex.test(url);
+      } catch {
+        return false;
+      }
+    }
+
+    return url.includes(trimmedPattern);
+  }
 
 chrome.runtime.onMessage.addListener((msg: any, sender, sendResponse) => {
   if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {

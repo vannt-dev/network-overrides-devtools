@@ -2,3 +2,5 @@ node_modules/
 dist/
 .old-backup/
 *.log
+coverage/
+release/

@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Network Overrides (DevTools)",
+    "name": "Network Overrides API (DevTools)",
     "version": "1.0",
     "description": "Add response body overrides from a DevTools panel using the Debugger Protocol.",
     "permissions": [
@@ -11,8 +11,9 @@
         "<all_urls>"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "dist/background.js"
     },
+    "devtools_page": "devtools.html",
     "action": {
         "default_popup": "popup.html",
         "default_icon": {

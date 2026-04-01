@@ -7,16 +7,19 @@ on:
       - master
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # upgrade lên v5 khi có
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4 # upgrade lên v5 khi có
         with:
           node-version: 20
           cache: npm
@@ -29,7 +32,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # upgrade lên v5 khi có
         with:
           name: coverage-report
           path: coverage/

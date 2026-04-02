@@ -17,6 +17,9 @@ namespace NetworkOverridesShared {
   export interface ApiEntry {
     url: string;
     type: string;
+    method?: string;
+    headers?: FetchHeader[];
+    postData?: string;
   }
 
   export interface FetchHeader {

@@ -190,4 +190,3 @@ The ZIP includes the runtime assets only, such as:
 ## Legacy Version
 
 The `old-backup/` folder contains the older JavaScript version from before the TypeScript migration. It can still be useful for reference, but the active implementation now lives in `src/` and is compiled into `dist/`.
-

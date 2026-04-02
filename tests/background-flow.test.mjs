@@ -19,13 +19,16 @@ test('Background handles update messages by attaching and detaching the debugger
     [
       { method: 'Network.enable', params: {} },
       { method: 'Fetch.enable', params: { patterns: [{ requestStage: 'Response' }] } },
-    ],
+    ]
   );
 
   harness.removeTab(7);
   await Promise.resolve();
 
-  assert.equal(harness.commandLog.some(({ method }) => method === 'Fetch.disable'), true);
+  assert.equal(
+    harness.commandLog.some(({ method }) => method === 'Fetch.disable'),
+    true
+  );
   assert.deepEqual(normalize(harness.detachedTabs), [{ tabId: 7 }]);
 });
 
@@ -56,11 +59,11 @@ test('Background stores recent APIs and response bodies, then returns them throu
 
   assert.equal(
     harness.commandLog.some(({ method }) => method === 'Fetch.getResponseBody'),
-    true,
+    true
   );
   assert.equal(
     harness.commandLog.some(({ method }) => method === 'Fetch.continueRequest'),
-    true,
+    true
   );
 
   const bodyResponse = harness.callMessage({
@@ -101,21 +104,24 @@ test('Background fulfills matching requests with override headers and body', asy
   assert.equal(fulfill.params.requestId, 'req-2');
   assert.equal(fulfill.params.responseCode, 201);
   assert.equal(fulfill.params.responsePhrase, 'Created');
+  assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), '{"mocked":true}');
   assert.equal(
-    Buffer.from(fulfill.params.body, 'base64').toString('utf8'),
-    '{"mocked":true}',
+    fulfill.params.responseHeaders.some(
+      header => header.name === 'Content-Type' && header.value.includes('application/json')
+    ),
+    true
   );
   assert.equal(
-    fulfill.params.responseHeaders.some((header) => header.name === 'Content-Type' && header.value.includes('application/json')),
-    true,
+    fulfill.params.responseHeaders.some(
+      header => header.name === 'x-network-overrides' && header.value === 'true'
+    ),
+    true
   );
   assert.equal(
-    fulfill.params.responseHeaders.some((header) => header.name === 'x-network-overrides' && header.value === 'true'),
-    true,
-  );
-  assert.equal(
-    fulfill.params.responseHeaders.some((header) => header.name === 'x-network-overrides-pattern' && header.value === '/users$/'),
-    true,
+    fulfill.params.responseHeaders.some(
+      header => header.name === 'x-network-overrides-pattern' && header.value === '/users$/'
+    ),
+    true
   );
 });
 
@@ -172,11 +178,15 @@ test('Background keeps raw base64 body unchanged when override mode is file', as
     resourceType: 'Fetch',
   });
 
-  const fulfill = harness.commandLog.find(({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-file');
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-file'
+  );
   assert.ok(fulfill);
   assert.equal(fulfill.params.body, 'UERGREFUQQ==');
   assert.equal(
-    fulfill.params.responseHeaders.some((header) => header.name === 'Content-Type' && header.value === 'application/octet-stream'),
-    true,
+    fulfill.params.responseHeaders.some(
+      header => header.name === 'Content-Type' && header.value === 'application/octet-stream'
+    ),
+    true
   );
 });

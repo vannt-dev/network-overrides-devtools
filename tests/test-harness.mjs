@@ -32,8 +32,8 @@ export function createBackgroundContext() {
   const noop = () => {};
   const context = {
     console,
-    atob: (value) => Buffer.from(value, 'base64').toString('binary'),
-    btoa: (value) => Buffer.from(value, 'binary').toString('base64'),
+    atob: value => Buffer.from(value, 'base64').toString('binary'),
+    btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,
     chrome: {
@@ -125,7 +125,7 @@ export function createUiHarness({
       local: {
         async get(keys) {
           if (Array.isArray(keys)) {
-            return Object.fromEntries(keys.map((key) => [key, localState[key]]));
+            return Object.fromEntries(keys.map(key => [key, localState[key]]));
           }
           if (typeof keys === 'string') {
             return { [keys]: localState[keys] };
@@ -148,7 +148,7 @@ export function createUiHarness({
         sentMessages.push(structuredClone(message));
         if (message.type === 'getApis') {
           const responseApis = Array.isArray(apiResponses)
-            ? (apiResponses[Math.min(getApisCallCount, apiResponses.length - 1)] || [])
+            ? apiResponses[Math.min(getApisCallCount, apiResponses.length - 1)] || []
             : apis;
           getApisCallCount += 1;
           callback?.({ apis: responseApis });
@@ -165,7 +165,7 @@ export function createUiHarness({
 
   Object.assign(window, {
     chrome,
-    alert: (message) => alerts.push(String(message)),
+    alert: message => alerts.push(String(message)),
   });
 
   const context = dom.getInternalVMContext();
@@ -188,7 +188,7 @@ export function createUiHarness({
 
 export async function flushUi(window, ticks = 3) {
   for (let index = 0; index < ticks; index += 1) {
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    await new Promise(resolve => window.setTimeout(resolve, 0));
   }
 }
 
@@ -249,7 +249,7 @@ export function createBackgroundHarness() {
       local: {
         get(keys, callback) {
           if (Array.isArray(keys)) {
-            callback(Object.fromEntries(keys.map((key) => [key, storageState[key]])));
+            callback(Object.fromEntries(keys.map(key => [key, storageState[key]])));
             return;
           }
           if (typeof keys === 'string') {
@@ -274,8 +274,8 @@ export function createBackgroundHarness() {
       },
     },
     Buffer,
-    atob: (value) => Buffer.from(value, 'base64').toString('binary'),
-    btoa: (value) => Buffer.from(value, 'binary').toString('base64'),
+    atob: value => Buffer.from(value, 'base64').toString('binary'),
+    btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,
     chrome,
@@ -295,7 +295,7 @@ export function createBackgroundHarness() {
     errors,
     callMessage(message) {
       let response;
-      const keepAlive = listeners.onMessage?.(message, {}, (value) => {
+      const keepAlive = listeners.onMessage?.(message, {}, value => {
         response = value;
       });
       return { keepAlive, response };

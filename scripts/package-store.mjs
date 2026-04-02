@@ -46,7 +46,7 @@ async function pathExists(targetPath) {
 }
 
 async function delay(ms) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
+  await new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function copyRequiredFiles() {
@@ -62,7 +62,7 @@ async function copyRequiredFiles() {
 
     await fs.cp(sourcePath, destinationPath, {
       recursive: true,
-      filter: (copiedSourcePath) => !copiedSourcePath.endsWith('.map'),
+      filter: copiedSourcePath => !copiedSourcePath.endsWith('.map'),
     });
   }
 
@@ -71,14 +71,10 @@ async function copyRequiredFiles() {
 
 function createZip(stagingDir, zipPath) {
   const command = `Compress-Archive -Path * -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force`;
-  execFileSync(
-    'powershell',
-    ['-NoProfile', '-Command', command],
-    {
-      cwd: stagingDir,
-      stdio: 'inherit',
-    },
-  );
+  execFileSync('powershell', ['-NoProfile', '-Command', command], {
+    cwd: stagingDir,
+    stdio: 'inherit',
+  });
 }
 
 async function safeRemove(targetPath) {
@@ -170,7 +166,7 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });

@@ -107,13 +107,16 @@ namespace NetworkOverridesUi {
       elements.modalUrl.textContent = formatApiLabel(url);
       elements.modalUrl.title = url;
 
-      let existingIndex = state.overrides.findIndex((override) => override.pattern === url);
+      let existingIndex = state.overrides.findIndex(override => override.pattern === url);
       if (existingIndex === -1) {
-        existingIndex = state.overrides.findIndex((override) => patternMatches(override.pattern, url));
+        existingIndex = state.overrides.findIndex(override =>
+          patternMatches(override.pattern, url)
+        );
       }
 
       state.currentEditIndex = existingIndex !== -1 ? existingIndex : null;
-      const existing = state.currentEditIndex !== null ? state.overrides[state.currentEditIndex] : null;
+      const existing =
+        state.currentEditIndex !== null ? state.overrides[state.currentEditIndex] : null;
 
       elements.modalPattern.value = existing ? existing.pattern : url;
 
@@ -154,11 +157,17 @@ namespace NetworkOverridesUi {
       elements.apisList.innerHTML = '';
       const searchTerm = state.apiSearchTerm.trim().toLowerCase();
 
-      const visibleApis = state.apis.filter((api) => !searchTerm || api.url.toLowerCase().includes(searchTerm));
-      const overriddenApis = visibleApis.filter((api) => state.overrides.some((override) => patternMatches(override.pattern, api.url)));
+      const visibleApis = state.apis.filter(
+        api => !searchTerm || api.url.toLowerCase().includes(searchTerm)
+      );
+      const overriddenApis = visibleApis.filter(api =>
+        state.overrides.some(override => patternMatches(override.pattern, api.url))
+      );
       const otherApis = state.onlyOverridden
         ? []
-        : visibleApis.filter((api) => !state.overrides.some((override) => patternMatches(override.pattern, api.url)));
+        : visibleApis.filter(
+            api => !state.overrides.some(override => patternMatches(override.pattern, api.url))
+          );
 
       elements.expandAllBtn.style.display = visibleApis.length > 0 ? 'inline-flex' : 'none';
       elements.collapseAllBtn.style.display = visibleApis.length > 0 ? 'inline-flex' : 'none';
@@ -179,13 +188,32 @@ namespace NetworkOverridesUi {
       elements.apisSection.style.display = hasVisibleApis ? 'block' : 'none';
     }
 
-    function appendApiBucket(title: string, apis: ApiEntry[], key: 'overridden' | 'other', searchTerm: string): void {
+    function appendApiBucket(
+      title: string,
+      apis: ApiEntry[],
+      key: 'overridden' | 'other',
+      searchTerm: string
+    ): void {
       if (apis.length === 0) {
         return;
       }
 
       const grouped: Record<string, ApiEntry[]> = {};
-      const typeOrder = ['xhr', 'fetch', 'script', 'stylesheet', 'image', 'media', 'font', 'document', 'websocket', 'manifest', 'eventsource', 'texttrack', 'other'];
+      const typeOrder = [
+        'xhr',
+        'fetch',
+        'script',
+        'stylesheet',
+        'image',
+        'media',
+        'font',
+        'document',
+        'websocket',
+        'manifest',
+        'eventsource',
+        'texttrack',
+        'other',
+      ];
       const typeLabels: Record<string, string> = {
         xhr: 'XHR',
         fetch: 'Fetch',
@@ -202,7 +230,7 @@ namespace NetworkOverridesUi {
         other: 'Other',
       };
 
-      apis.forEach((api) => {
+      apis.forEach(api => {
         const type = normalizeApiType(api.type);
         if (!grouped[type]) {
           grouped[type] = [];
@@ -235,7 +263,7 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      typeOrder.forEach((type) => {
+      typeOrder.forEach(type => {
         if (!grouped[type]?.length) {
           return;
         }
@@ -247,10 +275,12 @@ namespace NetworkOverridesUi {
         section.innerHTML = `<h4>${typeLabels[type] || type.toUpperCase()} <span class="api-count">${grouped[type].length}</span></h4>`;
 
         const ul = document.createElement('ul');
-        grouped[type].forEach((api) => {
+        grouped[type].forEach(api => {
           const li = document.createElement('li');
           li.className = 'api-item';
-          const isOverridden = state.overrides.some((override) => patternMatches(override.pattern, api.url));
+          const isOverridden = state.overrides.some(override =>
+            patternMatches(override.pattern, api.url)
+          );
           const isSelected = state.selectedApi ? patternMatches(state.selectedApi, api.url) : false;
           if (isOverridden) {
             li.classList.add('active');
@@ -279,7 +309,7 @@ namespace NetworkOverridesUi {
         return 0;
       }
 
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         chrome.runtime.sendMessage({ type: 'getApis', tabId }, (response: any) => {
           const apisResponse = response?.apis;
           if (Array.isArray(apisResponse)) {
@@ -344,7 +374,7 @@ namespace NetworkOverridesUi {
       await notifyBackground();
     });
 
-    elements.listEl.addEventListener('click', async (event) => {
+    elements.listEl.addEventListener('click', async event => {
       const target = event.target as HTMLElement;
       const index = Number(target.dataset.index);
       if (Number.isNaN(index)) {
@@ -368,7 +398,7 @@ namespace NetworkOverridesUi {
     });
 
     elements.closeModal.addEventListener('click', closeOverrideModal);
-    window.addEventListener('click', (event) => {
+    window.addEventListener('click', event => {
       if (event.target === elements.modal) {
         closeOverrideModal();
       }
@@ -482,15 +512,15 @@ namespace NetworkOverridesUi {
   }
 
   async function getActiveTabId(): Promise<number | undefined> {
-    return new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    return new Promise(resolve => {
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
         resolve(tabs[0]?.id);
       });
     });
   }
 
   function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       window.setTimeout(resolve, ms);
     });
   }
@@ -532,7 +562,7 @@ namespace NetworkOverridesUi {
       "'": '&#39;',
     };
 
-    return value.replace(/[&<>"']/g, (char) => replacements[char] || char);
+    return value.replace(/[&<>"']/g, char => replacements[char] || char);
   }
 
   export function highlightApiLabel(url: string, rawSearchTerm: string): string {

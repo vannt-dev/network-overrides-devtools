@@ -7,7 +7,7 @@
     "noImplicitAny": true,
     "outDir": "dist",
     "rootDir": "src",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "sourceMap": true,
     "types": ["chrome"]

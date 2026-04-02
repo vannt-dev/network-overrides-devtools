@@ -122,6 +122,36 @@ After saving:
   - up to 500 recent API URLs
   - up to 100 recent response bodies
 
+## Development Standards
+
+We enforce code quality and commit message standards using **Husky**, **lint-staged**, and **commitlint**.
+
+### Formatting
+
+Prettier is used for code formatting. A Git `pre-commit` hook automatically formats staged files (`.ts, .js, .json, .md, .html, .css, .yaml, .yml`) using `lint-staged` before they are committed.
+
+### Commit Messages
+
+Commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This is enforced via Husky hooks:
+
+- **`commit-msg`**: Validates your current commit message format.
+- **`pre-push`**: Validates the entire commit range against the upstream branch before pushing.
+
+Supported commit types (configured in `commitlint.config.mjs`):
+
+- `add`: Add new files, assets, or dependencies
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes only
+- `style`: Formatting, missing semicolons, etc. (no logic change)
+- `refactor`: Code refactoring (not a feature or fix)
+- `perf`: Performance improvement
+- `test`: Add or update tests
+- `chore`: Build process, tooling, or dependency updates
+- `ci`: CI configuration changes
+- `revert`: Revert a previous commit
+- `build`: Build system changes
+
 ## Scripts
 
 ```bash

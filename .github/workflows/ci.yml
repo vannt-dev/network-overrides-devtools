@@ -7,21 +7,18 @@ on:
       - master
   pull_request:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: 22 # or 24 (recommendations >=22)
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -30,12 +27,15 @@ jobs:
       - name: Check code formatting
         run: npx prettier --check .
 
+      - name: Lint commit messages
+        run: npx commitlint --from origin/HEAD --to HEAD
+
       - name: Run tests with coverage
         run: npm run ci:test
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: coverage/

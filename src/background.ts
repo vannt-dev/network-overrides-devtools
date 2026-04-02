@@ -4,10 +4,11 @@ namespace NetworkOverridesBackground {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type OverrideState = NetworkOverridesShared.OverrideState;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
+  type ApiEntry = NetworkOverridesShared.ApiEntry;
 
   const attachedTabs = new Set<number>();
   const overridesMap = new Map<number, OverrideState>();
-  const recentApisMap = new Map<number, Map<string, string>>();
+  const recentApisMap = new Map<number, Map<string, ApiEntry>>();
   const recentApiBodiesMap = new Map<number, Map<string, string>>();
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
@@ -65,22 +66,23 @@ namespace NetworkOverridesBackground {
     );
   }
 
-  function persistRecentApis(tabId: number, apis: Map<string, string>): void {
+  function persistRecentApis(tabId: number, apis: Map<string, ApiEntry>): void {
     const persisted = Object.fromEntries(apis.entries());
     const storageKey = `recentApis_${tabId}`;
     chrome.storage.local.set({ [storageKey]: persisted });
   }
 
-  function setRecentApi(tabId: number, url: string, type: string): void {
+  function setRecentApi(tabId: number, entry: ApiEntry): void {
     let apis = recentApisMap.get(tabId);
     if (!apis) {
-      apis = new Map<string, string>();
+      apis = new Map<string, ApiEntry>();
     }
 
+    const { url } = entry;
     if (apis.has(url)) {
       apis.delete(url);
     }
-    apis.set(url, type);
+    apis.set(url, entry);
     if (apis.size > RECENT_APIS_LIMIT) {
       const arr = Array.from(apis.entries()).slice(-RECENT_APIS_LIMIT);
       apis = new Map(arr);
@@ -134,7 +136,7 @@ namespace NetworkOverridesBackground {
       if (Number.isNaN(tabId)) return;
       const apisMap = recentApisMap.get(tabId);
       if (apisMap && typeof sendResponse === 'function') {
-        const apis = Array.from(apisMap.entries()).map(([url, type]) => ({ url, type }));
+        const apis = Array.from(apisMap.values());
         sendResponse({ type: 'apisResponse', apis });
         return true;
       }
@@ -142,12 +144,23 @@ namespace NetworkOverridesBackground {
       const storageKey = `recentApis_${tabId}`;
       chrome.storage.local.get([storageKey], (data: any) => {
         const obj = data[storageKey] || {};
-        const apis = Object.entries(obj)
-          .filter(([url, type]) => typeof url === 'string' && typeof type === 'string')
+        const apis = Object.values(obj).map((val: any) => {
+          if (typeof val === 'string') {
+            // Support legacy string format (just type)
+            // Note: we don't have the URL here if val is just type, 
+            // but Object.entries would. Let's fix that.
+            return null; 
+          }
+          return val;
+        }).filter(Boolean);
+
+        // Fallback for transition
+        const legacyApis = Object.entries(obj)
+          .filter(([_, val]) => typeof val === 'string')
           .map(([url, type]) => ({ url, type: String(type) }));
 
         if (typeof sendResponse === 'function') {
-          sendResponse({ type: 'apisResponse', apis });
+          sendResponse({ type: 'apisResponse', apis: [...apis, ...legacyApis] });
         }
       });
       return true; // keep message channel open for async response
@@ -251,7 +264,13 @@ namespace NetworkOverridesBackground {
       const requestUrl = params?.request?.url;
       const requestType = params?.type || 'other';
       if (typeof requestUrl === 'string') {
-        setRecentApi(tabId, requestUrl, requestType);
+        setRecentApi(tabId, {
+          url: requestUrl,
+          type: requestType,
+          method: params.request.method,
+          headers: params.request.headers ? Object.entries(params.request.headers).map(([name, value]) => ({ name, value: String(value) })) : [],
+          postData: params.request.postData,
+        });
       }
       return;
     }
@@ -267,7 +286,13 @@ namespace NetworkOverridesBackground {
     const apis = recentApisMap.get(tabId);
     if (!apis?.has(url)) {
       const requestType = params.resourceType || 'other';
-      setRecentApi(tabId, url, requestType);
+      setRecentApi(tabId, {
+        url,
+        type: requestType,
+        method: params.request?.method,
+        headers: params.request?.headers ? Object.entries(params.request.headers).map(([name, value]) => ({ name, value: String(value) })) : [],
+        postData: params.request?.postData,
+      });
     }
 
     const proceedWithoutOverride = () => {

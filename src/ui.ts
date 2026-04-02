@@ -36,7 +36,11 @@ namespace NetworkOverridesUi {
     showManualEditor: boolean;
   }
 
-  export function init(options: AppOptions): void {
+  export interface UiApi {
+    addApis: (newApis: ApiEntry[]) => void;
+  }
+
+  export function init(options: AppOptions): UiApi {
     const elements = getElements();
     const state = {
       overrides: [] as OverrideRule[],
@@ -289,8 +293,21 @@ namespace NetworkOverridesUi {
             li.classList.add('selected');
           }
           li.dataset.url = api.url;
-          li.innerHTML = `<b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)}</b>`;
-          li.addEventListener('click', () => {
+          li.innerHTML = `
+            <div class="api-item-content">
+              <b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)}</b>
+            </div>
+            <div class="api-item-controls">
+              <button class="copy-curl-btn" title="Copy cURL">cURL</button>
+            </div>
+          `;
+          li.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+            if (target.classList.contains('copy-curl-btn')) {
+              event.stopPropagation();
+              copyCurl(api);
+              return;
+            }
             void openOverrideModal(api.url);
           });
           ul.appendChild(li);
@@ -496,6 +513,22 @@ namespace NetworkOverridesUi {
       await notifyBackground();
       await refreshApisWithRetry();
     })();
+
+    return {
+      addApis(newApis: ApiEntry[]): void {
+        let changed = false;
+        newApis.forEach(entry => {
+          const { url } = entry;
+          if (!state.apis.some(api => api.url === url)) {
+            state.apis.push(entry);
+            changed = true;
+          }
+        });
+        if (changed) {
+          renderApis();
+        }
+      }
+    };
   }
 
   async function fillModalWithCurrentBody(url: string, target: HTMLTextAreaElement): Promise<void> {
@@ -628,11 +661,52 @@ namespace NetworkOverridesUi {
     return url.includes(trimmedPattern);
   }
 
-  export function normalizeApiType(type: string): string {
-    const normalized = (type || 'other').toLowerCase();
+  export function normalizeApiType(type: any): string {
+    const rawType = typeof type === 'string' ? type : 'other';
+    const normalized = rawType.toLowerCase();
     if (normalized === 'xmlhttprequest') {
       return 'xhr';
     }
     return normalized;
+  }
+
+  function copyCurl(api: ApiEntry): void {
+    const curl = generateCurl(api);
+    void copyToClipboard(curl);
+  }
+
+  function generateCurl(api: ApiEntry): string {
+    const method = (api.method || 'GET').toUpperCase();
+    let curl = `curl '${api.url}' \\\n  -X '${method}'`;
+
+    if (api.headers && api.headers.length > 0) {
+      api.headers.forEach(h => {
+        // Skip pseudo-headers or empty values if needed, but usually we just include them
+        curl += ` \\\n  -H '${h.name}: ${h.value}'`;
+      });
+    }
+
+    if (api.postData) {
+      curl += ` \\\n  --data-raw '${api.postData.replace(/'/g, "'\\''")}'`;
+    }
+
+    return curl;
+  }
+
+  async function copyToClipboard(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      // Optional: show a toast or temporary feedback
+      console.log('Copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      // Fallback for some environments
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
   }
 }

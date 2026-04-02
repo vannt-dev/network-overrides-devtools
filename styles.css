@@ -68,6 +68,12 @@ input[type='search'] {
   cursor: pointer;
   border-radius: 4px;
 }
+.api-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
 .override-item button {
   margin-left: 6px;
 }
@@ -95,6 +101,28 @@ input[type='search'] {
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+.api-item-content {
+  flex-grow: 1;
+  overflow: hidden;
+}
+.api-item-controls {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.copy-curl-btn {
+  background: none;
+  border: 1px solid #c9d7e6;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 0.85em;
+  color: #334e68;
+}
+.copy-curl-btn:hover {
+  background: #fff;
+  border-color: #35506b;
 }
 .api-item.active b {
   color: #0a4f9c;

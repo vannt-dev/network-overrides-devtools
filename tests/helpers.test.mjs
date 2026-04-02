@@ -7,9 +7,18 @@ test('UI pattern matching supports wildcard, substring, and regex', () => {
 
   assert.equal(NetworkOverridesUi.patternMatches('*', 'https://example.com/api/users'), true);
   assert.equal(NetworkOverridesUi.patternMatches('all', 'https://example.com/api/users'), true);
-  assert.equal(NetworkOverridesUi.patternMatches('api/users', 'https://example.com/api/users'), true);
-  assert.equal(NetworkOverridesUi.patternMatches('/users$/', 'https://example.com/api/users'), true);
-  assert.equal(NetworkOverridesUi.patternMatches('/users(/', 'https://example.com/api/users'), false);
+  assert.equal(
+    NetworkOverridesUi.patternMatches('api/users', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches('/users$/', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches('/users(/', 'https://example.com/api/users'),
+    false
+  );
 });
 
 test('UI helpers format API labels and normalize request types', () => {
@@ -17,9 +26,12 @@ test('UI helpers format API labels and normalize request types', () => {
 
   assert.equal(
     NetworkOverridesUi.formatApiLabel('data:application/json;base64,eyJvayI6dHJ1ZX0='),
-    '[data URL: application/json;base64]',
+    '[data URL: application/json;base64]'
   );
-  assert.equal(NetworkOverridesUi.formatApiLabel('https://example.com/api/users'), 'https://example.com/api/users');
+  assert.equal(
+    NetworkOverridesUi.formatApiLabel('https://example.com/api/users'),
+    'https://example.com/api/users'
+  );
   assert.equal(NetworkOverridesUi.normalizeApiType('xmlhttprequest'), 'xhr');
   assert.equal(NetworkOverridesUi.normalizeApiType('fetch'), 'fetch');
 });
@@ -34,9 +46,18 @@ test('UI helper pretty-prints valid JSON and preserves invalid JSON', () => {
 test('Background pattern matching supports regex and invalid regex safely', () => {
   const { NetworkOverridesBackground } = createBackgroundContext();
 
-  assert.equal(NetworkOverridesBackground.patternMatches('/users$/', 'https://example.com/api/users'), true);
-  assert.equal(NetworkOverridesBackground.patternMatches('example.com/api', 'https://example.com/api/users'), true);
-  assert.equal(NetworkOverridesBackground.patternMatches('/users(/', 'https://example.com/api/users'), false);
+  assert.equal(
+    NetworkOverridesBackground.patternMatches('/users$/', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesBackground.patternMatches('example.com/api', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesBackground.patternMatches('/users(/', 'https://example.com/api/users'),
+    false
+  );
 });
 
 test('Background normalizes base64 response bodies and preserves bad input', () => {

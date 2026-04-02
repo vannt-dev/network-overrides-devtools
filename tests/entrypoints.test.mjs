@@ -16,10 +16,12 @@ test('popup entrypoint initializes shared UI with popup options', () => {
   vm.createContext(context);
   runDistFile('popup.js', context);
 
-  assert.deepEqual(normalize(initCalls), [{
-    autoFillOnOpen: true,
-    showManualEditor: false,
-  }]);
+  assert.deepEqual(normalize(initCalls), [
+    {
+      autoFillOnOpen: true,
+      showManualEditor: false,
+    },
+  ]);
 });
 
 test('panel entrypoint initializes shared UI with panel options', () => {
@@ -35,10 +37,12 @@ test('panel entrypoint initializes shared UI with panel options', () => {
   vm.createContext(context);
   runDistFile('panel.js', context);
 
-  assert.deepEqual(normalize(initCalls), [{
-    autoFillOnOpen: true,
-    showManualEditor: true,
-  }]);
+  assert.deepEqual(normalize(initCalls), [
+    {
+      autoFillOnOpen: true,
+      showManualEditor: true,
+    },
+  ]);
 });
 
 test('devtools entrypoint registers the Overrides panel', () => {
@@ -59,9 +63,11 @@ test('devtools entrypoint registers the Overrides panel', () => {
   vm.createContext(context);
   runDistFile('devtools.js', context);
 
-  assert.deepEqual(panelCalls, [{
-    title: 'Overrides',
-    iconPath: '',
-    page: 'panel.html',
-  }]);
+  assert.deepEqual(panelCalls, [
+    {
+      title: 'Overrides',
+      iconPath: '',
+      page: 'panel.html',
+    },
+  ]);
 });

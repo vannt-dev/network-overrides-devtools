@@ -1,73 +1,72 @@
 <!doctype html>
 <html>
-
-<head>
+  <head>
     <meta charset="utf-8" />
     <title>Overrides Panel</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<body>
+  <body>
     <h2>Network Overrides API</h2>
 
+    <label>Enable Overrides <input id="enable" type="checkbox" /></label>
+    <label>Auto-fill from payload <input id="auto-fill" type="checkbox" /></label>
+    <button id="use-current-body" style="margin: 4px 0">Use current API response body</button>
 
-    <label>Enable Overrides <input id="enable" type="checkbox"></label>
-    <label>Auto-fill from payload <input id="auto-fill" type="checkbox"></label>
-    <button id="use-current-body" style="margin:4px 0;">Use current API response body</button>
+    <p class="hint">
+      Tip: use pattern <code>*</code> or <code>all</code> to override all requests; or regex format
+      <code>/pattern/flags</code>.
+    </p>
 
-    <p class="hint">Tip: use pattern <code>*</code> or <code>all</code> to override all requests; or regex format <code>/pattern/flags</code>.</p>
-
-    <div id="override-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h4 class="modal-title">Override <span id="modal-url"></span></h4>
-            <div id="modal-status" style="font-size:0.9em;margin-bottom:8px;color:#333;"></div>
-            <label class="modal-field">
-                <span>Pattern</span>
-                <input id="modal-pattern" type="text" />
-            </label>
-            <select id="modal-mode">
-                <option value="text">Text</option>
-                <option value="file">Raw base64</option>
-            </select>
-            <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
-            <button id="save-override">Save Override</button>
-        </div>
+    <div id="override-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h4 class="modal-title">Override <span id="modal-url"></span></h4>
+        <div id="modal-status" style="font-size: 0.9em; margin-bottom: 8px; color: #333"></div>
+        <label class="modal-field">
+          <span>Pattern</span>
+          <input id="modal-pattern" type="text" />
+        </label>
+        <select id="modal-mode">
+          <option value="text">Text</option>
+          <option value="file">Raw base64</option>
+        </select>
+        <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
+        <button id="save-override">Save Override</button>
+      </div>
     </div>
 
     <div id="new-row">
-        <input id="pattern" placeholder="URL contains (e.g. /api/data)" />
-        <select id="mode">
-            <option value="text">Text</option>
-            <option value="file">Raw base64</option>
-        </select>
-        <textarea id="body" placeholder="Response body (text)" rows="6"></textarea>
-        <button id="add">Add override</button>
+      <input id="pattern" placeholder="URL contains (e.g. /api/data)" />
+      <select id="mode">
+        <option value="text">Text</option>
+        <option value="file">Raw base64</option>
+      </select>
+      <textarea id="body" placeholder="Response body (text)" rows="6"></textarea>
+      <button id="add">Add override</button>
     </div>
-    <div id="apis-section" style="display:none;">
-        <h3>Recent APIs (click to override)</h3>
-        <div class="api-controls">
-            <input id="api-search" type="search" placeholder="Search APIs..." />
-            <div class="api-toolbar">
-                <label class="api-filter-toggle">
-                    <input id="only-overridden" type="checkbox"> Only overridden
-                </label>
-                <div class="api-toolbar-actions">
-                    <button id="expand-all" type="button">Expand all</button>
-                    <button id="collapse-all" type="button">Collapse all</button>
-                </div>
-            </div>
+    <div id="apis-section" style="display: none">
+      <h3>Recent APIs (click to override)</h3>
+      <div class="api-controls">
+        <input id="api-search" type="search" placeholder="Search APIs..." />
+        <div class="api-toolbar">
+          <label class="api-filter-toggle">
+            <input id="only-overridden" type="checkbox" /> Only overridden
+          </label>
+          <div class="api-toolbar-actions">
+            <button id="expand-all" type="button">Expand all</button>
+            <button id="collapse-all" type="button">Collapse all</button>
+          </div>
         </div>
-        <ul id="apis-list"></ul>
+      </div>
+      <ul id="apis-list"></ul>
     </div>
 
     <h3>Overrides</h3>
     <ul id="list"></ul>
 
-
     <script src="dist/shared.js"></script>
     <script src="dist/ui.js"></script>
     <script src="dist/panel.js"></script>
-</body>
-
+  </body>
 </html>

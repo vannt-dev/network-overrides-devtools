@@ -1,14 +1,34 @@
-# TODO: Update Popup to Show API List + Override
+# Existing Tasks (JS era complete, TS migration done)
 
-## Plan Steps (Approved):
-1. ✅ Create TODO.md
-2. Update background.js: Add Network.enable + collect recent APIs per tab (deduped URLs).
-3. Update popup.html: Add API list & override modal.
-4. Update popup.js: Fetch APIs, handle clicks, integrate with overrides.
-5. Update panel.html/js similarly for consistency.
-6. Update styles.css: New styles.
-7. [Optional] Extract shared-ui.js.
-8. Test & cleanup.
-9. attempt_completion
+## Old Plan Steps (Completed)
 
-Progress: Steps 2-5 (background, popup, panel, styles) ✅ | Step 6 (styles) ✅ | Step 7 (shared UI optional) skipped, Step 8 (test & cleanup) ✅ | TypeScript migration complete, build verified ✅ | ready for final review
+1-9 ✅ TypeScript migration, tests, build verified.
+
+## New Task: Add Git Husky for code formatting (Prettier) and commitlint before push/commit
+
+### Steps:
+
+- ✅ Step 1: Update package.json (deps ✅, scripts optional - use npx).
+- ✅ Step 2: Create .prettierrc.json
+- ✅ Step 3: Create lint-staged.config.mjs
+- ✅ Step 4: Create commitlint.config.mjs
+- ✅ Step 5: Update .husky/pre-commit to `npx lint-staged`
+- ✅ Step 6: Create .husky/prepare-commit-msg `npx commitlint --edit $1`
+- ✅ Step 7: `npm install`
+- ✅ Step 8: `npx husky init`
+- ✅ Step 9: `npx prettier --write .` formatted codebase.
+- ✅ Step 10: Add lint to CI.
+- ✅ Step 11: Task complete, test hooks with `git commit`.
+- ✅ Step 12: Fix remaining Prettier issues in TODO.md itself.
+- ✅ Step 13: Verify pre-commit (lint-staged Prettier all files), commitlint (types: feat, fix, docs, chore...).
+
+**Hooks Ready ✅**
+
+## Fix lint-staged Pre-commit Error (In Progress)
+
+- Current: Prettier \"No parser\" error (no file paths).
+- Plan: Edit lint-staged.config.mjs to pass \`${files.join(' ')}\`.
+- [ ] Edit file
+- [ ] npx prettier lint-staged.config.mjs
+- [ ] git add lint-staged.config.mjs
+- [ ] git commit test

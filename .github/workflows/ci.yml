@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -28,7 +30,12 @@ jobs:
         run: npx prettier --check .
 
       - name: Lint commit messages
-        run: npx commitlint --from origin/HEAD --to HEAD
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npx commitlint --from origin/${{ github.base_ref }} --to HEAD
+          else
+            npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
+          fi
 
       - name: Run tests with coverage
         run: npm run ci:test

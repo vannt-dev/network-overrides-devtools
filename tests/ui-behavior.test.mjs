@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createUiHarness, flushUi } from './test-harness.mjs';
+import { TEST_API_URL, TEST_DOMAIN } from './config.mjs';
 
 test('UI init renders captured APIs and respects the manual editor option', async () => {
   const harness = createUiHarness({
     apis: [
-      { url: 'https://example.com/api/users', type: 'fetch' },
-      { url: 'https://example.com/api/orders', type: 'xmlhttprequest' },
+      { url: `${TEST_DOMAIN}/api/users`, type: 'fetch' },
+      { url: `${TEST_DOMAIN}/api/orders`, type: 'xmlhttprequest' },
     ],
   });
 
@@ -27,9 +28,9 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
       enabled: true,
       overrides: [],
     },
-    apis: [{ url: 'https://example.com/api/users', type: 'fetch' }],
+    apis: [{ url: TEST_API_URL, type: 'fetch' }],
     apiBodies: {
-      'https://example.com/api/users': '{"name":"Alice"}',
+      [TEST_API_URL]: '{"name":"Alice"}',
     },
   });
 
@@ -64,10 +65,11 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
   assert.deepEqual(lastUpdate, {
     type: 'update',
     tabId: 99,
+    tabUrl: 'https://example.test/',
     enabled: true,
     overrides: [
       {
-        pattern: 'https://example.com/api/users',
+        pattern: TEST_API_URL,
         body: '{"name":"Bob"}',
         mode: 'text',
       },
@@ -81,7 +83,7 @@ test('Changing the enable checkbox persists state and sends an update message', 
       enabled: false,
       overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
     },
-    apis: [{ url: 'https://example.com/api/users', type: 'fetch' }],
+    apis: [{ url: TEST_API_URL, type: 'fetch' }],
   });
 
   await flushUi(harness.window);
@@ -97,6 +99,7 @@ test('Changing the enable checkbox persists state and sends an update message', 
   assert.deepEqual(lastUpdate, {
     type: 'update',
     tabId: 99,
+    tabUrl: 'https://example.test/',
     enabled: true,
     overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
   });
@@ -112,8 +115,8 @@ test('Editing and deleting overrides from the saved list updates storage and not
       ],
     },
     apis: [
-      { url: 'https://example.com/api/users', type: 'fetch' },
-      { url: 'https://example.com/api/orders', type: 'fetch' },
+      { url: `${TEST_DOMAIN}/api/users`, type: 'fetch' },
+      { url: `${TEST_DOMAIN}/api/orders`, type: 'fetch' },
     ],
   });
 
@@ -161,6 +164,7 @@ test('Editing and deleting overrides from the saved list updates storage and not
   assert.deepEqual(updates.at(-1), {
     type: 'update',
     tabId: 99,
+    tabUrl: 'https://example.test/',
     enabled: true,
     overrides: [{ pattern: 'orders', body: '{"items":[]}', mode: 'text' }],
   });
@@ -172,7 +176,7 @@ test('UI retries loading APIs until captured requests become available', async (
       enabled: false,
       overrides: [],
     },
-    apiResponses: [[], [], [{ url: 'https://example.com/api/retried', type: 'fetch' }]],
+    apiResponses: [[], [], [{ url: `${TEST_DOMAIN}/api/retried`, type: 'fetch' }]],
   });
 
   await flushUi(harness.window, 1);
@@ -188,13 +192,11 @@ test('Use current API response body button refreshes the modal body from the lat
   const harness = createUiHarness({
     storageState: {
       enabled: true,
-      overrides: [
-        { pattern: 'https://example.com/api/users', body: '{"stale":true}', mode: 'text' },
-      ],
+      overrides: [{ pattern: TEST_API_URL, body: '{"stale":true}', mode: 'text' }],
     },
-    apis: [{ url: 'https://example.com/api/users', type: 'fetch' }],
+    apis: [{ url: TEST_API_URL, type: 'fetch' }],
     apiBodies: {
-      'https://example.com/api/users': '{"fresh":true}',
+      [TEST_API_URL]: '{"fresh":true}',
     },
   });
 
@@ -222,9 +224,9 @@ test('Collapse/expand buckets and search or Only overridden filters update visib
       overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
     },
     apis: [
-      { url: 'https://example.com/api/users', type: 'fetch' },
-      { url: 'https://example.com/api/orders', type: 'fetch' },
-      { url: 'https://example.com/assets/app.js', type: 'script' },
+      { url: `${TEST_DOMAIN}/api/users`, type: 'fetch' },
+      { url: `${TEST_DOMAIN}/api/orders`, type: 'fetch' },
+      { url: `${TEST_DOMAIN}/assets/app.js`, type: 'script' },
     ],
   });
 

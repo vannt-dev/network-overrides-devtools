@@ -32,6 +32,14 @@ test('panel entrypoint initializes shared UI with panel options', () => {
         initCalls.push(options);
       },
     },
+    chrome: {
+      devtools: {
+        network: {
+          getHAR: () => {},
+          onRequestFinished: { addListener: () => {} },
+        },
+      },
+    },
   };
 
   vm.createContext(context);

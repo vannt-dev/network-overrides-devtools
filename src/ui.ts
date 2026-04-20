@@ -1,9 +1,43 @@
 /// <reference types="chrome" />
+/// <reference path="./shared.ts" />
 
 namespace NetworkOverridesUi {
   type OverrideMode = NetworkOverridesShared.OverrideMode;
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
+
+  let currentDomain = '';
+
+  function isRegexPattern(pattern: string): boolean {
+    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
+  }
+
+  export function patternMatches(pattern: string, url: string): boolean {
+    const trimmedPattern = pattern.trim();
+    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
+      return true;
+    }
+    if (isRegexPattern(trimmedPattern)) {
+      const lastSlash = trimmedPattern.lastIndexOf('/');
+      const source = trimmedPattern.slice(1, lastSlash);
+      const flags = trimmedPattern.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(source, flags);
+        return regex.test(url);
+      } catch {
+        return false;
+      }
+    }
+    return url.includes(trimmedPattern);
+  }
+
+  function getOrigin(url: string): string {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return '';
+    }
+  }
 
   interface Elements {
     enableCheckbox: HTMLInputElement;
@@ -85,7 +119,7 @@ namespace NetworkOverridesUi {
       });
     }
 
-    async function openOverrideModalForIndex(index: number): Promise<void> {
+    function openOverrideModalForIndex(index: number): void {
       const existing = state.overrides[index];
       if (!existing) {
         return;
@@ -301,11 +335,11 @@ namespace NetworkOverridesUi {
               <button class="copy-curl-btn" title="Copy cURL">cURL</button>
             </div>
           `;
-          li.addEventListener('click', (event) => {
+          li.addEventListener('click', event => {
             const target = event.target as HTMLElement;
             if (target.classList.contains('copy-curl-btn')) {
               event.stopPropagation();
-              copyCurl(api);
+              void copyCurl(api);
               return;
             }
             void openOverrideModal(api.url);
@@ -321,9 +355,14 @@ namespace NetworkOverridesUi {
     }
 
     async function loadApis(): Promise<number> {
-      const tabId = await getActiveTabId();
+      const tab = await getActiveTab();
+      const tabId = tab?.id;
       if (typeof tabId !== 'number') {
         return 0;
+      }
+
+      if (tab?.url) {
+        currentDomain = getOrigin(tab.url);
       }
 
       return new Promise(resolve => {
@@ -356,15 +395,16 @@ namespace NetworkOverridesUi {
     }
 
     async function notifyBackground(): Promise<void> {
-      const tabId = await getActiveTabId();
-      if (typeof tabId !== 'number') {
+      const tab = await getActiveTab();
+      if (typeof tab?.id !== 'number') {
         return;
       }
 
       const data = await chrome.storage.local.get(['enabled', 'overrides']);
       chrome.runtime.sendMessage({
         type: 'update',
-        tabId,
+        tabId: tab.id,
+        tabUrl: tab.url,
         enabled: !!data.enabled,
         overrides: data.overrides || [],
       });
@@ -399,7 +439,7 @@ namespace NetworkOverridesUi {
       }
 
       if (target.classList.contains('edit-btn')) {
-        await openOverrideModalForIndex(index);
+        openOverrideModalForIndex(index);
         return;
       }
 
@@ -527,12 +567,13 @@ namespace NetworkOverridesUi {
         if (changed) {
           renderApis();
         }
-      }
+      },
     };
   }
 
   async function fillModalWithCurrentBody(url: string, target: HTMLTextAreaElement): Promise<void> {
-    const tabId = await getActiveTabId();
+    const tab = await getActiveTab();
+    const tabId = tab?.id;
     if (typeof tabId !== 'number') {
       return;
     }
@@ -544,10 +585,10 @@ namespace NetworkOverridesUi {
     });
   }
 
-  async function getActiveTabId(): Promise<number | undefined> {
+  async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
     return new Promise(resolve => {
       chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        resolve(tabs[0]?.id);
+        resolve(tabs[0]);
       });
     });
   }
@@ -637,30 +678,6 @@ namespace NetworkOverridesUi {
     }
   }
 
-  export function isRegexPattern(pattern: string): boolean {
-    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
-  }
-
-  export function patternMatches(pattern: string, url: string): boolean {
-    const trimmedPattern = pattern.trim();
-    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
-      return true;
-    }
-
-    if (isRegexPattern(trimmedPattern)) {
-      const lastSlash = trimmedPattern.lastIndexOf('/');
-      const source = trimmedPattern.slice(1, lastSlash);
-      const flags = trimmedPattern.slice(lastSlash + 1);
-      try {
-        return new RegExp(source, flags).test(url);
-      } catch {
-        return false;
-      }
-    }
-
-    return url.includes(trimmedPattern);
-  }
-
   export function normalizeApiType(type: any): string {
     const rawType = typeof type === 'string' ? type : 'other';
     const normalized = rawType.toLowerCase();
@@ -670,9 +687,9 @@ namespace NetworkOverridesUi {
     return normalized;
   }
 
-  function copyCurl(api: ApiEntry): void {
+  async function copyCurl(api: ApiEntry): Promise<void> {
     const curl = generateCurl(api);
-    void copyToClipboard(curl);
+    await copyToClipboard(curl);
   }
 
   function generateCurl(api: ApiEntry): string {
@@ -681,7 +698,6 @@ namespace NetworkOverridesUi {
 
     if (api.headers && api.headers.length > 0) {
       api.headers.forEach(h => {
-        // Skip pseudo-headers or empty values if needed, but usually we just include them
         curl += ` \\\n  -H '${h.name}: ${h.value}'`;
       });
     }
@@ -696,17 +712,8 @@ namespace NetworkOverridesUi {
   async function copyToClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
-      // Optional: show a toast or temporary feedback
-      console.log('Copied to clipboard');
     } catch (err) {
       console.error('Failed to copy: ', err);
-      // Fallback for some environments
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
     }
   }
 }

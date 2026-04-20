@@ -14,6 +14,7 @@ const requiredPaths = [
   'styles.css',
   'dist',
   'icons',
+  'privacy_policy.md',
 ];
 
 function slugify(value) {

@@ -24,6 +24,7 @@ export function createUiContext() {
     console,
   };
   vm.createContext(context);
+  runDistFile('shared.js', context);
   runDistFile('ui.js', context);
   return context;
 }
@@ -59,6 +60,7 @@ export function createBackgroundContext() {
     },
   };
   vm.createContext(context);
+  runDistFile('shared.js', context);
   runDistFile('background.js', context);
   return context;
 }
@@ -107,6 +109,7 @@ export function createUiHarness({
   apiResponses = null,
   apiBodies = {},
   tabId = 99,
+  tabUrl = 'https://example.test/',
   options = { autoFillOnOpen: true, showManualEditor: false },
 } = {}) {
   const dom = new JSDOM(buildUiHtml(), {
@@ -140,7 +143,7 @@ export function createUiHarness({
     },
     tabs: {
       query(queryInfo, callback) {
-        callback([{ id: tabId }]);
+        callback([{ id: tabId, url: tabUrl }]);
       },
     },
     runtime: {
@@ -274,6 +277,8 @@ export function createBackgroundHarness() {
       },
     },
     Buffer,
+    TextEncoder,
+    TextDecoder,
     atob: value => Buffer.from(value, 'base64').toString('binary'),
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
@@ -281,6 +286,7 @@ export function createBackgroundHarness() {
     chrome,
   };
   vm.createContext(context);
+  runDistFile('shared.js', context);
   runDistFile('background.js', context);
 
   return {

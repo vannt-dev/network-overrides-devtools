@@ -1,33 +1,127 @@
 /// <reference types="chrome" />
+/// <reference path="./shared.ts" />
+// Runtime types are provided via ambient NetworkOverridesShared declarations
+// Local helper utilities to avoid external module imports for test harness compatibility
+declare var Buffer: any;
+function recApisKey(tabId: number): string {
+  return `recentApis_${tabId}`;
+}
+
+// Compatibility bridge: expose runtime helpers on a global object to support existing tests
+(() => {
+  try {
+    const g: any =
+      typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : {};
+    if (!g.NetworkOverridesBackground) {
+      g.NetworkOverridesBackground = {};
+    }
+    // If namespace-based helpers exist, bridge them to the global surface
+    const nh = (NetworkOverridesBackground as any) ?? undefined;
+    if (nh) {
+      if (typeof nh.patternMatches === 'function') {
+        g.NetworkOverridesBackground.patternMatches = nh.patternMatches;
+      }
+      if (typeof nh.normalizeBody === 'function') {
+        g.NetworkOverridesBackground.normalizeBody = nh.normalizeBody;
+      }
+    }
+  } catch {
+    // ignore bridge errors in test harness
+  }
+})();
+function recBodiesKey(tabId: number): string {
+  return `recentApiBodies_${tabId}`;
+}
+function stringToBase64Local(str: string): string {
+  // Use Browser/Node compatible base64 encoding
+  if (typeof Buffer !== 'undefined') {
+    try {
+      return Buffer.from(str, 'utf8').toString('base64');
+    } catch {
+      // fall through to fallback
+    }
+  }
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach(b => (binary += String.fromCharCode(b)));
+  // Fallback to btoa if available
+  if (typeof (globalThis as any).btoa === 'function') {
+    return (globalThis as any).btoa(binary);
+  }
+  // Last resort: minimal polyfill (not perfect for all environments)
+  return Buffer.from(binary, 'latin1').toString('base64');
+}
+function normalizeBodyLocal(body: string, isBase64: boolean): string {
+  try {
+    if (isBase64) {
+      // Decode base64 to UTF-8 in a cross-platform way
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(body, 'base64').toString('utf8');
+      }
+      const decoded = atob(body);
+      // Decode UTF-8 sequence to string
+      return decodeURIComponent(escape(decoded));
+    }
+    return body;
+  } catch {
+    return body;
+  }
+}
 
 namespace NetworkOverridesBackground {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type OverrideState = NetworkOverridesShared.OverrideState;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
-
   const attachedTabs = new Set<number>();
   const overridesMap = new Map<number, OverrideState>();
   const recentApisMap = new Map<number, Map<string, ApiEntry>>();
   const recentApiBodiesMap = new Map<number, Map<string, string>>();
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
+  let currentDomain = '';
 
-  export function isRegexPattern(pattern: string): boolean {
+  function isRegexPattern(pattern: string): boolean {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
+  // Expose normalizeBody for tests and internal usage
   export function normalizeBody(body: string, isBase64: boolean): string {
-    try {
-      if (isBase64) {
-        const decoded = atob(body);
-        // Convert binary string to UTF-8 text
-        return decodeURIComponent(escape(decoded));
-      }
-      return body;
-    } catch {
-      return body;
+    return normalizeBodyLocal(body, isBase64);
+  }
+
+  export function patternMatches(pattern: string, url: string): boolean {
+    const trimmedPattern = pattern.trim();
+    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
+      return true;
     }
+    if (isRegexPattern(trimmedPattern)) {
+      const lastSlash = trimmedPattern.lastIndexOf('/');
+      const source = trimmedPattern.slice(1, lastSlash);
+      const flags = trimmedPattern.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(source, flags);
+        return regex.test(url);
+      } catch {
+        return false;
+      }
+    }
+    return url.includes(trimmedPattern);
+  }
+
+  // normalizeBody and stringToBase64 are now centralized in src/utils.ts
+
+  function getOrigin(url: string): string {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return '';
+    }
+  }
+
+  function urlMatchesDomain(url: string, domain: string): boolean {
+    if (!domain) return true;
+    return getOrigin(url) === domain;
   }
 
   function storeResponseBody(
@@ -40,9 +134,9 @@ namespace NetworkOverridesBackground {
       { tabId },
       'Fetch.getResponseBody',
       { requestId },
-      (response: any) => {
+      (response: { body?: string; base64Encoded?: boolean } | undefined) => {
         if (!chrome.runtime.lastError && response && typeof response.body === 'string') {
-          const rawBody = normalizeBody(response.body, response.base64Encoded);
+          const rawBody = normalizeBody(response.body, response.base64Encoded ?? false);
           let map = recentApiBodiesMap.get(tabId);
           if (!map) {
             map = new Map<string, string>();
@@ -52,13 +146,15 @@ namespace NetworkOverridesBackground {
           }
           map.set(url, rawBody);
           if (map.size > RECENT_API_BODIES_LIMIT) {
-            const arr = Array.from(map.entries()).slice(-RECENT_API_BODIES_LIMIT);
-            map = new Map(arr);
+            const entries = Array.from(map.entries());
+            for (let i = 0; i < entries.length - RECENT_API_BODIES_LIMIT; i++) {
+              map.delete(entries[i][0]);
+            }
           }
           recentApiBodiesMap.set(tabId, map);
 
           const persisted = Object.fromEntries(map.entries());
-          const storageKey = `recentApiBodies_${tabId}`;
+          const storageKey = recBodiesKey(tabId);
           chrome.storage.local.set({ [storageKey]: persisted });
         }
         callback();
@@ -68,7 +164,7 @@ namespace NetworkOverridesBackground {
 
   function persistRecentApis(tabId: number, apis: Map<string, ApiEntry>): void {
     const persisted = Object.fromEntries(apis.entries());
-    const storageKey = `recentApis_${tabId}`;
+    const storageKey = recApisKey(tabId);
     chrome.storage.local.set({ [storageKey]: persisted });
   }
 
@@ -84,112 +180,117 @@ namespace NetworkOverridesBackground {
     }
     apis.set(url, entry);
     if (apis.size > RECENT_APIS_LIMIT) {
-      const arr = Array.from(apis.entries()).slice(-RECENT_APIS_LIMIT);
-      apis = new Map(arr);
+      const entries = Array.from(apis.entries());
+      for (let i = 0; i < entries.length - RECENT_APIS_LIMIT; i++) {
+        apis.delete(entries[i][0]);
+      }
     }
 
     recentApisMap.set(tabId, apis);
     persistRecentApis(tabId, apis);
   }
 
-  export function patternMatches(pattern: string, url: string): boolean {
-    const trimmedPattern = pattern.trim();
-    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
-      return true;
-    }
-
-    if (isRegexPattern(trimmedPattern)) {
-      const lastSlash = trimmedPattern.lastIndexOf('/');
-      const source = trimmedPattern.slice(1, lastSlash);
-      const flags = trimmedPattern.slice(lastSlash + 1);
-      try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url);
-      } catch {
-        return false;
+  // Strongly-typed messaging surface
+  type Msg =
+    | {
+        type: 'update';
+        tabId: number;
+        enabled: boolean;
+        overrides?: OverrideRule[];
+        tabUrl?: string;
       }
-    }
+    | { type: 'getApis'; tabId: number }
+    | { type: 'getApiData'; tabId: number; url?: string };
 
-    return url.includes(trimmedPattern);
-  }
-
-  chrome.runtime.onMessage.addListener((msg: any, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
       return;
     }
+    switch (msg.type) {
+      case 'update': {
+        const tabId = Number((msg as any).tabId);
+        if (Number.isNaN(tabId)) return;
 
-    if (msg.type === 'update') {
-      const tabId = Number(msg.tabId);
-      if (Number.isNaN(tabId)) return;
+        const enabled = Boolean((msg as any).enabled);
+        const overrides = Array.isArray((msg as any).overrides)
+          ? ((msg as any).overrides as OverrideRule[])
+          : [];
+        const tabUrl = typeof (msg as any).tabUrl === 'string' ? (msg as any).tabUrl : '';
 
-      const enabled = Boolean(msg.enabled);
-      const overrides = Array.isArray(msg.overrides) ? (msg.overrides as OverrideRule[]) : [];
+        if (tabUrl) {
+          currentDomain = getOrigin(tabUrl);
+        }
 
-      overridesMap.set(tabId, { enabled, overrides });
-      if (enabled) {
-        attachDebugger(tabId).catch(console.error);
-      } else {
-        detachDebugger(tabId).catch(console.error);
+        const tabMatchesDomain = tabUrl && urlMatchesDomain(tabUrl, currentDomain);
+
+        overridesMap.set(tabId, { enabled, overrides });
+        if (enabled && tabMatchesDomain) {
+          attachDebugger(tabId).catch(console.error);
+        } else {
+          detachDebugger(tabId).catch(console.error);
+        }
+        break;
       }
-    } else if (msg.type === 'getApis') {
-      const tabId = Number(msg.tabId);
-      if (Number.isNaN(tabId)) return;
-      const apisMap = recentApisMap.get(tabId);
-      if (apisMap && typeof sendResponse === 'function') {
-        const apis = Array.from(apisMap.values());
-        sendResponse({ type: 'apisResponse', apis });
-        return true;
-      }
+      case 'getApis': {
+        const tabId = Number((msg as any).tabId);
+        if (Number.isNaN(tabId)) return;
+        const apisMap = recentApisMap.get(tabId);
+        if (apisMap && typeof sendResponse === 'function') {
+          const apis = Array.from(apisMap.values());
+          sendResponse({ type: 'apisResponse', apis });
+          return true;
+        }
 
-      const storageKey = `recentApis_${tabId}`;
-      chrome.storage.local.get([storageKey], (data: any) => {
-        const obj = data[storageKey] || {};
-        const apis = Object.values(obj).map((val: any) => {
-          if (typeof val === 'string') {
-            // Support legacy string format (just type)
-            // Note: we don't have the URL here if val is just type, 
-            // but Object.entries would. Let's fix that.
-            return null; 
+        const storageKey = recApisKey(tabId);
+        chrome.storage.local.get([storageKey], (data: any) => {
+          const obj = data[storageKey] || {};
+          const apis = Object.values(obj)
+            .map((val: any) => {
+              if (typeof val === 'string') {
+                return null;
+              }
+              return val;
+            })
+            .filter(Boolean);
+
+          const legacyApis = Object.entries(obj)
+            .filter(([_, val]) => typeof val === 'string')
+            .map(([url, type]) => ({ url, type: String(type) }));
+
+          if (typeof sendResponse === 'function') {
+            sendResponse({ type: 'apisResponse', apis: [...apis, ...legacyApis] });
           }
-          return val;
-        }).filter(Boolean);
-
-        // Fallback for transition
-        const legacyApis = Object.entries(obj)
-          .filter(([_, val]) => typeof val === 'string')
-          .map(([url, type]) => ({ url, type: String(type) }));
-
-        if (typeof sendResponse === 'function') {
-          sendResponse({ type: 'apisResponse', apis: [...apis, ...legacyApis] });
-        }
-      });
-      return true; // keep message channel open for async response
-    } else if (msg.type === 'getApiData') {
-      const tabId = Number(msg.tabId);
-      const url = String(msg.url || '');
-      if (Number.isNaN(tabId) || !url) return;
-
-      const bodies = recentApiBodiesMap.get(tabId);
-      if (bodies?.has(url)) {
-        if (typeof sendResponse === 'function') {
-          sendResponse({ type: 'apiDataResponse', url, body: bodies.get(url) || '' });
-        }
+        });
         return true;
       }
+      case 'getApiData': {
+        const tabId = Number((msg as any).tabId);
+        const url = String((msg as any).url || '');
+        if (Number.isNaN(tabId) || !url) return;
 
-      const storageKey = `recentApiBodies_${tabId}`;
-      chrome.storage.local.get([storageKey], (data: any) => {
-        const obj = data[storageKey] || {};
-        const body = typeof obj[url] === 'string' ? obj[url] : '';
-        if (typeof sendResponse === 'function') {
-          sendResponse({ type: 'apiDataResponse', url, body });
+        const bodies = recentApiBodiesMap.get(tabId);
+        if (bodies?.has(url)) {
+          if (typeof sendResponse === 'function') {
+            sendResponse({ type: 'apiDataResponse', url, body: bodies.get(url) || '' });
+          }
+          return true;
         }
-      });
-      return true;
-    }
 
-    if (typeof sendResponse === 'function') {
-      sendResponse({ success: true });
+        const storageKey = recBodiesKey(tabId);
+        chrome.storage.local.get([storageKey], (data: any) => {
+          const obj = data[storageKey] || {};
+          const body = typeof obj[url] === 'string' ? obj[url] : '';
+          if (typeof sendResponse === 'function') {
+            sendResponse({ type: 'apiDataResponse', url, body });
+          }
+        });
+        return true;
+      }
+      default:
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true });
+        }
+        break;
     }
   });
 
@@ -260,15 +361,25 @@ namespace NetworkOverridesBackground {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
 
+    if (!attachedTabs.has(tabId)) return;
+
+    const requestUrl = params?.request?.url || params?.response?.url || '';
+    if (requestUrl && !urlMatchesDomain(requestUrl, currentDomain)) return;
+
     if (method === 'Network.requestWillBeSent') {
-      const requestUrl = params?.request?.url;
+      const requestUrlInner = params?.request?.url;
       const requestType = params?.type || 'other';
-      if (typeof requestUrl === 'string') {
+      if (typeof requestUrlInner === 'string') {
         setRecentApi(tabId, {
-          url: requestUrl,
+          url: requestUrlInner,
           type: requestType,
           method: params.request.method,
-          headers: params.request.headers ? Object.entries(params.request.headers).map(([name, value]) => ({ name, value: String(value) })) : [],
+          headers: params.request.headers
+            ? Object.entries(params.request.headers).map(([name, value]) => ({
+                name,
+                value: String(value),
+              }))
+            : [],
           postData: params.request.postData,
         });
       }
@@ -282,7 +393,6 @@ namespace NetworkOverridesBackground {
     const info = overridesMap.get(tabId);
     const url = params.request?.url || '';
 
-    // Ensure type is stored for this URL if not already
     const apis = recentApisMap.get(tabId);
     if (!apis?.has(url)) {
       const requestType = params.resourceType || 'other';
@@ -290,7 +400,12 @@ namespace NetworkOverridesBackground {
         url,
         type: requestType,
         method: params.request?.method,
-        headers: params.request?.headers ? Object.entries(params.request.headers).map(([name, value]) => ({ name, value: String(value) })) : [],
+        headers: params.request?.headers
+          ? Object.entries(params.request.headers).map(([name, value]) => ({
+              name,
+              value: String(value),
+            }))
+          : [],
         postData: params.request?.postData,
       });
     }
@@ -301,21 +416,20 @@ namespace NetworkOverridesBackground {
       });
     };
 
-    if (!info || !info.enabled) {
+    if (!info?.enabled) {
       storeResponseBody(tabId, url, params.requestId, proceedWithoutOverride);
       return;
     }
 
     try {
-      const ov = info.overrides.find(test => patternMatches(test.pattern, url));
+      const ov = info.overrides.find((test: OverrideRule) => patternMatches(test.pattern, url));
 
       if (!ov) {
         storeResponseBody(tabId, url, params.requestId, proceedWithoutOverride);
         return;
       }
 
-      const responseBodyBase64 =
-        ov.mode === 'file' ? ov.body : btoa(unescape(encodeURIComponent(ov.body || '')));
+      const responseBodyBase64 = ov.mode === 'file' ? ov.body : stringToBase64Local(ov.body || '');
 
       const headers = [...((params.responseHeaders as FetchHeader[]) || [])];
       if (!headers.find(h => h.name.toLowerCase() === 'content-type')) {

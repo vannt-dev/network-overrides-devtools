@@ -1,4 +1,5 @@
 /// <reference types="chrome" />
+// Runtime typing relies on ambient NetworkOverridesShared declarations; use inline shape for runtime casts
 
 namespace NetworkOverridesPanel {
   const ui = NetworkOverridesUi.init({
@@ -18,7 +19,7 @@ namespace NetworkOverridesPanel {
             postData: entry.request?.postData?.text,
           }))
           .filter(api => !!api.url) as NetworkOverridesShared.ApiEntry[];
-        
+
         ui.addApis(initialApis);
       }
     });

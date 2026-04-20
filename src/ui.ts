@@ -12,6 +12,25 @@ namespace NetworkOverridesUi {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
+  function isValidPattern(pattern: string): boolean {
+    const trimmed = pattern.trim();
+    if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
+      return true;
+    }
+    if (isRegexPattern(trimmed)) {
+      const lastSlash = trimmed.lastIndexOf('/');
+      const source = trimmed.slice(1, lastSlash);
+      const flags = trimmed.slice(lastSlash + 1);
+      try {
+        new RegExp(source, flags);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return trimmed.length > 0;
+  }
+
   export function patternMatches(pattern: string, url: string): boolean {
     const trimmedPattern = pattern.trim();
     if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
@@ -416,6 +435,10 @@ namespace NetworkOverridesUi {
         alert('Pattern is required');
         return;
       }
+      if (!isValidPattern(pattern)) {
+        alert('Invalid pattern format');
+        return;
+      }
 
       const mode = elements.modeSelect.value as OverrideMode;
       const body = elements.bodyInput.value || '';
@@ -467,6 +490,11 @@ namespace NetworkOverridesUi {
       }
 
       const pattern = elements.modalPattern.value.trim() || state.selectedApi;
+      if (!isValidPattern(pattern)) {
+        alert('Invalid pattern format');
+        return;
+      }
+
       const mode = elements.modalMode.value as OverrideMode;
       const body = elements.modalBody.value || '';
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Network Overrides API (DevTools)",
-  "version": "1.0",
-  "description": "Add response body overrides from a DevTools panel using the Debugger Protocol.",
+  "version": "1.1",
+  "description": "Debugging tool that intercepts and overrides network API responses from DevTools panel or popup. For developers only - not for end-user production use.",
   "permissions": ["storage", "debugger"],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -13,7 +13,8 @@
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16x16.png"
-    }
+    },
+    "default_title": "Network Overrides"
   },
   "icons": {
     "16": "icons/icon-16x16.png",

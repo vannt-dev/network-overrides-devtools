@@ -202,6 +202,15 @@ namespace NetworkOverridesBackground {
     | { type: 'getApis'; tabId: number }
     | { type: 'getApiData'; tabId: number; url?: string };
 
+  function hasLastError(): boolean {
+    return typeof chrome.runtime.lastError === 'string';
+  }
+
+  function getLastError(): string | undefined {
+    const err = chrome.runtime.lastError;
+    return typeof err === 'string' ? err : undefined;
+  }
+
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
       return;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBackgroundHarness, normalize } from './test-harness.mjs';
+import { createBackgroundHarness, createBackgroundContext, normalize } from './test-harness.mjs';
 import { TEST_DOMAIN, TEST_API_URL, TEST_DOWNLOAD_URL } from './config.mjs';
 
 test('Background handles update messages by attaching and detaching the debugger', async () => {
@@ -298,4 +298,108 @@ test('Background keeps raw base64 body unchanged when override mode is file', as
     ),
     true
   );
+});
+
+test('Background glob matching with * wildcard', () => {
+  const { NetworkOverridesBackground } = createBackgroundContext();
+
+  assert.equal(
+    NetworkOverridesBackground.patternMatches(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/users'
+    ),
+    true
+  );
+  assert.equal(
+    NetworkOverridesBackground.patternMatches(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/admin'
+    ),
+    false
+  );
+  assert.equal(
+    NetworkOverridesBackground.patternMatches('*/api/users', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesBackground.patternMatches(
+      'https://example.com/api/*',
+      'https://example.com/api/users'
+    ),
+    true
+  );
+});
+
+test('Background matchPattern captures wildcard segments', () => {
+  const { NetworkOverridesBackground } = createBackgroundContext();
+
+  assert.equal(NetworkOverridesBackground.matchPattern('*', 'https://example.com/api')?.length, 0);
+  assert.equal(
+    NetworkOverridesBackground.matchPattern(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/users'
+    )?.[0],
+    'v1'
+  );
+  assert.equal(
+    NetworkOverridesBackground.matchPattern(
+      'https://old.com/api/*/*',
+      'https://old.com/api/v1/users'
+    )?.[1],
+    'users'
+  );
+  assert.equal(
+    NetworkOverridesBackground.matchPattern('nonexistent', 'https://example.com/api'),
+    null
+  );
+});
+
+test('Background substituteWildcards replaces * with captured segments', () => {
+  const { NetworkOverridesBackground } = createBackgroundContext();
+
+  assert.equal(
+    NetworkOverridesBackground.substituteWildcards('https://new.com/api/*', ['v1']),
+    'https://new.com/api/v1'
+  );
+  assert.equal(
+    NetworkOverridesBackground.substituteWildcards('https://new.com/*/api/*', ['v1', 'users']),
+    'https://new.com/v1/api/users'
+  );
+  assert.equal(
+    NetworkOverridesBackground.substituteWildcards('https://new.com/api/v1', []),
+    'https://new.com/api/v1'
+  );
+});
+
+test('Background redirects requests when override has redirectUrl', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: `${TEST_DOMAIN}/api/*`,
+        body: '',
+        mode: 'text',
+        redirectUrl: 'https://new-api.example.com/api/*',
+      },
+    ],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-redirect',
+    request: { url: TEST_API_URL },
+    resourceType: 'Fetch',
+  });
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-redirect'
+  );
+  assert.ok(continueCmd);
+  assert.equal(continueCmd.params.url, 'https://new-api.example.com/api/users');
 });

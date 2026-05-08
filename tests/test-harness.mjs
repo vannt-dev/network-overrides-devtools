@@ -86,6 +86,7 @@ function buildUiHtml() {
         <span id="modal-url"></span>
         <div id="modal-status"></div>
         <input id="modal-pattern" type="text">
+        <input id="modal-redirect-url" type="text">
         <select id="modal-mode">
           <option value="text">Text</option>
           <option value="file">Raw base64</option>
@@ -95,6 +96,7 @@ function buildUiHtml() {
       </div>
       <div id="new-row" style="display:none;"></div>
       <input id="pattern" type="text">
+      <input id="redirect-url" type="text">
       <textarea id="body"></textarea>
       <button id="add" type="button">Add</button>
       <select id="mode">

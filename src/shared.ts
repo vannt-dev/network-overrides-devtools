@@ -6,6 +6,7 @@ declare namespace NetworkOverridesShared {
     pattern: string;
     body: string;
     mode: OverrideMode;
+    redirectUrl?: string;
   }
   interface OverrideState {
     enabled: boolean;

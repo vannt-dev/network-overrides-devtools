@@ -169,6 +169,11 @@ input[type='search'] {
   font-size: 0.85em;
   color: #555;
 }
+.override-redirect {
+  color: #0a84ff;
+  font-size: 0.9em;
+  margin: 4px 0;
+}
 .api-item:hover {
   background: #f0f8ff;
 }

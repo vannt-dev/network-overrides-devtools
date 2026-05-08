@@ -43,6 +43,49 @@ namespace NetworkOverridesUi {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
+  function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  export function matchPattern(pattern: string, url: string): string[] | null {
+    const trimmed = pattern.trim();
+    if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
+      return [];
+    }
+    if (isRegexPattern(trimmed)) {
+      const lastSlash = trimmed.lastIndexOf('/');
+      const source = trimmed.slice(1, lastSlash);
+      const flags = trimmed.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(source, flags);
+        return regex.test(url) ? [] : null;
+      } catch {
+        return null;
+      }
+    }
+    if (trimmed.includes('*')) {
+      const parts = trimmed.split('*').map(escapeRegex);
+      try {
+        const regex = new RegExp('^' + parts.join('(.+)') + '$');
+        const match = url.match(regex);
+        return match ? match.slice(1) : null;
+      } catch {
+        return null;
+      }
+    }
+    return url.includes(trimmed) ? [] : null;
+  }
+
+  export function substituteWildcards(template: string, captures: string[]): string {
+    let result = template;
+    let captureIndex = 0;
+    while (result.includes('*') && captureIndex < captures.length) {
+      result = result.replace('*', captures[captureIndex]);
+      captureIndex++;
+    }
+    return result;
+  }
+
   function isValidPattern(pattern: string): boolean {
     const trimmed = pattern.trim();
     if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
@@ -59,26 +102,20 @@ namespace NetworkOverridesUi {
         return false;
       }
     }
-    return trimmed.length > 0;
-  }
-
-  export function patternMatches(pattern: string, url: string): boolean {
-    const trimmedPattern = pattern.trim();
-    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
-      return true;
-    }
-    if (isRegexPattern(trimmedPattern)) {
-      const lastSlash = trimmedPattern.lastIndexOf('/');
-      const source = trimmedPattern.slice(1, lastSlash);
-      const flags = trimmedPattern.slice(lastSlash + 1);
+    if (trimmed.includes('*')) {
+      const parts = trimmed.split('*').map(escapeRegex);
       try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url);
+        new RegExp('^' + parts.join('(.+)') + '$');
+        return true;
       } catch {
         return false;
       }
     }
-    return url.includes(trimmedPattern);
+    return trimmed.length > 0;
+  }
+
+  export function patternMatches(pattern: string, url: string): boolean {
+    return matchPattern(pattern, url) !== null;
   }
 
   function getOrigin(url: string): string {
@@ -107,10 +144,12 @@ namespace NetworkOverridesUi {
     modalPattern: HTMLInputElement;
     modalMode: HTMLSelectElement;
     modalBody: HTMLTextAreaElement;
+    modalRedirectUrl: HTMLInputElement;
     saveOverrideBtn: HTMLButtonElement;
     closeModal: HTMLElement;
     newRow: HTMLDivElement;
     refreshBtn: HTMLButtonElement;
+    redirectUrlInput: HTMLInputElement;
   }
 
   export interface AppOptions {
@@ -151,6 +190,7 @@ namespace NetworkOverridesUi {
         li.className = 'override-item';
         li.innerHTML = `
           <b>Pattern:</b> ${escapeHtml(override.pattern)}
+          ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
           <button data-index="${index}" class="edit-btn">Edit</button>
           <button data-index="${index}" class="del-btn">Delete</button>
           <div class="override-meta">Mode: ${escapeHtml(override.mode)}</div>
@@ -177,6 +217,7 @@ namespace NetworkOverridesUi {
       elements.modalPattern.value = existing.pattern;
       elements.modalMode.value = existing.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(existing.body || '');
+      elements.modalRedirectUrl.value = existing.redirectUrl || '';
       elements.modal.style.display = 'block';
       renderApis();
       elements.modalBody.focus();
@@ -206,12 +247,14 @@ namespace NetworkOverridesUi {
         elements.modalStatus.classList.remove('new');
         elements.modalBody.value = formatJsonIfPossible(existing.body || '');
         elements.modalMode.value = existing.mode || 'text';
+        elements.modalRedirectUrl.value = existing.redirectUrl || '';
       } else {
         elements.modalStatus.textContent = 'Creating new override';
         elements.modalStatus.classList.add('new');
         elements.modalStatus.classList.remove('update');
         elements.modalBody.value = '';
         elements.modalMode.value = 'text';
+        elements.modalRedirectUrl.value = '';
 
         if (options.autoFillOnOpen && state.autoFillFromPayload) {
           await fillModalWithCurrentBody(url, elements.modalBody);
@@ -469,12 +512,19 @@ namespace NetworkOverridesUi {
 
       const mode = elements.modeSelect.value as OverrideMode;
       const body = elements.bodyInput.value || '';
+      const redirectUrl = elements.redirectUrlInput.value.trim() || undefined;
 
-      state.overrides.push({ pattern, body, mode });
+      const override: OverrideRule = { pattern, body, mode };
+      if (redirectUrl) {
+        override.redirectUrl = redirectUrl;
+      }
+
+      state.overrides.push(override);
       await chrome.storage.local.set({ overrides: state.overrides });
 
       elements.patternInput.value = '';
       elements.bodyInput.value = '';
+      elements.redirectUrlInput.value = '';
 
       renderList();
       renderApis();
@@ -524,11 +574,17 @@ namespace NetworkOverridesUi {
 
       const mode = elements.modalMode.value as OverrideMode;
       const body = elements.modalBody.value || '';
+      const redirectUrl = elements.modalRedirectUrl.value.trim() || undefined;
+
+      const override: OverrideRule = { pattern, body, mode };
+      if (redirectUrl) {
+        override.redirectUrl = redirectUrl;
+      }
 
       if (state.currentEditIndex !== null && state.overrides[state.currentEditIndex]) {
-        state.overrides[state.currentEditIndex] = { pattern, body, mode };
+        state.overrides[state.currentEditIndex] = override;
       } else {
-        state.overrides.unshift({ pattern, body, mode });
+        state.overrides.unshift(override);
       }
 
       await chrome.storage.local.set({ overrides: state.overrides });
@@ -636,10 +692,12 @@ namespace NetworkOverridesUi {
       modalPattern: document.getElementById('modal-pattern') as HTMLInputElement,
       modalMode: document.getElementById('modal-mode') as HTMLSelectElement,
       modalBody: document.getElementById('modal-body') as HTMLTextAreaElement,
+      modalRedirectUrl: document.getElementById('modal-redirect-url') as HTMLInputElement,
       saveOverrideBtn: document.getElementById('save-override') as HTMLButtonElement,
       closeModal: document.querySelector('.close') as HTMLElement,
       newRow: document.getElementById('new-row') as HTMLDivElement,
       refreshBtn: document.getElementById('refresh-apis') as HTMLButtonElement,
+      redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
     };
   }
 

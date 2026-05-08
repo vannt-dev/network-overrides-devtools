@@ -11,6 +11,7 @@ const requiredPaths = [
   'devtools.html',
   'panel.html',
   'popup.html',
+  'guide.html',
   'styles.css',
   'dist',
   'icons',

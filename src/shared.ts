@@ -18,6 +18,7 @@ declare namespace NetworkOverridesShared {
     method?: string;
     headers?: FetchHeader[];
     postData?: string;
+    body?: string;
   }
   interface FetchHeader {
     name: string;

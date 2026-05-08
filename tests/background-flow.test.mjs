@@ -20,7 +20,10 @@ test('Background handles update messages by attaching and detaching the debugger
     normalize(harness.commandLog.slice(0, 2).map(({ method, params }) => ({ method, params }))),
     [
       { method: 'Network.enable', params: {} },
-      { method: 'Fetch.enable', params: { patterns: [{ requestStage: 'Response' }] } },
+      {
+        method: 'Fetch.enable',
+        params: { patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }] },
+      },
     ]
   );
 
@@ -64,6 +67,7 @@ test('Background stores recent APIs and response bodies, then returns them throu
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-1',
     request: { url: TEST_API_URL },
+    responseStatusCode: 200,
     resourceType: 'Fetch',
   });
 
@@ -116,7 +120,10 @@ test('Background fulfills matching requests with override headers and body', asy
     normalize(harness.commandLog.slice(0, 2).map(({ method, params }) => ({ method, params }))),
     [
       { method: 'Network.enable', params: {} },
-      { method: 'Fetch.enable', params: { patterns: [{ requestStage: 'Response' }] } },
+      {
+        method: 'Fetch.enable',
+        params: { patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }] },
+      },
     ]
   );
 
@@ -160,6 +167,7 @@ test('Background stores recent APIs and response bodies, then returns them throu
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-1',
     request: { url: TEST_API_URL },
+    responseStatusCode: 200,
     resourceType: 'Fetch',
   });
 
@@ -402,4 +410,45 @@ test('Background redirects requests when override has redirectUrl', async () => 
   );
   assert.ok(continueCmd);
   assert.equal(continueCmd.params.url, 'https://new-api.example.com/api/users');
+});
+
+test('Background does not fulfill body for redirect-only overrides at response stage', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: `${TEST_DOMAIN}/api/*`,
+        body: '{"shouldNotBeUsed":true}',
+        mode: 'text',
+        redirectUrl: 'https://new-api.example.com/api/*',
+      },
+    ],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-response-redirect',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+    resourceType: 'Fetch',
+  });
+  await Promise.resolve();
+
+  const fulfillCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-response-redirect'
+  );
+  assert.equal(fulfillCmd, undefined);
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-response-redirect'
+  );
+  assert.ok(continueCmd);
 });

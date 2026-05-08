@@ -85,28 +85,56 @@ namespace NetworkOverridesBackground {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
 
-  // Expose normalizeBody for tests and internal usage
-  export function normalizeBody(body: string, isBase64: boolean): string {
-    return normalizeBodyLocal(body, isBase64);
+  function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  export function matchPattern(pattern: string, url: string): string[] | null {
+    const trimmed = pattern.trim();
+    if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
+      return [];
+    }
+    if (isRegexPattern(trimmed)) {
+      const lastSlash = trimmed.lastIndexOf('/');
+      const source = trimmed.slice(1, lastSlash);
+      const flags = trimmed.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(source, flags);
+        return regex.test(url) ? [] : null;
+      } catch {
+        return null;
+      }
+    }
+    if (trimmed.includes('*')) {
+      const parts = trimmed.split('*').map(escapeRegex);
+      try {
+        const regex = new RegExp('^' + parts.join('(.+)') + '$');
+        const match = url.match(regex);
+        return match ? match.slice(1) : null;
+      } catch {
+        return null;
+      }
+    }
+    return url.includes(trimmed) ? [] : null;
   }
 
   export function patternMatches(pattern: string, url: string): boolean {
-    const trimmedPattern = pattern.trim();
-    if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
-      return true;
+    return matchPattern(pattern, url) !== null;
+  }
+
+  export function substituteWildcards(template: string, captures: string[]): string {
+    let result = template;
+    let captureIndex = 0;
+    while (result.includes('*') && captureIndex < captures.length) {
+      result = result.replace('*', captures[captureIndex]);
+      captureIndex++;
     }
-    if (isRegexPattern(trimmedPattern)) {
-      const lastSlash = trimmedPattern.lastIndexOf('/');
-      const source = trimmedPattern.slice(1, lastSlash);
-      const flags = trimmedPattern.slice(lastSlash + 1);
-      try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url);
-      } catch {
-        return false;
-      }
-    }
-    return url.includes(trimmedPattern);
+    return result;
+  }
+
+  // Expose normalizeBody for tests and internal usage
+  export function normalizeBody(body: string, isBase64: boolean): string {
+    return normalizeBodyLocal(body, isBase64);
   }
 
   // normalizeBody and stringToBase64 are now centralized in src/utils.ts
@@ -455,10 +483,34 @@ namespace NetworkOverridesBackground {
     }
 
     try {
-      const ov = info.overrides.find((test: OverrideRule) => patternMatches(test.pattern, url));
+      let ov: OverrideRule | undefined;
+      let captures: string[] | null = null;
+      for (const test of info.overrides) {
+        captures = matchPattern(test.pattern, url);
+        if (captures !== null) {
+          ov = test;
+          break;
+        }
+      }
 
       if (!ov) {
         storeResponseBody(tabId, url, params.requestId, proceed);
+        return;
+      }
+
+      if (ov.redirectUrl && captures) {
+        const newUrl = substituteWildcards(ov.redirectUrl, captures);
+        chrome.debugger.sendCommand(
+          { tabId },
+          'Fetch.continueRequest',
+          { requestId: params.requestId, url: newUrl },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error('continueRequest redirect failed:', chrome.runtime.lastError.message);
+              proceed();
+            }
+          }
+        );
         return;
       }
 

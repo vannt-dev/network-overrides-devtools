@@ -21,6 +21,77 @@ test('UI pattern matching supports wildcard, substring, and regex', () => {
   );
 });
 
+test('UI glob pattern matching with * wildcards', () => {
+  const { NetworkOverridesUi } = createUiContext();
+
+  assert.equal(
+    NetworkOverridesUi.patternMatches(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/users'
+    ),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v2/users'
+    ),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/admin'
+    ),
+    false
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches('*/api/users', 'https://example.com/api/users'),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches(
+      'https://example.com/api/*',
+      'https://example.com/api/users/123'
+    ),
+    true
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches('*://example.com/*', 'https://example.com/api/users'),
+    true
+  );
+});
+
+test('UI matchPattern captures wildcard segments', () => {
+  const { NetworkOverridesUi } = createUiContext();
+
+  assert.equal(NetworkOverridesUi.matchPattern('*', 'https://example.com/api/users')?.length, 0);
+  assert.equal(NetworkOverridesUi.matchPattern('all', 'https://example.com/api/users')?.length, 0);
+  assert.equal(
+    NetworkOverridesUi.matchPattern('api/users', 'https://example.com/api/users')?.length,
+    0
+  );
+  assert.equal(
+    NetworkOverridesUi.matchPattern(
+      'https://old.com/api/*/users',
+      'https://old.com/api/v1/users'
+    )?.[0],
+    'v1'
+  );
+  assert.equal(
+    NetworkOverridesUi.matchPattern('*://example.com/*', 'https://example.com/api/users')?.[1],
+    'api/users'
+  );
+  assert.equal(
+    NetworkOverridesUi.matchPattern('/users$/', 'https://example.com/api/users')?.length,
+    0
+  );
+  assert.equal(
+    NetworkOverridesUi.matchPattern('nonexistent', 'https://example.com/api/users'),
+    null
+  );
+});
+
 test('UI helpers format API labels and normalize request types', () => {
   const { NetworkOverridesUi } = createUiContext();
 

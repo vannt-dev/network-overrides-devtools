@@ -21,8 +21,10 @@
     </div>
 
     <p class="hint">
-      Tip: use pattern <code>*</code> or <code>all</code> to override all requests; or regex format
-      <code>/pattern/flags</code>.
+      Tip: use <code>*</code> as wildcard in patterns (e.g.,
+      <code>https://old.com/api/*/users</code>), <code>*</code>/<code>all</code> for all requests,
+      or regex <code>/pattern/flags</code>. Use <code>*</code> in Redirect URL to substitute
+      captured wildcards.
     </p>
 
     <div id="override-modal" class="modal" style="display: none">
@@ -33,6 +35,14 @@
         <label class="modal-field">
           <span>Pattern</span>
           <input id="modal-pattern" type="text" />
+        </label>
+        <label class="modal-field">
+          <span>Redirect URL <em>(optional — uses * for captured wildcards)</em></span>
+          <input
+            id="modal-redirect-url"
+            type="text"
+            placeholder="e.g. https://new-api.example.com/api/*"
+          />
         </label>
         <select id="modal-mode">
           <option value="text">Text</option>
@@ -51,6 +61,11 @@
 
     <div id="new-row" class="tab-content" style="display: none">
       <input id="pattern" placeholder="URL contains (e.g. /api/data)" />
+      <input
+        id="redirect-url"
+        type="text"
+        placeholder="Optional redirect URL (use * for wildcards)"
+      />
       <select id="mode">
         <option value="text">Text</option>
         <option value="file">Raw base64</option>

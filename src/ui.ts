@@ -8,6 +8,37 @@ namespace NetworkOverridesUi {
 
   let currentDomain = '';
 
+  const TYPE_ORDER = [
+    'xhr',
+    'fetch',
+    'script',
+    'stylesheet',
+    'image',
+    'media',
+    'font',
+    'document',
+    'websocket',
+    'manifest',
+    'eventsource',
+    'texttrack',
+    'other',
+  ];
+  const TYPE_LABELS: Record<string, string> = {
+    xhr: 'XHR',
+    fetch: 'Fetch',
+    script: 'JS',
+    stylesheet: 'CSS',
+    image: 'Img',
+    media: 'Media',
+    font: 'Font',
+    document: 'Doc',
+    websocket: 'WS',
+    manifest: 'Manifest',
+    eventsource: 'EventSource',
+    texttrack: 'TextTrack',
+    other: 'Other',
+  };
+
   function isRegexPattern(pattern: string): boolean {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
   }
@@ -67,10 +98,9 @@ namespace NetworkOverridesUi {
     modeSelect: HTMLSelectElement;
     apisSection: HTMLDivElement;
     apiSearchInput: HTMLInputElement;
-    onlyOverriddenCheckbox: HTMLInputElement;
-    expandAllBtn: HTMLButtonElement;
-    collapseAllBtn: HTMLButtonElement;
-    apisList: HTMLUListElement;
+    apisList: HTMLDivElement;
+    tabsContainer: HTMLDivElement;
+    overridesSection: HTMLDivElement;
     modal: HTMLDivElement;
     modalUrl: HTMLElement;
     modalStatus: HTMLElement;
@@ -79,9 +109,8 @@ namespace NetworkOverridesUi {
     modalBody: HTMLTextAreaElement;
     saveOverrideBtn: HTMLButtonElement;
     closeModal: HTMLElement;
-    autoFillCheckbox: HTMLInputElement;
-    useCurrentBodyBtn: HTMLButtonElement;
     newRow: HTMLDivElement;
+    refreshBtn: HTMLButtonElement;
   }
 
   export interface AppOptions {
@@ -99,26 +128,19 @@ namespace NetworkOverridesUi {
       overrides: [] as OverrideRule[],
       apis: [] as ApiEntry[],
       apiSearchTerm: '',
-      onlyOverridden: false,
-      collapsedBuckets: {
-        overridden: false,
-        other: false,
-      },
+      currentTab: 'other' as 'overridden' | 'other' | 'overrides',
+      collapsedTypes: {} as Record<string, boolean>,
       selectedApi: null as string | null,
       currentEditIndex: null as number | null,
       autoFillFromPayload: true,
     };
+    elements.overridesSection.style.display = 'none';
 
     elements.newRow.style.display = options.showManualEditor ? '' : 'none';
 
     async function persistApiUiState(): Promise<void> {
       await chrome.storage.local.set({
         apiSearchTerm: state.apiSearchTerm,
-        onlyOverridden: state.onlyOverridden,
-        collapsedBuckets: {
-          overridden: state.collapsedBuckets.overridden,
-          other: state.collapsedBuckets.other,
-        },
       });
     }
 
@@ -136,6 +158,7 @@ namespace NetworkOverridesUi {
         `;
         elements.listEl.appendChild(li);
       });
+      updateTabLabels();
     }
 
     function openOverrideModalForIndex(index: number): void {
@@ -220,17 +243,15 @@ namespace NetworkOverridesUi {
       const overriddenApis = visibleApis.filter(api =>
         state.overrides.some(override => patternMatches(override.pattern, api.url))
       );
-      const otherApis = state.onlyOverridden
-        ? []
-        : visibleApis.filter(
-            api => !state.overrides.some(override => patternMatches(override.pattern, api.url))
-          );
+      const otherApis = visibleApis.filter(
+        api => !state.overrides.some(override => patternMatches(override.pattern, api.url))
+      );
 
-      elements.expandAllBtn.style.display = visibleApis.length > 0 ? 'inline-flex' : 'none';
-      elements.collapseAllBtn.style.display = visibleApis.length > 0 ? 'inline-flex' : 'none';
-
-      appendApiBucket('Overridden APIs', overriddenApis, 'overridden', searchTerm);
-      appendApiBucket('Other APIs', otherApis, 'other', searchTerm);
+      if (state.currentTab === 'overridden') {
+        appendApiBucket(overriddenApis, searchTerm);
+      } else {
+        appendApiBucket(otherApis, searchTerm);
+      }
 
       if (elements.apisList.childElementCount === 0) {
         const emptyState = document.createElement('div');
@@ -240,134 +261,124 @@ namespace NetworkOverridesUi {
           : 'No captured APIs yet.';
         elements.apisList.appendChild(emptyState);
       }
-
-      const hasVisibleApis = elements.apisList.childElementCount > 0;
-      elements.apisSection.style.display = hasVisibleApis ? 'block' : 'none';
+      updateTabLabels();
     }
 
-    function appendApiBucket(
-      title: string,
-      apis: ApiEntry[],
-      key: 'overridden' | 'other',
-      searchTerm: string
-    ): void {
-      if (apis.length === 0) {
-        return;
-      }
+    function switchTab(tab: 'overridden' | 'other' | 'overrides'): void {
+      state.currentTab = tab;
 
-      const grouped: Record<string, ApiEntry[]> = {};
-      const typeOrder = [
-        'xhr',
-        'fetch',
-        'script',
-        'stylesheet',
-        'image',
-        'media',
-        'font',
-        'document',
-        'websocket',
-        'manifest',
-        'eventsource',
-        'texttrack',
-        'other',
-      ];
-      const typeLabels: Record<string, string> = {
-        xhr: 'XHR',
-        fetch: 'Fetch',
-        script: 'JS',
-        stylesheet: 'CSS',
-        image: 'Img',
-        media: 'Media',
-        font: 'Font',
-        document: 'Doc',
-        websocket: 'WS',
-        manifest: 'Manifest',
-        eventsource: 'EventSource',
-        texttrack: 'TextTrack',
-        other: 'Other',
-      };
+      elements.tabsContainer
+        .querySelectorAll('.tab-btn')
+        .forEach(btn => btn.classList.toggle('active', (btn as HTMLElement).dataset.tab === tab));
+
+      elements.apisSection.style.display = 'none';
+      elements.overridesSection.style.display = 'none';
+
+      if (tab === 'overrides') {
+        elements.overridesSection.style.display = 'block';
+        renderList();
+      } else {
+        elements.apisSection.style.display = 'block';
+        renderApis();
+      }
+    }
+
+    function updateTabLabels(): void {
+      const overriddenCount = state.apis.filter(api =>
+        state.overrides.some(override => patternMatches(override.pattern, api.url))
+      ).length;
+      const otherCount = state.apis.length - overriddenCount;
+
+      elements.tabsContainer.querySelectorAll('.tab-btn').forEach(btn => {
+        const tab = (btn as HTMLElement).dataset.tab;
+        if (tab === 'other') btn.textContent = `Captured APIs (${otherCount})`;
+        else if (tab === 'overridden') btn.textContent = `Overridden (${overriddenCount})`;
+        else if (tab === 'overrides') btn.textContent = `Rules (${state.overrides.length})`;
+      });
+    }
+
+    function renderApiSection(type: string, apis: ApiEntry[], searchTerm: string): HTMLDivElement {
+      const collKey = `${state.currentTab}_${type}`;
+      const isCollapsed = !!state.collapsedTypes[collKey];
+
+      const section = document.createElement('div');
+      section.className = 'api-section';
+
+      const ul = document.createElement('ul');
+      ul.style.display = isCollapsed ? 'none' : '';
+
+      const h4 = document.createElement('h4');
+      h4.style.cursor = 'pointer';
+      h4.style.userSelect = 'none';
+      h4.appendChild(document.createTextNode(`${TYPE_LABELS[type] || type.toUpperCase()} `));
+      const count = document.createElement('span');
+      count.className = 'api-count';
+      count.textContent = String(apis.length);
+      h4.appendChild(count);
+      h4.appendChild(document.createTextNode(' '));
+      const chevron = document.createElement('span');
+      chevron.className = 'type-chevron';
+      chevron.textContent = isCollapsed ? '▶' : '▼';
+      h4.appendChild(chevron);
+      h4.addEventListener('click', () => {
+        state.collapsedTypes[collKey] = !state.collapsedTypes[collKey];
+        void persistApiUiState();
+        ul.style.display = state.collapsedTypes[collKey] ? 'none' : '';
+        chevron.textContent = state.collapsedTypes[collKey] ? '▶' : '▼';
+      });
+      section.appendChild(h4);
 
       apis.forEach(api => {
-        const type = normalizeApiType(api.type);
-        if (!grouped[type]) {
-          grouped[type] = [];
-        }
-        grouped[type].push(api);
+        const li = document.createElement('li');
+        li.className = 'api-item';
+        const isOverridden = state.overrides.some(override =>
+          patternMatches(override.pattern, api.url)
+        );
+        const isSelected = state.selectedApi ? patternMatches(state.selectedApi, api.url) : false;
+        if (isOverridden) li.classList.add('active');
+        if (isSelected) li.classList.add('selected');
+        li.dataset.url = api.url;
+        li.innerHTML = `
+          <div class="api-item-content">
+            <b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)}</b>
+          </div>
+          <div class="api-item-controls">
+            <button class="copy-curl-btn" title="Copy cURL">cURL</button>
+          </div>
+        `;
+        li.addEventListener('click', event => {
+          const target = event.target as HTMLElement;
+          if (target.classList.contains('copy-curl-btn')) {
+            event.stopPropagation();
+            void copyCurl(api);
+            return;
+          }
+          void openOverrideModal(api.url);
+        });
+        ul.appendChild(li);
+      });
+
+      section.appendChild(ul);
+      return section;
+    }
+
+    function appendApiBucket(apis: ApiEntry[], searchTerm: string): void {
+      if (apis.length === 0) return;
+
+      const grouped: Record<string, ApiEntry[]> = {};
+
+      apis.forEach(api => {
+        const t = normalizeApiType(api.type);
+        if (!grouped[t]) grouped[t] = [];
+        grouped[t].push(api);
       });
 
       const bucket = document.createElement('div');
       bucket.className = 'api-bucket';
-      const header = document.createElement('button');
-      header.type = 'button';
-      header.className = 'api-bucket-toggle';
-      header.setAttribute('aria-expanded', String(!state.collapsedBuckets[key]));
-      header.innerHTML = `
-        <span class="api-bucket-title">${title}</span>
-        <span class="api-bucket-meta">
-          <span class="api-count">${apis.length}</span>
-          <span class="api-bucket-chevron ${state.collapsedBuckets[key] ? 'collapsed' : ''}" aria-hidden="true"></span>
-        </span>
-      `;
-      header.addEventListener('click', () => {
-        state.collapsedBuckets[key] = !state.collapsedBuckets[key];
-        void persistApiUiState();
-        renderApis();
-      });
-      bucket.appendChild(header);
 
-      if (state.collapsedBuckets[key]) {
-        elements.apisList.appendChild(bucket);
-        return;
-      }
-
-      typeOrder.forEach(type => {
-        if (!grouped[type]?.length) {
-          return;
-        }
-
-        grouped[type].sort((left, right) => left.url.localeCompare(right.url));
-
-        const section = document.createElement('div');
-        section.className = 'api-section';
-        section.innerHTML = `<h4>${typeLabels[type] || type.toUpperCase()} <span class="api-count">${grouped[type].length}</span></h4>`;
-
-        const ul = document.createElement('ul');
-        grouped[type].forEach(api => {
-          const li = document.createElement('li');
-          li.className = 'api-item';
-          const isOverridden = state.overrides.some(override =>
-            patternMatches(override.pattern, api.url)
-          );
-          const isSelected = state.selectedApi ? patternMatches(state.selectedApi, api.url) : false;
-          if (isOverridden) {
-            li.classList.add('active');
-          }
-          if (isSelected) {
-            li.classList.add('selected');
-          }
-          li.dataset.url = api.url;
-          li.innerHTML = `
-            <div class="api-item-content">
-              <b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)}</b>
-            </div>
-            <div class="api-item-controls">
-              <button class="copy-curl-btn" title="Copy cURL">cURL</button>
-            </div>
-          `;
-          li.addEventListener('click', event => {
-            const target = event.target as HTMLElement;
-            if (target.classList.contains('copy-curl-btn')) {
-              event.stopPropagation();
-              void copyCurl(api);
-              return;
-            }
-            void openOverrideModal(api.url);
-          });
-          ul.appendChild(li);
-        });
-
-        section.appendChild(ul);
-        bucket.appendChild(section);
+      TYPE_ORDER.forEach(type => {
+        if (!grouped[type]?.length) return;
+        bucket.appendChild(renderApiSection(type, grouped[type], searchTerm));
       });
 
       elements.apisList.appendChild(bucket);
@@ -399,17 +410,33 @@ namespace NetworkOverridesUi {
       });
     }
 
-    async function refreshApisWithRetry(): Promise<void> {
-      const attempts = 5;
-      for (let attempt = 0; attempt < attempts; attempt += 1) {
-        const count = await loadApis();
-        if (count > 0) {
-          return;
-        }
+    async function clearApisInBackground(): Promise<void> {
+      const tab = await getActiveTab();
+      const tabId = tab?.id;
+      if (typeof tabId !== 'number') return;
+      return new Promise(resolve => {
+        chrome.runtime.sendMessage({ type: 'clearApis', tabId }, () => resolve());
+      });
+    }
 
-        if (attempt < attempts - 1) {
-          await delay(250);
+    async function refreshApisWithRetry(): Promise<void> {
+      elements.refreshBtn.classList.add('loading');
+      state.apis = [];
+      renderApis();
+      await clearApisInBackground();
+      const attempts = 5;
+      try {
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          const count = await loadApis();
+          if (count > 0) {
+            return;
+          }
+          if (attempt < attempts - 1) {
+            await delay(250);
+          }
         }
+      } finally {
+        elements.refreshBtn.classList.remove('loading');
       }
     }
 
@@ -516,17 +543,15 @@ namespace NetworkOverridesUi {
       await notifyBackground();
     });
 
-    elements.autoFillCheckbox.addEventListener('change', async () => {
-      state.autoFillFromPayload = elements.autoFillCheckbox.checked;
-      await chrome.storage.local.set({ autoFillFromPayload: state.autoFillFromPayload });
+    elements.refreshBtn.addEventListener('click', async () => {
+      await refreshApisWithRetry();
     });
 
-    elements.useCurrentBodyBtn.addEventListener('click', async () => {
-      if (!state.selectedApi) {
-        return;
+    elements.tabsContainer.addEventListener('click', event => {
+      const btn = (event.target as HTMLElement).closest('.tab-btn') as HTMLElement;
+      if (btn?.dataset.tab) {
+        switchTab(btn.dataset.tab as 'overridden' | 'other' | 'overrides');
       }
-
-      await fillModalWithCurrentBody(state.selectedApi, elements.modalBody);
     });
 
     elements.apiSearchInput.addEventListener('input', () => {
@@ -535,51 +560,16 @@ namespace NetworkOverridesUi {
       renderApis();
     });
 
-    elements.onlyOverriddenCheckbox.addEventListener('change', () => {
-      state.onlyOverridden = elements.onlyOverriddenCheckbox.checked;
-      void persistApiUiState();
-      renderApis();
-    });
-
-    elements.expandAllBtn.addEventListener('click', () => {
-      state.collapsedBuckets.overridden = false;
-      state.collapsedBuckets.other = false;
-      void persistApiUiState();
-      renderApis();
-    });
-
-    elements.collapseAllBtn.addEventListener('click', () => {
-      state.collapsedBuckets.overridden = true;
-      state.collapsedBuckets.other = true;
-      void persistApiUiState();
-      renderApis();
-    });
-
     void (async () => {
-      const data = await chrome.storage.local.get([
-        'enabled',
-        'overrides',
-        'autoFillFromPayload',
-        'apiSearchTerm',
-        'onlyOverridden',
-        'collapsedBuckets',
-      ]);
+      const data = await chrome.storage.local.get(['enabled', 'overrides', 'apiSearchTerm']);
       elements.enableCheckbox.checked = !!data.enabled;
-      state.autoFillFromPayload = data.autoFillFromPayload !== false;
-      elements.autoFillCheckbox.checked = state.autoFillFromPayload;
       state.overrides = data.overrides || [];
       state.apiSearchTerm = typeof data.apiSearchTerm === 'string' ? data.apiSearchTerm : '';
       elements.apiSearchInput.value = state.apiSearchTerm;
-      state.onlyOverridden = data.onlyOverridden === true;
-      elements.onlyOverriddenCheckbox.checked = state.onlyOverridden;
 
-      const collapsedBuckets = data.collapsedBuckets || {};
-      state.collapsedBuckets.overridden = collapsedBuckets.overridden === true;
-      state.collapsedBuckets.other = collapsedBuckets.other === true;
-
-      renderList();
       await notifyBackground();
       await refreshApisWithRetry();
+      switchTab('other');
     })();
 
     return {
@@ -637,10 +627,9 @@ namespace NetworkOverridesUi {
       modeSelect: document.getElementById('mode') as HTMLSelectElement,
       apisSection: document.getElementById('apis-section') as HTMLDivElement,
       apiSearchInput: document.getElementById('api-search') as HTMLInputElement,
-      onlyOverriddenCheckbox: document.getElementById('only-overridden') as HTMLInputElement,
-      expandAllBtn: document.getElementById('expand-all') as HTMLButtonElement,
-      collapseAllBtn: document.getElementById('collapse-all') as HTMLButtonElement,
-      apisList: document.getElementById('apis-list') as HTMLUListElement,
+      apisList: document.getElementById('apis-list') as HTMLDivElement,
+      tabsContainer: document.querySelector('.tabs') as HTMLDivElement,
+      overridesSection: document.getElementById('overrides-section') as HTMLDivElement,
       modal: document.getElementById('override-modal') as HTMLDivElement,
       modalUrl: document.getElementById('modal-url') as HTMLElement,
       modalStatus: document.getElementById('modal-status') as HTMLElement,
@@ -649,9 +638,8 @@ namespace NetworkOverridesUi {
       modalBody: document.getElementById('modal-body') as HTMLTextAreaElement,
       saveOverrideBtn: document.getElementById('save-override') as HTMLButtonElement,
       closeModal: document.querySelector('.close') as HTMLElement,
-      autoFillCheckbox: document.getElementById('auto-fill') as HTMLInputElement,
-      useCurrentBodyBtn: document.getElementById('use-current-body') as HTMLButtonElement,
       newRow: document.getElementById('new-row') as HTMLDivElement,
+      refreshBtn: document.getElementById('refresh-apis') as HTMLButtonElement,
     };
   }
 

@@ -200,7 +200,8 @@ namespace NetworkOverridesBackground {
         tabUrl?: string;
       }
     | { type: 'getApis'; tabId: number }
-    | { type: 'getApiData'; tabId: number; url?: string };
+    | { type: 'getApiData'; tabId: number; url?: string }
+    | { type: 'clearApis'; tabId: number };
 
   function hasLastError(): boolean {
     return typeof chrome.runtime.lastError === 'string';
@@ -271,6 +272,17 @@ namespace NetworkOverridesBackground {
           }
         });
         return true;
+      }
+      case 'clearApis': {
+        const clearTabId = Number((msg as any).tabId);
+        if (!Number.isNaN(clearTabId)) {
+          recentApisMap.delete(clearTabId);
+          recentApiBodiesMap.delete(clearTabId);
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ type: 'clearApisResponse', success: true });
+        }
+        return;
       }
       case 'getApiData': {
         const tabId = Number((msg as any).tabId);
@@ -366,9 +378,23 @@ namespace NetworkOverridesBackground {
     }
   });
 
+  chrome.debugger.onDetach.addListener(source => {
+    const tabId = source.tabId;
+    if (typeof tabId !== 'number') return;
+    attachedTabs.delete(tabId);
+    overridesMap.delete(tabId);
+    recentApisMap.delete(tabId);
+    recentApiBodiesMap.delete(tabId);
+  });
+
   chrome.debugger.onEvent.addListener((source, method, params: any) => {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
+
+    if (method === 'Fetch.requestPaused') {
+      handleRequestPaused(tabId, params);
+      return;
+    }
 
     if (!attachedTabs.has(tabId)) return;
 
@@ -394,13 +420,22 @@ namespace NetworkOverridesBackground {
       }
       return;
     }
+  });
 
-    if (method !== 'Fetch.requestPaused') {
-      return;
-    }
-
+  function handleRequestPaused(tabId: number, params: any): void {
     const info = overridesMap.get(tabId);
     const url = params.request?.url || '';
+
+    const proceed = () => {
+      chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
+        requestId: params.requestId,
+      });
+    };
+
+    if (!attachedTabs.has(tabId) || !info?.enabled) {
+      proceed();
+      return;
+    }
 
     const apis = recentApisMap.get(tabId);
     if (!apis?.has(url)) {
@@ -419,22 +454,11 @@ namespace NetworkOverridesBackground {
       });
     }
 
-    const proceedWithoutOverride = () => {
-      chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
-        requestId: params.requestId,
-      });
-    };
-
-    if (!info?.enabled) {
-      storeResponseBody(tabId, url, params.requestId, proceedWithoutOverride);
-      return;
-    }
-
     try {
       const ov = info.overrides.find((test: OverrideRule) => patternMatches(test.pattern, url));
 
       if (!ov) {
-        storeResponseBody(tabId, url, params.requestId, proceedWithoutOverride);
+        storeResponseBody(tabId, url, params.requestId, proceed);
         return;
       }
 
@@ -449,9 +473,12 @@ namespace NetworkOverridesBackground {
       headers.push({ name: 'x-network-overrides-pattern', value: ov.pattern });
 
       const responseCode =
-        typeof params.responseStatusCode === 'number' ? params.responseStatusCode : 200;
-      const responsePhrase =
-        typeof params.responseStatusText === 'string' ? params.responseStatusText : undefined;
+        typeof params.responseStatusCode === 'number' &&
+        params.responseStatusCode >= 100 &&
+        params.responseStatusCode <= 599
+          ? params.responseStatusCode
+          : 200;
+      const responsePhrase = undefined;
 
       chrome.debugger.sendCommand(
         { tabId },
@@ -465,15 +492,14 @@ namespace NetworkOverridesBackground {
         },
         () => {
           if (chrome.runtime.lastError) {
-            console.error('fulfillRequest failed', chrome.runtime.lastError);
+            console.error('fulfillRequest failed:', chrome.runtime.lastError.message);
+            proceed();
           }
         }
       );
     } catch (error) {
       console.error(error);
-      chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
-        requestId: params.requestId,
-      });
+      proceed();
     }
-  });
+  }
 }

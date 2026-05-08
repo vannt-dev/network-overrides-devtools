@@ -140,15 +140,20 @@ namespace NetworkOverridesUi {
     overridesSection: HTMLDivElement;
     modal: HTMLDivElement;
     modalUrl: HTMLElement;
-    modalStatus: HTMLElement;
+    modalTitleText: HTMLElement;
     modalPattern: HTMLInputElement;
     modalMode: HTMLSelectElement;
     modalBody: HTMLTextAreaElement;
     modalRedirectUrl: HTMLInputElement;
+    modalBodyFields: HTMLDivElement;
+    modalRedirectFields: HTMLDivElement;
     saveOverrideBtn: HTMLButtonElement;
+    formatJsonBtn: HTMLButtonElement;
+    bodyTypeBadge: HTMLElement;
     closeModal: HTMLElement;
     newRow: HTMLDivElement;
     refreshBtn: HTMLButtonElement;
+    infoBtn: HTMLButtonElement;
     redirectUrlInput: HTMLInputElement;
   }
 
@@ -189,16 +194,52 @@ namespace NetworkOverridesUi {
         const li = document.createElement('li');
         li.className = 'override-item';
         li.innerHTML = `
-          <b>Pattern:</b> ${escapeHtml(override.pattern)}
-          ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
-          <button data-index="${index}" class="edit-btn">Edit</button>
-          <button data-index="${index}" class="del-btn">Delete</button>
-          <div class="override-meta">Mode: ${escapeHtml(override.mode)}</div>
-          <pre>${escapeHtml((override.body || '').substring(0, 400))}${(override.body || '').length > 400 ? '...' : ''}</pre>
+          <div class="override-item-main">
+            <div class="override-item-info">
+              <b class="override-pattern">${escapeHtml(override.pattern)}</b>
+              ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
+              <div class="override-meta">${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
+            </div>
+            <div class="override-item-actions">
+              <button data-index="${index}" class="edit-btn" title="Edit">✎</button>
+              <button data-index="${index}" class="del-btn" title="Delete">✕</button>
+            </div>
+          </div>
         `;
         elements.listEl.appendChild(li);
       });
       updateTabLabels();
+    }
+
+    function setModalOverrideType(type: 'body' | 'redirect'): void {
+      const bodyRadio = document.querySelector(
+        'input[name="modal-override-type"][value="body"]'
+      ) as HTMLInputElement;
+      const redirectRadio = document.querySelector(
+        'input[name="modal-override-type"][value="redirect"]'
+      ) as HTMLInputElement;
+      bodyRadio.checked = type === 'body';
+      redirectRadio.checked = type === 'redirect';
+      elements.modalBodyFields.style.display = type === 'body' ? '' : 'none';
+      elements.modalRedirectFields.style.display = type === 'redirect' ? '' : 'none';
+      elements.modalPattern.disabled = type === 'body';
+    }
+
+    function updateBodyTypeBadge(): void {
+      const val = elements.modalBody.value.trim();
+      if (!val) {
+        elements.bodyTypeBadge.textContent = 'text';
+        elements.bodyTypeBadge.classList.remove('json');
+        return;
+      }
+      try {
+        JSON.parse(val);
+        elements.bodyTypeBadge.textContent = 'json';
+        elements.bodyTypeBadge.classList.add('json');
+      } catch {
+        elements.bodyTypeBadge.textContent = 'text';
+        elements.bodyTypeBadge.classList.remove('json');
+      }
     }
 
     function openOverrideModalForIndex(index: number): void {
@@ -211,15 +252,15 @@ namespace NetworkOverridesUi {
       state.currentEditIndex = index;
       elements.modalUrl.textContent = formatApiLabel(existing.pattern);
       elements.modalUrl.title = existing.pattern;
-      elements.modalStatus.textContent = 'Editing saved override';
-      elements.modalStatus.classList.add('update');
-      elements.modalStatus.classList.remove('new');
+      elements.modalTitleText.textContent = 'Edit override';
       elements.modalPattern.value = existing.pattern;
       elements.modalMode.value = existing.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(existing.body || '');
       elements.modalRedirectUrl.value = existing.redirectUrl || '';
+      setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
       elements.modal.style.display = 'block';
       renderApis();
+      updateBodyTypeBadge();
       elements.modalBody.focus();
     }
 
@@ -242,27 +283,32 @@ namespace NetworkOverridesUi {
       elements.modalPattern.value = existing ? existing.pattern : url;
 
       if (existing) {
-        elements.modalStatus.textContent = 'Updating existing override';
-        elements.modalStatus.classList.add('update');
-        elements.modalStatus.classList.remove('new');
+        elements.modalTitleText.textContent = 'Edit override';
         elements.modalBody.value = formatJsonIfPossible(existing.body || '');
         elements.modalMode.value = existing.mode || 'text';
         elements.modalRedirectUrl.value = existing.redirectUrl || '';
+        setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
       } else {
-        elements.modalStatus.textContent = 'Creating new override';
-        elements.modalStatus.classList.add('new');
-        elements.modalStatus.classList.remove('update');
-        elements.modalBody.value = '';
+        elements.modalTitleText.textContent = 'New override';
         elements.modalMode.value = 'text';
         elements.modalRedirectUrl.value = '';
+        setModalOverrideType('body');
 
-        if (options.autoFillOnOpen && state.autoFillFromPayload) {
+        const apiEntry = state.apis.find(api => api.url === url);
+        if (apiEntry?.body) {
+          elements.modalBody.value = formatJsonIfPossible(apiEntry.body);
+        } else {
+          elements.modalBody.value = '';
+        }
+
+        if (!apiEntry?.body && options.autoFillOnOpen && state.autoFillFromPayload) {
           await fillModalWithCurrentBody(url, elements.modalBody);
         }
       }
 
       elements.modal.style.display = 'block';
       renderApis();
+      updateBodyTypeBadge();
       elements.modalBody.focus();
     }
 
@@ -270,9 +316,8 @@ namespace NetworkOverridesUi {
       elements.modal.style.display = 'none';
       state.selectedApi = null;
       state.currentEditIndex = null;
-      elements.modalStatus.textContent = '';
+      elements.modalTitleText.textContent = '';
       elements.modalUrl.title = '';
-      elements.modalStatus.classList.remove('new', 'update');
       renderApis();
     }
 
@@ -442,7 +487,19 @@ namespace NetworkOverridesUi {
         chrome.runtime.sendMessage({ type: 'getApis', tabId }, (response: any) => {
           const apisResponse = response?.apis;
           if (Array.isArray(apisResponse)) {
+            const existingBodies = new Map<string, string>();
+            state.apis.forEach(api => {
+              if (api.body) existingBodies.set(api.url, api.body);
+            });
+
             state.apis = apisResponse;
+
+            state.apis.forEach(api => {
+              if (!api.body && existingBodies.has(api.url)) {
+                api.body = existingBodies.get(api.url);
+              }
+            });
+
             renderApis();
             resolve(apisResponse.length);
             return;
@@ -464,9 +521,6 @@ namespace NetworkOverridesUi {
 
     async function refreshApisWithRetry(): Promise<void> {
       elements.refreshBtn.classList.add('loading');
-      state.apis = [];
-      renderApis();
-      await clearApisInBackground();
       const attempts = 5;
       try {
         for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -572,9 +626,15 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      const mode = elements.modalMode.value as OverrideMode;
-      const body = elements.modalBody.value || '';
-      const redirectUrl = elements.modalRedirectUrl.value.trim() || undefined;
+      const isRedirect =
+        (document.querySelector('input[name="modal-override-type"]:checked') as HTMLInputElement)
+          ?.value === 'redirect';
+
+      const mode = isRedirect ? 'text' : (elements.modalMode.value as OverrideMode);
+      const body = isRedirect ? '' : elements.modalBody.value || '';
+      const redirectUrl = isRedirect
+        ? elements.modalRedirectUrl.value.trim() || undefined
+        : undefined;
 
       const override: OverrideRule = { pattern, body, mode };
       if (redirectUrl) {
@@ -594,6 +654,23 @@ namespace NetworkOverridesUi {
       closeOverrideModal();
     });
 
+    elements.formatJsonBtn.addEventListener('click', () => {
+      const current = elements.modalBody.value;
+      const formatted = formatJsonIfPossible(current);
+      if (formatted !== current) {
+        elements.modalBody.value = formatted;
+        updateBodyTypeBadge();
+      }
+    });
+
+    elements.modalBody.addEventListener('input', updateBodyTypeBadge);
+
+    document.querySelectorAll('input[name="modal-override-type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        setModalOverrideType((radio as HTMLInputElement).value as 'body' | 'redirect');
+      });
+    });
+
     elements.enableCheckbox.addEventListener('change', async () => {
       await chrome.storage.local.set({ enabled: elements.enableCheckbox.checked });
       await notifyBackground();
@@ -601,6 +678,10 @@ namespace NetworkOverridesUi {
 
     elements.refreshBtn.addEventListener('click', async () => {
       await refreshApisWithRetry();
+    });
+
+    elements.infoBtn.addEventListener('click', () => {
+      window.open('guide.html', '_blank');
     });
 
     elements.tabsContainer.addEventListener('click', event => {
@@ -628,12 +709,35 @@ namespace NetworkOverridesUi {
       switchTab('other');
     })();
 
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const scrollContainers = [
+      document.body,
+      ...Array.from(document.querySelectorAll<HTMLElement>('.modal, .modal-content')),
+    ].filter(Boolean);
+    document.addEventListener(
+      'scroll',
+      () => {
+        scrollContainers.forEach(el => el.classList.add('scrolling'));
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          scrollContainers.forEach(el => el.classList.remove('scrolling'));
+        }, 500);
+      },
+      { passive: true }
+    );
+
     return {
       addApis(newApis: ApiEntry[]): void {
         let changed = false;
         newApis.forEach(entry => {
           const { url } = entry;
-          if (!state.apis.some(api => api.url === url)) {
+          const existing = state.apis.find(api => api.url === url);
+          if (existing) {
+            if (entry.body && !existing.body) {
+              existing.body = entry.body;
+              changed = true;
+            }
+          } else {
             state.apis.push(entry);
             changed = true;
           }
@@ -652,14 +756,21 @@ namespace NetworkOverridesUi {
       return;
     }
 
-    chrome.runtime.sendMessage({ type: 'getApiData', tabId, url }, (response: any) => {
-      if (response?.body) {
-        target.value = formatJsonIfPossible(response.body);
-      }
+    const response = await new Promise<any>(resolve => {
+      chrome.runtime.sendMessage({ type: 'getApiData', tabId, url }, resolve);
     });
+
+    if (response?.body) {
+      target.value = formatJsonIfPossible(response.body);
+    }
   }
 
   async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
+    if (typeof chrome.devtools !== 'undefined' && chrome.devtools?.inspectedWindow?.tabId) {
+      return new Promise(resolve => {
+        chrome.tabs.get(chrome.devtools.inspectedWindow.tabId, tab => resolve(tab));
+      });
+    }
     return new Promise(resolve => {
       chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
         resolve(tabs[0]);
@@ -688,15 +799,20 @@ namespace NetworkOverridesUi {
       overridesSection: document.getElementById('overrides-section') as HTMLDivElement,
       modal: document.getElementById('override-modal') as HTMLDivElement,
       modalUrl: document.getElementById('modal-url') as HTMLElement,
-      modalStatus: document.getElementById('modal-status') as HTMLElement,
+      modalTitleText: document.getElementById('modal-title-text') as HTMLElement,
       modalPattern: document.getElementById('modal-pattern') as HTMLInputElement,
       modalMode: document.getElementById('modal-mode') as HTMLSelectElement,
       modalBody: document.getElementById('modal-body') as HTMLTextAreaElement,
       modalRedirectUrl: document.getElementById('modal-redirect-url') as HTMLInputElement,
+      modalBodyFields: document.getElementById('modal-body-fields') as HTMLDivElement,
+      modalRedirectFields: document.getElementById('modal-redirect-fields') as HTMLDivElement,
       saveOverrideBtn: document.getElementById('save-override') as HTMLButtonElement,
+      formatJsonBtn: document.getElementById('format-json-btn') as HTMLButtonElement,
+      bodyTypeBadge: document.getElementById('body-type-badge') as HTMLElement,
       closeModal: document.querySelector('.close') as HTMLElement,
       newRow: document.getElementById('new-row') as HTMLDivElement,
       refreshBtn: document.getElementById('refresh-apis') as HTMLButtonElement,
+      infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
     };
   }

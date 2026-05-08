@@ -163,6 +163,13 @@ namespace NetworkOverridesBackground {
       'Fetch.getResponseBody',
       { requestId },
       (response: { body?: string; base64Encoded?: boolean } | undefined) => {
+        if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError.message?.includes('Quota')) {
+            callback();
+            return;
+          }
+        }
+
         if (!chrome.runtime.lastError && response && typeof response.body === 'string') {
           const rawBody = normalizeBody(response.body, response.base64Encoded ?? false);
           let map = recentApiBodiesMap.get(tabId);
@@ -363,7 +370,7 @@ namespace NetworkOverridesBackground {
           chrome.debugger.sendCommand(
             { tabId },
             'Fetch.enable',
-            { patterns: [{ requestStage: 'Response' }] },
+            { patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }] },
             () => {
               if (chrome.runtime.lastError) {
                 console.error('Fetch.enable failed', chrome.runtime.lastError);
@@ -450,9 +457,23 @@ namespace NetworkOverridesBackground {
     }
   });
 
+  function findOverride(
+    url: string,
+    overrides: OverrideRule[]
+  ): { override: OverrideRule; captures: string[] } | null {
+    for (const test of overrides) {
+      const captures = matchPattern(test.pattern, url);
+      if (captures !== null) {
+        return { override: test, captures };
+      }
+    }
+    return null;
+  }
+
   function handleRequestPaused(tabId: number, params: any): void {
-    const info = overridesMap.get(tabId);
+    const isRequestStage = typeof params.responseStatusCode !== 'number';
     const url = params.request?.url || '';
+    const info = overridesMap.get(tabId);
 
     const proceed = () => {
       chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
@@ -465,55 +486,96 @@ namespace NetworkOverridesBackground {
       return;
     }
 
-    const apis = recentApisMap.get(tabId);
-    if (!apis?.has(url)) {
-      const requestType = params.resourceType || 'other';
-      setRecentApi(tabId, {
-        url,
-        type: requestType,
-        method: params.request?.method,
-        headers: params.request?.headers
-          ? Object.entries(params.request.headers).map(([name, value]) => ({
-              name,
-              value: String(value),
-            }))
-          : [],
-        postData: params.request?.postData,
-      });
+    if (isRequestStage) {
+      const apis = recentApisMap.get(tabId);
+      if (!apis?.has(url)) {
+        setRecentApi(tabId, {
+          url,
+          type: params.resourceType || 'other',
+          method: params.request?.method,
+          headers: params.request?.headers
+            ? Object.entries(params.request.headers).map(([name, value]) => ({
+                name,
+                value: String(value),
+              }))
+            : [],
+          postData: params.request?.postData,
+        });
+      }
+
+      try {
+        const match = findOverride(url, info.overrides);
+        if (match && match.override.redirectUrl) {
+          let newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
+          if (newUrl.includes('*')) {
+            console.error('[NetworkOverrides] Unsubstituted * in redirect URL:', newUrl);
+            proceed();
+            return;
+          }
+          console.log('[NetworkOverrides] Redirect:', url, '→', newUrl);
+          chrome.debugger.sendCommand(
+            { tabId },
+            'Fetch.continueRequest',
+            { requestId: params.requestId, url: newUrl },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error('continueRequest redirect failed:', chrome.runtime.lastError.message);
+                proceed();
+              }
+            }
+          );
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      proceed();
+      return;
     }
 
+    // Response stage
+    console.log('[NetworkOverrides] Response:', url);
+
     try {
-      let ov: OverrideRule | undefined;
-      let captures: string[] | null = null;
-      for (const test of info.overrides) {
-        captures = matchPattern(test.pattern, url);
-        if (captures !== null) {
-          ov = test;
-          break;
+      const apis = recentApisMap.get(tabId);
+      if (!apis?.has(url)) {
+        setRecentApi(tabId, {
+          url,
+          type: params.resourceType || 'other',
+          method: params.request?.method,
+          headers: params.request?.headers
+            ? Object.entries(params.request.headers).map(([name, value]) => ({
+                name,
+                value: String(value),
+              }))
+            : [],
+          postData: params.request?.postData,
+        });
+      }
+
+      const match = findOverride(url, info.overrides);
+      if (!match) {
+        const resourceType = (params.resourceType || '').toLowerCase();
+        if (resourceType === 'xhr' || resourceType === 'fetch') {
+          storeResponseBody(tabId, url, params.requestId, proceed);
+        } else {
+          proceed();
         }
-      }
-
-      if (!ov) {
-        storeResponseBody(tabId, url, params.requestId, proceed);
         return;
       }
 
-      if (ov.redirectUrl && captures) {
-        const newUrl = substituteWildcards(ov.redirectUrl, captures);
-        chrome.debugger.sendCommand(
-          { tabId },
-          'Fetch.continueRequest',
-          { requestId: params.requestId, url: newUrl },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.error('continueRequest redirect failed:', chrome.runtime.lastError.message);
-              proceed();
-            }
-          }
-        );
+      // If the override has a redirectUrl, skip body fulfillment at response stage.
+      // The redirect was already handled at request stage; the server's response
+      // for the redirected URL should pass through without alteration.
+      if (match.override.redirectUrl) {
+        proceed();
         return;
       }
 
+      console.log('[NetworkOverrides] Fulfill body:', match.override.pattern, '→', url);
+
+      const ov = match.override;
       const responseBodyBase64 = ov.mode === 'file' ? ov.body : stringToBase64Local(ov.body || '');
 
       const headers = [...((params.responseHeaders as FetchHeader[]) || [])];
@@ -530,7 +592,6 @@ namespace NetworkOverridesBackground {
         params.responseStatusCode <= 599
           ? params.responseStatusCode
           : 200;
-      const responsePhrase = undefined;
 
       chrome.debugger.sendCommand(
         { tabId },
@@ -538,7 +599,6 @@ namespace NetworkOverridesBackground {
         {
           requestId: params.requestId,
           responseCode,
-          responsePhrase,
           responseHeaders: headers,
           body: responseBodyBase64,
         },

@@ -17,6 +17,7 @@ namespace NetworkOverridesPanel {
             method: entry.request?.method,
             headers: entry.request?.headers,
             postData: entry.request?.postData?.text,
+            body: entry.response?.content?.text || undefined,
           }))
           .filter(api => !!api.url) as NetworkOverridesShared.ApiEntry[];
 
@@ -26,15 +27,18 @@ namespace NetworkOverridesPanel {
 
     chrome.devtools.network.onRequestFinished.addListener(request => {
       if (request && request.request && request.request.url) {
-        ui.addApis([
-          {
-            url: request.request.url,
-            type: request._resourceType || 'other',
-            method: request.request.method,
-            headers: request.request.headers,
-            postData: request.request.postData?.text,
-          },
-        ]);
+        request.getContent((content: string, encoding: string) => {
+          ui.addApis([
+            {
+              url: request.request.url,
+              type: request._resourceType || 'other',
+              method: request.request.method,
+              headers: request.request.headers,
+              postData: request.request.postData?.text,
+              body: content || undefined,
+            },
+          ]);
+        });
       }
     });
   }

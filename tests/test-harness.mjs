@@ -72,6 +72,7 @@ function buildUiHtml() {
     <body>
       <input id="enable" type="checkbox">
       <button id="refresh-apis" type="button">↻</button>
+      <button id="info-btn" type="button">ⓘ</button>
       <div class="tabs">
         <button class="tab-btn active" data-tab="overridden">Overridden APIs</button>
         <button class="tab-btn" data-tab="other">Other APIs</button>
@@ -83,15 +84,35 @@ function buildUiHtml() {
       <div id="apis-list"></div>
       <div id="override-modal" style="display:none;">
         <span class="close">x</span>
-        <span id="modal-url"></span>
-        <div id="modal-status"></div>
+        <h4 class="modal-title">
+          <span id="modal-title-text"></span>
+          <span id="modal-url"></span>
+        </h4>
         <input id="modal-pattern" type="text">
-        <input id="modal-redirect-url" type="text">
-        <select id="modal-mode">
-          <option value="text">Text</option>
-          <option value="file">Raw base64</option>
-        </select>
-        <textarea id="modal-body"></textarea>
+        <div class="override-type-selector">
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="body" checked />
+            <span>Override body</span>
+          </label>
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="redirect" />
+            <span>Redirect to URL</span>
+          </label>
+        </div>
+        <div id="modal-body-fields">
+          <select id="modal-mode">
+            <option value="text">Text</option>
+            <option value="file">Raw base64</option>
+          </select>
+          <textarea id="modal-body"></textarea>
+          <div class="modal-body-footer">
+            <span id="body-type-badge" class="body-type-badge">text</span>
+            <button id="format-json-btn" type="button">Format JSON</button>
+          </div>
+        </div>
+        <div id="modal-redirect-fields" style="display: none">
+          <input id="modal-redirect-url" type="text">
+        </div>
         <button id="save-override" type="button">Save</button>
       </div>
       <div id="new-row" style="display:none;"></div>

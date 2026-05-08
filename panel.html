@@ -9,7 +9,8 @@
   <body>
     <div class="header-row">
       <h2>Network Overrides API</h2>
-      <button id="refresh-apis" type="button" class="refresh-btn" title="Refresh">↻</button>
+      <button id="info-btn" type="button" class="header-btn info-btn" title="User Guide">ⓘ</button>
+      <button id="refresh-apis" type="button" class="header-btn" title="Refresh">↻</button>
     </div>
 
     <div class="switch-container">
@@ -30,25 +31,50 @@
     <div id="override-modal" class="modal" style="display: none">
       <div class="modal-content">
         <span class="close">&times;</span>
-        <h4 class="modal-title">Override <span id="modal-url"></span></h4>
-        <div id="modal-status" style="font-size: 0.9em; margin-bottom: 8px; color: #333"></div>
+        <h4 class="modal-title">
+          <span id="modal-title-text"></span>
+          <span id="modal-url"></span>
+        </h4>
         <label class="modal-field">
           <span>Pattern</span>
           <input id="modal-pattern" type="text" />
         </label>
-        <label class="modal-field">
-          <span>Redirect URL <em>(optional — uses * for captured wildcards)</em></span>
-          <input
-            id="modal-redirect-url"
-            type="text"
-            placeholder="e.g. https://new-api.example.com/api/*"
-          />
-        </label>
-        <select id="modal-mode">
-          <option value="text">Text</option>
-          <option value="file">Raw base64</option>
-        </select>
-        <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
+        <div class="override-type-selector">
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="body" checked />
+            <span>Override body</span>
+          </label>
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="redirect" />
+            <span>Redirect to URL</span>
+          </label>
+        </div>
+        <div id="modal-body-fields">
+          <label class="modal-field">
+            <span>Response body</span>
+            <select id="modal-mode">
+              <option value="text">Text</option>
+              <option value="file">Raw base64</option>
+            </select>
+            <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
+            <div class="modal-body-footer">
+              <span id="body-type-badge" class="body-type-badge">text</span>
+              <button id="format-json-btn" type="button" class="modal-action-btn">
+                Format JSON
+              </button>
+            </div>
+          </label>
+        </div>
+        <div id="modal-redirect-fields" style="display: none">
+          <label class="modal-field">
+            <span>Redirect URL</span>
+            <input
+              id="modal-redirect-url"
+              type="text"
+              placeholder="e.g. https://new-api.example.com/api/* (uses * for captured wildcards)"
+            />
+          </label>
+        </div>
         <button id="save-override">Save Override</button>
       </div>
     </div>

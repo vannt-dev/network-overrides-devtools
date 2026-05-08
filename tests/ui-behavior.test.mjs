@@ -22,8 +22,8 @@ test('UI init renders captured APIs and respects the manual editor option', asyn
   assert.equal(harness.document.getElementById('new-row').style.display, 'none');
   assert.equal(harness.document.getElementById('apis-section').style.display, 'block');
   assert.deepEqual(
-    harness.sentMessages.slice(0, 3).map(message => message.type),
-    ['update', 'clearApis', 'getApis']
+    harness.sentMessages.slice(0, 2).map(message => message.type),
+    ['update', 'getApis']
   );
 
   // Default tab is Captured APIs (non-overridden); switch to Overridden tab
@@ -61,10 +61,7 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
   await flushUi(harness.window);
 
   assert.equal(harness.document.getElementById('override-modal').style.display, 'block');
-  assert.equal(
-    harness.document.getElementById('modal-status').textContent,
-    'Updating existing override'
-  );
+  assert.equal(harness.document.getElementById('modal-title-text').textContent, 'Edit override');
   assert.equal(harness.document.getElementById('modal-body').value, '{\n  "name": "Alice"\n}');
 
   harness.document.getElementById('modal-body').value = '{"name":"Bob"}';
@@ -152,10 +149,7 @@ test('Editing and deleting overrides from the saved list updates storage and not
   await flushUi(harness.window);
 
   assert.equal(harness.document.getElementById('override-modal').style.display, 'block');
-  assert.equal(
-    harness.document.getElementById('modal-status').textContent,
-    'Editing saved override'
-  );
+  assert.equal(harness.document.getElementById('modal-title-text').textContent, 'Edit override');
   assert.equal(harness.document.getElementById('modal-pattern').value, 'users');
 
   harness.document.getElementById('modal-pattern').value = 'users-v2';

@@ -47,6 +47,7 @@ export function createBackgroundContext() {
       },
       debugger: {
         onEvent: { addListener: noop },
+        onDetach: { addListener: noop },
         attach: noop,
         detach: noop,
         sendCommand: noop,
@@ -70,14 +71,16 @@ function buildUiHtml() {
   <html>
     <body>
       <input id="enable" type="checkbox">
-      <input id="auto-fill" type="checkbox">
-      <button id="use-current-body" type="button">Use current body</button>
+      <button id="refresh-apis" type="button">↻</button>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="overridden">Overridden APIs</button>
+        <button class="tab-btn" data-tab="other">Other APIs</button>
+        <button class="tab-btn" data-tab="overrides">Overrides</button>
+      </div>
+      <div id="overrides-section" style="display:none;"></div>
       <div id="apis-section" style="display:none;"></div>
       <input id="api-search" type="search">
-      <input id="only-overridden" type="checkbox">
-      <button id="expand-all" type="button">Expand all</button>
-      <button id="collapse-all" type="button">Collapse all</button>
-      <ul id="apis-list"></ul>
+      <div id="apis-list"></div>
       <div id="override-modal" style="display:none;">
         <span class="close">x</span>
         <span id="modal-url"></span>
@@ -200,6 +203,7 @@ export function createBackgroundHarness() {
     onMessage: null,
     onRemoved: null,
     onEvent: null,
+    onDetach: null,
   };
   const storageState = {};
   const storageSets = [];
@@ -229,6 +233,11 @@ export function createBackgroundHarness() {
       onEvent: {
         addListener(listener) {
           listeners.onEvent = listener;
+        },
+      },
+      onDetach: {
+        addListener(listener) {
+          listeners.onDetach = listener;
         },
       },
       attach(target, version, callback) {

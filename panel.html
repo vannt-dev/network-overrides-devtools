@@ -7,11 +7,18 @@
   </head>
 
   <body>
-    <h2>Network Overrides API</h2>
+    <div class="header-row">
+      <h2>Network Overrides API</h2>
+      <button id="refresh-apis" type="button" class="refresh-btn" title="Refresh">↻</button>
+    </div>
 
-    <label>Enable Overrides <input id="enable" type="checkbox" /></label>
-    <label>Auto-fill from payload <input id="auto-fill" type="checkbox" /></label>
-    <button id="use-current-body" style="margin: 4px 0">Use current API response body</button>
+    <div class="switch-container">
+      <label class="switch">
+        <input id="enable" type="checkbox" />
+        <span class="switch-slider"></span>
+      </label>
+      <label for="enable" class="switch-label">Enable Overrides</label>
+    </div>
 
     <p class="hint">
       Tip: use pattern <code>*</code> or <code>all</code> to override all requests; or regex format
@@ -36,7 +43,13 @@
       </div>
     </div>
 
-    <div id="new-row">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="other">Captured APIs</button>
+      <button class="tab-btn" data-tab="overridden">Overridden</button>
+      <button class="tab-btn" data-tab="overrides">Rules</button>
+    </div>
+
+    <div id="new-row" class="tab-content" style="display: none">
       <input id="pattern" placeholder="URL contains (e.g. /api/data)" />
       <select id="mode">
         <option value="text">Text</option>
@@ -45,25 +58,17 @@
       <textarea id="body" placeholder="Response body (text)" rows="6"></textarea>
       <button id="add">Add override</button>
     </div>
-    <div id="apis-section" style="display: none">
-      <h3>Recent APIs (click to override)</h3>
+
+    <div id="apis-section" class="tab-content" style="display: none">
       <div class="api-controls">
         <input id="api-search" type="search" placeholder="Search APIs..." />
-        <div class="api-toolbar">
-          <label class="api-filter-toggle">
-            <input id="only-overridden" type="checkbox" /> Only overridden
-          </label>
-          <div class="api-toolbar-actions">
-            <button id="expand-all" type="button">Expand all</button>
-            <button id="collapse-all" type="button">Collapse all</button>
-          </div>
-        </div>
       </div>
-      <ul id="apis-list"></ul>
+      <div id="apis-list"></div>
     </div>
 
-    <h3>Overrides</h3>
-    <ul id="list"></ul>
+    <div id="overrides-section" class="tab-content" style="display: none">
+      <ul id="list"></ul>
+    </div>
 
     <script src="dist/shared.js"></script>
     <script src="dist/ui.js"></script>

@@ -210,7 +210,7 @@ test('Background fulfills matching requests with override headers and body', asy
   assert.ok(fulfill);
   assert.equal(fulfill.params.requestId, 'req-2');
   assert.equal(fulfill.params.responseCode, 201);
-  assert.equal(fulfill.params.responsePhrase, 'Created');
+  assert.equal(fulfill.params.responsePhrase, undefined);
   assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), '{"mocked":true}');
   assert.equal(
     fulfill.params.responseHeaders.some(

@@ -5,6 +5,12 @@ import { TEST_API_URL, TEST_DOMAIN } from './config.mjs';
 
 test('UI init renders captured APIs and respects the manual editor option', async () => {
   const harness = createUiHarness({
+    storageState: {
+      overrides: [
+        { pattern: 'api/users', body: '{}', mode: 'text' },
+        { pattern: 'api/orders', body: '{}', mode: 'text' },
+      ],
+    },
     apis: [
       { url: `${TEST_DOMAIN}/api/users`, type: 'fetch' },
       { url: `${TEST_DOMAIN}/api/orders`, type: 'xmlhttprequest' },
@@ -15,18 +21,25 @@ test('UI init renders captured APIs and respects the manual editor option', asyn
 
   assert.equal(harness.document.getElementById('new-row').style.display, 'none');
   assert.equal(harness.document.getElementById('apis-section').style.display, 'block');
-  assert.equal(harness.document.querySelectorAll('.api-item').length, 2);
   assert.deepEqual(
     harness.sentMessages.slice(0, 2).map(message => message.type),
     ['update', 'getApis']
   );
+
+  // Default tab is Captured APIs (non-overridden); switch to Overridden tab
+  harness.document
+    .querySelector('[data-tab="overridden"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 2);
 });
 
 test('Clicking an API opens the modal, auto-fills the body, and saving notifies background', async () => {
   const harness = createUiHarness({
     storageState: {
       enabled: true,
-      overrides: [],
+      overrides: [{ pattern: TEST_API_URL, body: '{"name":"Alice"}', mode: 'text' }],
     },
     apis: [{ url: TEST_API_URL, type: 'fetch' }],
     apiBodies: {
@@ -34,6 +47,12 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
     },
   });
 
+  await flushUi(harness.window);
+
+  // Switch to Overridden tab to see the API
+  harness.document
+    .querySelector('[data-tab="overridden"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
 
   harness.document
@@ -44,7 +63,7 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
   assert.equal(harness.document.getElementById('override-modal').style.display, 'block');
   assert.equal(
     harness.document.getElementById('modal-status').textContent,
-    'Creating new override'
+    'Updating existing override'
   );
   assert.equal(harness.document.getElementById('modal-body').value, '{\n  "name": "Alice"\n}');
 
@@ -123,6 +142,11 @@ test('Editing and deleting overrides from the saved list updates storage and not
   await flushUi(harness.window);
 
   harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document
     .querySelector('.edit-btn')
     .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
@@ -174,7 +198,7 @@ test('UI retries loading APIs until captured requests become available', async (
   const harness = createUiHarness({
     storageState: {
       enabled: false,
-      overrides: [],
+      overrides: [{ pattern: 'api/retried', body: '{}', mode: 'text' }],
     },
     apiResponses: [[], [], [{ url: `${TEST_DOMAIN}/api/retried`, type: 'fetch' }]],
   });
@@ -184,40 +208,20 @@ test('UI retries loading APIs until captured requests become available', async (
   await flushUi(harness.window, 2);
 
   assert.equal(harness.getApisCallCount() >= 3, true);
-  assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
   assert.equal(harness.document.getElementById('apis-section').style.display, 'block');
-});
 
-test('Use current API response body button refreshes the modal body from the latest payload', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: TEST_API_URL, body: '{"stale":true}', mode: 'text' }],
-    },
-    apis: [{ url: TEST_API_URL, type: 'fetch' }],
-    apiBodies: {
-      [TEST_API_URL]: '{"fresh":true}',
-    },
-  });
-
-  await flushUi(harness.window);
-
+  // Switch to Overridden tab to see the API
   harness.document
-    .querySelector('.api-item')
+    .querySelector('[data-tab="overridden"]')
     .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
 
-  assert.equal(harness.document.getElementById('modal-body').value, '{\n  "stale": true\n}');
-
-  harness.document
-    .getElementById('use-current-body')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  assert.equal(harness.document.getElementById('modal-body').value, '{\n  "fresh": true\n}');
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
 });
 
-test('Collapse/expand buckets and search or Only overridden filters update visible API groups', async () => {
+// use-current-body button removed; auto-fill from captured response still applies on new overrides
+
+test('Tab switching shows correct APIs and search filters within a tab', async () => {
   const harness = createUiHarness({
     storageState: {
       enabled: true,
@@ -232,27 +236,27 @@ test('Collapse/expand buckets and search or Only overridden filters update visib
 
   await flushUi(harness.window);
 
-  const bucketTitles = Array.from(harness.document.querySelectorAll('.api-bucket-title')).map(
-    element => element.textContent
-  );
-  assert.deepEqual(bucketTitles, ['Overridden APIs', 'Other APIs']);
-  assert.equal(harness.document.querySelectorAll('.api-item').length, 3);
+  // Default tab is Captured APIs (non-overridden)
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 2);
 
+  // Switch to Overridden tab
   harness.document
-    .getElementById('collapse-all')
+    .querySelector('[data-tab="overridden"]')
     .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
 
-  assert.equal(harness.document.querySelectorAll('.api-section').length, 0);
-  assert.equal(harness.document.querySelectorAll('.api-bucket').length, 2);
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
+  assert.equal(harness.document.querySelector('.api-item').classList.contains('active'), true);
 
+  // Switch to Captured APIs tab
   harness.document
-    .getElementById('expand-all')
+    .querySelector('[data-tab="other"]')
     .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
 
-  assert.equal(harness.document.querySelectorAll('.api-item').length, 3);
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 2);
 
+  // Search within Captured APIs tab
   const searchInput = harness.document.getElementById('api-search');
   searchInput.value = 'orders';
   searchInput.dispatchEvent(new harness.window.Event('input', { bubbles: true }));
@@ -261,17 +265,12 @@ test('Collapse/expand buckets and search or Only overridden filters update visib
   assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
   assert.equal(harness.document.querySelector('.api-item b').textContent.includes('orders'), true);
 
-  searchInput.value = '';
-  searchInput.dispatchEvent(new harness.window.Event('input', { bubbles: true }));
-  const onlyOverridden = harness.document.getElementById('only-overridden');
-  onlyOverridden.checked = true;
-  onlyOverridden.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  // Switch to Rules tab
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
   await flushUi(harness.window);
 
-  const filteredTitles = Array.from(harness.document.querySelectorAll('.api-bucket-title')).map(
-    element => element.textContent
-  );
-  assert.deepEqual(filteredTitles, ['Overridden APIs']);
-  assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
-  assert.equal(harness.document.querySelector('.api-item').classList.contains('active'), true);
+  assert.equal(harness.document.getElementById('overrides-section').style.display, 'block');
+  assert.equal(harness.document.querySelectorAll('.override-item').length, 1);
 });

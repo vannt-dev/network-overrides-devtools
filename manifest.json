@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Network Overrides API (DevTools)",
-  "version": "1.1",
+  "version": "2.0.0",
   "description": "Debugging tool that intercepts and overrides network API responses from DevTools panel or popup. For developers only - not for end-user production use.",
   "permissions": ["storage", "debugger"],
   "host_permissions": ["<all_urls>"],

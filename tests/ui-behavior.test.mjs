@@ -22,8 +22,8 @@ test('UI init renders captured APIs and respects the manual editor option', asyn
   assert.equal(harness.document.getElementById('new-row').style.display, 'none');
   assert.equal(harness.document.getElementById('apis-section').style.display, 'block');
   assert.deepEqual(
-    harness.sentMessages.slice(0, 2).map(message => message.type),
-    ['update', 'getApis']
+    harness.sentMessages.slice(0, 3).map(message => message.type),
+    ['update', 'clearApis', 'getApis']
   );
 
   // Default tab is Captured APIs (non-overridden); switch to Overridden tab

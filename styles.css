@@ -272,6 +272,7 @@ input[type='search'] {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 .copy-curl-btn {
   background: none;
@@ -582,6 +583,53 @@ input[type='search'] {
   font-size: 0.82rem;
   font-weight: 600;
   text-align: center;
+}
+.api-search-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  margin-bottom: 8px;
+}
+.api-search-row input[type='search'] {
+  flex: 1;
+  margin-bottom: 0;
+}
+.add-api-btn {
+  width: 34px;
+  flex-shrink: 0;
+  border: 1px dashed #0a84ff;
+  border-radius: 6px;
+  background: #f0f7ff;
+  color: #0a84ff;
+  font-weight: 700;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-api-btn:hover {
+  background: #dcecff;
+}
+.api-status {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  background: #e8f3ff;
+  color: #0a4f9c;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+.api-item.active .api-status {
+  background: #c8dfff;
+}
+.api-item.active .api-status {
+  background: #c8dfff;
 }
 .api-empty-state {
   padding: 12px;

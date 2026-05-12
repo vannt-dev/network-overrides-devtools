@@ -81,6 +81,7 @@ function buildUiHtml() {
       <div id="overrides-section" style="display:none;"></div>
       <div id="apis-section" style="display:none;"></div>
       <input id="api-search" type="search">
+      <button id="add-api-btn" type="button">+</button>
       <div id="apis-list"></div>
       <div id="override-modal" style="display:none;">
         <span class="close">x</span>
@@ -139,11 +140,28 @@ export function createUiHarness({
   options = { autoFillOnOpen: true, showManualEditor: false },
 } = {}) {
   const dom = new JSDOM(buildUiHtml(), {
-    url: 'https://example.test/',
+    url: tabUrl,
     runScripts: 'outside-only',
   });
   const { window } = dom;
   const localState = structuredClone(storageState);
+
+  let tabDomain = '';
+  try {
+    tabDomain = new URL(tabUrl).origin;
+  } catch {}
+
+  const domainOverridesKey = `overrides_${tabDomain}`;
+  const domainEnabledKey = `enabled_${tabDomain}`;
+  if (tabDomain) {
+    if ('overrides' in localState && !(domainOverridesKey in localState)) {
+      localState[domainOverridesKey] = structuredClone(localState.overrides);
+    }
+    if ('enabled' in localState && !(domainEnabledKey in localState)) {
+      localState[domainEnabledKey] = localState.enabled;
+    }
+  }
+
   const sentMessages = [];
   const storageSets = [];
   const alerts = [];
@@ -154,9 +172,26 @@ export function createUiHarness({
       local: {
         async get(keys) {
           if (Array.isArray(keys)) {
-            return Object.fromEntries(keys.map(key => [key, localState[key]]));
+            const result = Object.fromEntries(keys.map(key => [key, localState[key]]));
+            if (tabDomain) {
+              keys.forEach(key => {
+                if ((key === domainOverridesKey || key === domainEnabledKey) && !(key in result)) {
+                  const flatKey = key === domainOverridesKey ? 'overrides' : 'enabled';
+                  result[key] = localState[flatKey];
+                }
+              });
+            }
+            return result;
           }
           if (typeof keys === 'string') {
+            if (
+              tabDomain &&
+              (keys === domainOverridesKey || keys === domainEnabledKey) &&
+              !(keys in localState)
+            ) {
+              const flatKey = keys === domainOverridesKey ? 'overrides' : 'enabled';
+              return { [keys]: localState[flatKey] };
+            }
             return { [keys]: localState[keys] };
           }
           return { ...localState };
@@ -164,6 +199,14 @@ export function createUiHarness({
         async set(value) {
           storageSets.push(structuredClone(value));
           Object.assign(localState, structuredClone(value));
+          if (tabDomain) {
+            if (domainOverridesKey in value) {
+              localState.overrides = structuredClone(value[domainOverridesKey]);
+            }
+            if (domainEnabledKey in value) {
+              localState.enabled = value[domainEnabledKey];
+            }
+          }
         },
       },
     },
@@ -308,6 +351,8 @@ export function createBackgroundHarness() {
         errors.push(args);
       },
     },
+    setTimeout,
+    clearTimeout,
     Buffer,
     TextEncoder,
     TextDecoder,

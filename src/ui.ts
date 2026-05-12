@@ -1,5 +1,7 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
+// NOTE: matchPattern, escapeRegex, isRegexPattern, getOrigin, patternMatches, substituteWildcards
+// are duplicated in background.ts (different execution context - panel/popup vs background)
 
 namespace NetworkOverridesUi {
   type OverrideMode = NetworkOverridesShared.OverrideMode;
@@ -126,6 +128,10 @@ namespace NetworkOverridesUi {
     }
   }
 
+  function domainKey(suffix: string): string {
+    return currentDomain ? `${suffix}_${currentDomain}` : suffix;
+  }
+
   interface Elements {
     enableCheckbox: HTMLInputElement;
     patternInput: HTMLInputElement;
@@ -155,6 +161,7 @@ namespace NetworkOverridesUi {
     refreshBtn: HTMLButtonElement;
     infoBtn: HTMLButtonElement;
     redirectUrlInput: HTMLInputElement;
+    addApiBtn: HTMLButtonElement;
   }
 
   export interface AppOptions {
@@ -259,7 +266,6 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = existing.redirectUrl || '';
       setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
       elements.modal.style.display = 'block';
-      renderApis();
       updateBodyTypeBadge();
       elements.modalBody.focus();
     }
@@ -307,7 +313,6 @@ namespace NetworkOverridesUi {
       }
 
       elements.modal.style.display = 'block';
-      renderApis();
       updateBodyTypeBadge();
       elements.modalBody.focus();
     }
@@ -426,9 +431,13 @@ namespace NetworkOverridesUi {
         if (isOverridden) li.classList.add('active');
         if (isSelected) li.classList.add('selected');
         li.dataset.url = api.url;
+        const statusLabel =
+          typeof api.statusCode === 'number'
+            ? `<span class="api-status">${api.statusCode}</span> `
+            : '';
         li.innerHTML = `
           <div class="api-item-content">
-            <b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)}</b>
+            <b title="${escapeHtml(api.url)}">${highlightApiLabel(api.url, searchTerm)} ${statusLabel}</b>
           </div>
           <div class="api-item-controls">
             <button class="copy-curl-btn" title="Copy cURL">cURL</button>
@@ -479,8 +488,15 @@ namespace NetworkOverridesUi {
         return 0;
       }
 
-      if (tab?.url) {
-        currentDomain = getOrigin(tab.url);
+      const newDomain = tab?.url ? getOrigin(tab.url) : '';
+      if (newDomain && newDomain !== currentDomain) {
+        currentDomain = newDomain;
+        const data = await chrome.storage.local.get([domainKey('enabled'), domainKey('overrides')]);
+        state.overrides = data[domainKey('overrides')] || [];
+        elements.enableCheckbox.checked = !!data[domainKey('enabled')];
+        renderList();
+        updateTabLabels();
+        await notifyBackground();
       }
 
       return new Promise(resolve => {
@@ -543,13 +559,13 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      const data = await chrome.storage.local.get(['enabled', 'overrides']);
+      const data = await chrome.storage.local.get([domainKey('enabled'), domainKey('overrides')]);
       chrome.runtime.sendMessage({
         type: 'update',
         tabId: tab.id,
         tabUrl: tab.url,
-        enabled: !!data.enabled,
-        overrides: data.overrides || [],
+        enabled: !!data[domainKey('enabled')],
+        overrides: data[domainKey('overrides')] || [],
       });
     }
 
@@ -574,7 +590,13 @@ namespace NetworkOverridesUi {
       }
 
       state.overrides.push(override);
-      await chrome.storage.local.set({ overrides: state.overrides });
+      try {
+        await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+      } catch (e) {
+        state.overrides.pop();
+        alert(`Failed to save override: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
 
       elements.patternInput.value = '';
       elements.bodyInput.value = '';
@@ -602,7 +624,7 @@ namespace NetworkOverridesUi {
       }
 
       state.overrides.splice(index, 1);
-      await chrome.storage.local.set({ overrides: state.overrides });
+      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
       renderList();
       renderApis();
       await notifyBackground();
@@ -641,15 +663,29 @@ namespace NetworkOverridesUi {
         override.redirectUrl = redirectUrl;
       }
 
+      const oldOverride =
+        state.currentEditIndex !== null && state.overrides[state.currentEditIndex]
+          ? { ...state.overrides[state.currentEditIndex] }
+          : null;
+
       if (state.currentEditIndex !== null && state.overrides[state.currentEditIndex]) {
         state.overrides[state.currentEditIndex] = override;
       } else {
         state.overrides.unshift(override);
       }
 
-      await chrome.storage.local.set({ overrides: state.overrides });
+      try {
+        await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+      } catch (e) {
+        if (oldOverride) {
+          state.overrides[state.currentEditIndex!] = oldOverride;
+        } else {
+          state.overrides.shift();
+        }
+        alert(`Failed to save override: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
       renderList();
-      renderApis();
       await notifyBackground();
       closeOverrideModal();
     });
@@ -672,7 +708,7 @@ namespace NetworkOverridesUi {
     });
 
     elements.enableCheckbox.addEventListener('change', async () => {
-      await chrome.storage.local.set({ enabled: elements.enableCheckbox.checked });
+      await chrome.storage.local.set({ [domainKey('enabled')]: elements.enableCheckbox.checked });
       await notifyBackground();
     });
 
@@ -682,6 +718,23 @@ namespace NetworkOverridesUi {
 
     elements.infoBtn.addEventListener('click', () => {
       window.open('guide.html', '_blank');
+    });
+
+    elements.addApiBtn.addEventListener('click', () => {
+      state.selectedApi = '__new__';
+      state.currentEditIndex = null;
+      elements.modalUrl.textContent = '';
+      elements.modalUrl.title = '';
+      elements.modalTitleText.textContent = 'New override';
+      elements.modalPattern.value = '';
+      elements.modalMode.value = 'text';
+      elements.modalBody.value = '';
+      elements.modalRedirectUrl.value = '';
+      setModalOverrideType('body');
+      elements.modalPattern.disabled = false;
+      elements.modal.style.display = 'block';
+      updateBodyTypeBadge();
+      elements.modalPattern.focus();
     });
 
     elements.tabsContainer.addEventListener('click', event => {
@@ -698,9 +751,32 @@ namespace NetworkOverridesUi {
     });
 
     void (async () => {
-      const data = await chrome.storage.local.get(['enabled', 'overrides', 'apiSearchTerm']);
-      elements.enableCheckbox.checked = !!data.enabled;
-      state.overrides = data.overrides || [];
+      const tab = await getActiveTab();
+      if (tab?.url) {
+        currentDomain = getOrigin(tab.url);
+      }
+
+      const keys = [domainKey('enabled'), domainKey('overrides'), 'apiSearchTerm'];
+      const data = await chrome.storage.local.get(keys);
+
+      const savedEnabled = data[domainKey('enabled')];
+      const savedOverrides = data[domainKey('overrides')];
+
+      if (savedEnabled !== undefined && savedOverrides !== undefined) {
+        elements.enableCheckbox.checked = !!savedEnabled;
+        state.overrides = savedOverrides || [];
+      } else {
+        const legacyData = await chrome.storage.local.get(['enabled', 'overrides']);
+        elements.enableCheckbox.checked = !!legacyData.enabled;
+        state.overrides = legacyData.overrides || [];
+        if (legacyData.overrides?.length || legacyData.enabled) {
+          await chrome.storage.local.set({
+            [domainKey('enabled')]: !!legacyData.enabled,
+            [domainKey('overrides')]: legacyData.overrides || [],
+          });
+        }
+      }
+
       state.apiSearchTerm = typeof data.apiSearchTerm === 'string' ? data.apiSearchTerm : '';
       elements.apiSearchInput.value = state.apiSearchTerm;
 
@@ -814,6 +890,7 @@ namespace NetworkOverridesUi {
       refreshBtn: document.getElementById('refresh-apis') as HTMLButtonElement,
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
+      addApiBtn: document.getElementById('add-api-btn') as HTMLButtonElement,
     };
   }
 

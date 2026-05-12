@@ -2,6 +2,8 @@
 /// <reference path="./shared.ts" />
 // Runtime types are provided via ambient NetworkOverridesShared declarations
 // Local helper utilities to avoid external module imports for test harness compatibility
+// NOTE: matchPattern, escapeRegex, isRegexPattern, getOrigin, patternMatches, substituteWildcards
+// are duplicated in ui.ts (different execution context - background vs panel/popup)
 declare var Buffer: any;
 function recApisKey(tabId: number): string {
   return `recentApis_${tabId}`;
@@ -77,9 +79,9 @@ namespace NetworkOverridesBackground {
   const overridesMap = new Map<number, OverrideState>();
   const recentApisMap = new Map<number, Map<string, ApiEntry>>();
   const recentApiBodiesMap = new Map<number, Map<string, string>>();
+  const currentDomainMap = new Map<number, string>();
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
-  let currentDomain = '';
 
   function isRegexPattern(pattern: string): boolean {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
@@ -152,6 +154,24 @@ namespace NetworkOverridesBackground {
     return getOrigin(url) === domain;
   }
 
+  function cleanupTabData(tabId: number): void {
+    attachedTabs.delete(tabId);
+    overridesMap.delete(tabId);
+    recentApisMap.delete(tabId);
+    recentApiBodiesMap.delete(tabId);
+    currentDomainMap.delete(tabId);
+    const timer = persistTimers.get(tabId);
+    if (timer) {
+      clearTimeout(timer);
+      persistTimers.delete(tabId);
+    }
+    const bodyTimer = bodyPersistTimers.get(tabId);
+    if (bodyTimer) {
+      clearTimeout(bodyTimer);
+      bodyPersistTimers.delete(tabId);
+    }
+  }
+
   function storeResponseBody(
     tabId: number,
     url: string,
@@ -188,19 +208,38 @@ namespace NetworkOverridesBackground {
           }
           recentApiBodiesMap.set(tabId, map);
 
-          const persisted = Object.fromEntries(map.entries());
-          const storageKey = recBodiesKey(tabId);
-          chrome.storage.local.set({ [storageKey]: persisted });
+          const existingBodyTimer = bodyPersistTimers.get(tabId);
+          if (existingBodyTimer) clearTimeout(existingBodyTimer);
+          bodyPersistTimers.set(
+            tabId,
+            setTimeout(() => {
+              bodyPersistTimers.delete(tabId);
+              const persisted = Object.fromEntries(map.entries());
+              const storageKey = recBodiesKey(tabId);
+              chrome.storage.local.set({ [storageKey]: persisted });
+            }, 500)
+          );
         }
         callback();
       }
     );
   }
 
+  const persistTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  const bodyPersistTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
   function persistRecentApis(tabId: number, apis: Map<string, ApiEntry>): void {
-    const persisted = Object.fromEntries(apis.entries());
-    const storageKey = recApisKey(tabId);
-    chrome.storage.local.set({ [storageKey]: persisted });
+    const existing = persistTimers.get(tabId);
+    if (existing) clearTimeout(existing);
+    persistTimers.set(
+      tabId,
+      setTimeout(() => {
+        persistTimers.delete(tabId);
+        const persisted = Object.fromEntries(apis.entries());
+        const storageKey = recApisKey(tabId);
+        chrome.storage.local.set({ [storageKey]: persisted });
+      }, 500)
+    );
   }
 
   function setRecentApi(tabId: number, entry: ApiEntry): void {
@@ -238,15 +277,6 @@ namespace NetworkOverridesBackground {
     | { type: 'getApiData'; tabId: number; url?: string }
     | { type: 'clearApis'; tabId: number };
 
-  function hasLastError(): boolean {
-    return typeof chrome.runtime.lastError === 'string';
-  }
-
-  function getLastError(): string | undefined {
-    const err = chrome.runtime.lastError;
-    return typeof err === 'string' ? err : undefined;
-  }
-
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
       return;
@@ -263,13 +293,11 @@ namespace NetworkOverridesBackground {
         const tabUrl = typeof (msg as any).tabUrl === 'string' ? (msg as any).tabUrl : '';
 
         if (tabUrl) {
-          currentDomain = getOrigin(tabUrl);
+          currentDomainMap.set(tabId, getOrigin(tabUrl));
         }
 
-        const tabMatchesDomain = tabUrl && urlMatchesDomain(tabUrl, currentDomain);
-
         overridesMap.set(tabId, { enabled, overrides });
-        if (enabled && tabMatchesDomain) {
+        if (enabled) {
           attachDebugger(tabId).catch(console.error);
         } else {
           detachDebugger(tabId).catch(console.error);
@@ -350,35 +378,41 @@ namespace NetworkOverridesBackground {
     }
   });
 
+  function sendDebugCommand(tabId: number, method: string, params: object): Promise<void> {
+    return new Promise((resolve, reject) => {
+      chrome.debugger.sendCommand({ tabId }, method, params, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   async function attachDebugger(tabId: number): Promise<void> {
     if (attachedTabs.has(tabId)) return;
     return new Promise((resolve, reject) => {
       try {
-        chrome.debugger.attach({ tabId }, '1.3', () => {
+        chrome.debugger.attach({ tabId }, '1.3', async () => {
           if (chrome.runtime.lastError) {
             return reject(chrome.runtime.lastError);
           }
 
           attachedTabs.add(tabId);
 
-          chrome.debugger.sendCommand({ tabId }, 'Network.enable', {}, () => {
-            if (chrome.runtime.lastError) {
-              console.error('Network.enable failed', chrome.runtime.lastError);
-            }
-          });
-
-          chrome.debugger.sendCommand(
-            { tabId },
-            'Fetch.enable',
-            { patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }] },
-            () => {
-              if (chrome.runtime.lastError) {
-                console.error('Fetch.enable failed', chrome.runtime.lastError);
-              }
-            }
-          );
-
-          resolve();
+          try {
+            await sendDebugCommand(tabId, 'Network.enable', {});
+            await sendDebugCommand(tabId, 'Fetch.enable', {
+              patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
+            });
+            resolve();
+          } catch (err) {
+            console.error('Failed to enable debugger commands:', err);
+            cleanupTabData(tabId);
+            chrome.debugger.detach({ tabId }, () => {});
+            reject(err);
+          }
         });
       } catch (error) {
         reject(error);
@@ -393,10 +427,7 @@ namespace NetworkOverridesBackground {
       try {
         chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
           chrome.debugger.detach({ tabId }, () => {
-            attachedTabs.delete(tabId);
-            overridesMap.delete(tabId);
-            recentApisMap.delete(tabId);
-            recentApiBodiesMap.delete(tabId);
+            cleanupTabData(tabId);
             resolve();
           });
         });
@@ -411,15 +442,13 @@ namespace NetworkOverridesBackground {
     if (attachedTabs.has(tabId)) {
       detachDebugger(tabId).catch(console.error);
     }
+    cleanupTabData(tabId);
   });
 
   chrome.debugger.onDetach.addListener(source => {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
-    attachedTabs.delete(tabId);
-    overridesMap.delete(tabId);
-    recentApisMap.delete(tabId);
-    recentApiBodiesMap.delete(tabId);
+    cleanupTabData(tabId);
   });
 
   chrome.debugger.onEvent.addListener((source, method, params: any) => {
@@ -434,7 +463,8 @@ namespace NetworkOverridesBackground {
     if (!attachedTabs.has(tabId)) return;
 
     const requestUrl = params?.request?.url || params?.response?.url || '';
-    if (requestUrl && !urlMatchesDomain(requestUrl, currentDomain)) return;
+    const tabDomain = currentDomainMap.get(tabId) || '';
+    if (requestUrl && !urlMatchesDomain(requestUrl, tabDomain)) return;
 
     if (method === 'Network.requestWillBeSent') {
       const requestUrlInner = params?.request?.url;
@@ -476,9 +506,16 @@ namespace NetworkOverridesBackground {
     const info = overridesMap.get(tabId);
 
     const proceed = () => {
-      chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
-        requestId: params.requestId,
-      });
+      chrome.debugger.sendCommand(
+        { tabId },
+        'Fetch.continueRequest',
+        { requestId: params.requestId },
+        () => {
+          if (chrome.runtime.lastError) {
+            // InterceptionId may already be invalid if request completed; ignore
+          }
+        }
+      );
     };
 
     if (!attachedTabs.has(tabId) || !info?.enabled) {
@@ -538,21 +575,20 @@ namespace NetworkOverridesBackground {
     console.log('[NetworkOverrides] Response:', url);
 
     try {
-      const apis = recentApisMap.get(tabId);
-      if (!apis?.has(url)) {
-        setRecentApi(tabId, {
-          url,
-          type: params.resourceType || 'other',
-          method: params.request?.method,
-          headers: params.request?.headers
-            ? Object.entries(params.request.headers).map(([name, value]) => ({
-                name,
-                value: String(value),
-              }))
-            : [],
-          postData: params.request?.postData,
-        });
-      }
+      setRecentApi(tabId, {
+        url,
+        type: params.resourceType || 'other',
+        method: params.request?.method,
+        headers: params.request?.headers
+          ? Object.entries(params.request.headers).map(([name, value]) => ({
+              name,
+              value: String(value),
+            }))
+          : [],
+        postData: params.request?.postData,
+        statusCode:
+          typeof params.responseStatusCode === 'number' ? params.responseStatusCode : undefined,
+      });
 
       const match = findOverride(url, info.overrides);
       if (!match) {
@@ -576,7 +612,23 @@ namespace NetworkOverridesBackground {
       console.log('[NetworkOverrides] Fulfill body:', match.override.pattern, '→', url);
 
       const ov = match.override;
-      const responseBodyBase64 = ov.mode === 'file' ? ov.body : stringToBase64Local(ov.body || '');
+
+      function bodyToValidBase64(): string {
+        if (ov.mode !== 'file') return stringToBase64Local(ov.body || '');
+        try {
+          atob(ov.body);
+          return ov.body;
+        } catch {
+          console.warn(
+            '[NetworkOverrides] Invalid base64 in file mode for',
+            ov.pattern,
+            '— encoding as text instead'
+          );
+          return stringToBase64Local(ov.body || '');
+        }
+      }
+
+      const responseBodyBase64 = bodyToValidBase64();
 
       const headers = [...((params.responseHeaders as FetchHeader[]) || [])];
       if (!headers.find(h => h.name.toLowerCase() === 'content-type')) {

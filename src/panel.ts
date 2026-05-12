@@ -18,6 +18,7 @@ namespace NetworkOverridesPanel {
             headers: entry.request?.headers,
             postData: entry.request?.postData?.text,
             body: entry.response?.content?.text || undefined,
+            statusCode: entry.response?.status,
           }))
           .filter(api => !!api.url) as NetworkOverridesShared.ApiEntry[];
 
@@ -36,6 +37,7 @@ namespace NetworkOverridesPanel {
               headers: request.request.headers,
               postData: request.request.postData?.text,
               body: content || undefined,
+              statusCode: request.response?.status,
             },
           ]);
         });

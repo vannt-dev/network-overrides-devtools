@@ -24,6 +24,7 @@ export function createUiContext() {
     console,
   };
   vm.createContext(context);
+  runDistFile('utils.js', context);
   runDistFile('shared.js', context);
   runDistFile('ui.js', context);
   return context;
@@ -61,6 +62,7 @@ export function createBackgroundContext() {
     },
   };
   vm.createContext(context);
+  runDistFile('utils.js', context);
   runDistFile('shared.js', context);
   runDistFile('background.js', context);
   return context;
@@ -241,6 +243,7 @@ export function createUiHarness({
   });
 
   const context = dom.getInternalVMContext();
+  runDistFile('utils.js', context);
   runDistFile('shared.js', context);
   runDistFile('ui.js', context);
   window.NetworkOverridesUi.init(options);
@@ -363,6 +366,7 @@ export function createBackgroundHarness() {
     chrome,
   };
   vm.createContext(context);
+  runDistFile('utils.js', context);
   runDistFile('shared.js', context);
   runDistFile('background.js', context);
 

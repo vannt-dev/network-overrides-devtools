@@ -1,7 +1,6 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
-// NOTE: matchPattern, escapeRegex, isRegexPattern, getOrigin, patternMatches, substituteWildcards
-// are duplicated in background.ts (different execution context - panel/popup vs background)
+/// <reference path="./utils.ts" />
 
 namespace NetworkOverridesUi {
   type OverrideMode = NetworkOverridesShared.OverrideMode;
@@ -41,51 +40,16 @@ namespace NetworkOverridesUi {
     other: 'Other',
   };
 
-  function isRegexPattern(pattern: string): boolean {
-    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
-  }
-
-  function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
   export function matchPattern(pattern: string, url: string): string[] | null {
-    const trimmed = pattern.trim();
-    if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
-      return [];
-    }
-    if (isRegexPattern(trimmed)) {
-      const lastSlash = trimmed.lastIndexOf('/');
-      const source = trimmed.slice(1, lastSlash);
-      const flags = trimmed.slice(lastSlash + 1);
-      try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url) ? [] : null;
-      } catch {
-        return null;
-      }
-    }
-    if (trimmed.includes('*')) {
-      const parts = trimmed.split('*').map(escapeRegex);
-      try {
-        const regex = new RegExp('^' + parts.join('(.+)') + '$');
-        const match = url.match(regex);
-        return match ? match.slice(1) : null;
-      } catch {
-        return null;
-      }
-    }
-    return url.includes(trimmed) ? [] : null;
+    return NetworkOverridesUtils.matchPattern(pattern, url);
   }
 
   export function substituteWildcards(template: string, captures: string[]): string {
-    let result = template;
-    let captureIndex = 0;
-    while (result.includes('*') && captureIndex < captures.length) {
-      result = result.replace('*', captures[captureIndex]);
-      captureIndex++;
-    }
-    return result;
+    return NetworkOverridesUtils.substituteWildcards(template, captures);
+  }
+
+  export function patternMatches(pattern: string, url: string): boolean {
+    return NetworkOverridesUtils.patternMatches(pattern, url);
   }
 
   function isValidPattern(pattern: string): boolean {
@@ -93,7 +57,7 @@ namespace NetworkOverridesUi {
     if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
       return true;
     }
-    if (isRegexPattern(trimmed)) {
+    if (NetworkOverridesUtils.isRegexPattern(trimmed)) {
       const lastSlash = trimmed.lastIndexOf('/');
       const source = trimmed.slice(1, lastSlash);
       const flags = trimmed.slice(lastSlash + 1);
@@ -105,7 +69,7 @@ namespace NetworkOverridesUi {
       }
     }
     if (trimmed.includes('*')) {
-      const parts = trimmed.split('*').map(escapeRegex);
+      const parts = trimmed.split('*').map(NetworkOverridesUtils.escapeRegex);
       try {
         new RegExp('^' + parts.join('(.+)') + '$');
         return true;
@@ -114,18 +78,6 @@ namespace NetworkOverridesUi {
       }
     }
     return trimmed.length > 0;
-  }
-
-  export function patternMatches(pattern: string, url: string): boolean {
-    return matchPattern(pattern, url) !== null;
-  }
-
-  function getOrigin(url: string): string {
-    try {
-      return new URL(url).origin;
-    } catch {
-      return '';
-    }
   }
 
   function domainKey(suffix: string): string {
@@ -488,12 +440,11 @@ namespace NetworkOverridesUi {
         return 0;
       }
 
-      const newDomain = tab?.url ? getOrigin(tab.url) : '';
+      const newDomain = tab?.url ? NetworkOverridesUtils.getOrigin(tab.url) : '';
       if (newDomain && newDomain !== currentDomain) {
         currentDomain = newDomain;
-        const data = await chrome.storage.local.get([domainKey('enabled'), domainKey('overrides')]);
+        const data = await chrome.storage.local.get([domainKey('overrides')]);
         state.overrides = data[domainKey('overrides')] || [];
-        elements.enableCheckbox.checked = !!data[domainKey('enabled')];
         renderList();
         updateTabLabels();
         await notifyBackground();
@@ -559,13 +510,16 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      const data = await chrome.storage.local.get([domainKey('enabled'), domainKey('overrides')]);
+      const overridesKey = domainKey('overrides');
+      const data = await chrome.storage.local.get(['enabled', overridesKey, 'overrides']);
+      const domainOverrides = data[overridesKey];
+      const flatOverrides = data['overrides'];
       chrome.runtime.sendMessage({
         type: 'update',
         tabId: tab.id,
         tabUrl: tab.url,
-        enabled: !!data[domainKey('enabled')],
-        overrides: data[domainKey('overrides')] || [],
+        enabled: !!data['enabled'],
+        overrides: domainOverrides !== undefined ? domainOverrides : flatOverrides || [],
       });
     }
 
@@ -708,7 +662,7 @@ namespace NetworkOverridesUi {
     });
 
     elements.enableCheckbox.addEventListener('change', async () => {
-      await chrome.storage.local.set({ [domainKey('enabled')]: elements.enableCheckbox.checked });
+      await chrome.storage.local.set({ enabled: elements.enableCheckbox.checked });
       await notifyBackground();
     });
 
@@ -753,28 +707,34 @@ namespace NetworkOverridesUi {
     void (async () => {
       const tab = await getActiveTab();
       if (tab?.url) {
-        currentDomain = getOrigin(tab.url);
+        currentDomain = NetworkOverridesUtils.getOrigin(tab.url);
       }
 
-      const keys = [domainKey('enabled'), domainKey('overrides'), 'apiSearchTerm'];
-      const data = await chrome.storage.local.get(keys);
+      const data = await chrome.storage.local.get(
+        [
+          'enabled',
+          currentDomain && domainKey('enabled'),
+          currentDomain && domainKey('overrides'),
+          'overrides',
+          'apiSearchTerm',
+        ].filter(Boolean)
+      );
 
-      const savedEnabled = data[domainKey('enabled')];
-      const savedOverrides = data[domainKey('overrides')];
-
-      if (savedEnabled !== undefined && savedOverrides !== undefined) {
-        elements.enableCheckbox.checked = !!savedEnabled;
-        state.overrides = savedOverrides || [];
-      } else {
-        const legacyData = await chrome.storage.local.get(['enabled', 'overrides']);
-        elements.enableCheckbox.checked = !!legacyData.enabled;
-        state.overrides = legacyData.overrides || [];
-        if (legacyData.overrides?.length || legacyData.enabled) {
-          await chrome.storage.local.set({
-            [domainKey('enabled')]: !!legacyData.enabled,
-            [domainKey('overrides')]: legacyData.overrides || [],
-          });
+      let savedEnabled = data['enabled'];
+      if (savedEnabled === undefined) {
+        savedEnabled = data[domainKey('enabled')];
+        if (savedEnabled !== undefined) {
+          await chrome.storage.local.set({ enabled: !!savedEnabled });
         }
+      }
+      elements.enableCheckbox.checked = !!savedEnabled;
+
+      const domainOverrides = data[domainKey('overrides')];
+      const flatOverrides = data['overrides'];
+      state.overrides = domainOverrides !== undefined ? domainOverrides : flatOverrides || [];
+
+      if (flatOverrides?.length && domainOverrides === undefined && currentDomain) {
+        await chrome.storage.local.set({ [domainKey('overrides')]: flatOverrides });
       }
 
       state.apiSearchTerm = typeof data.apiSearchTerm === 'string' ? data.apiSearchTerm : '';

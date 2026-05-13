@@ -1,67 +1,34 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
-// Runtime types are provided via ambient NetworkOverridesShared declarations
-// Local helper utilities to avoid external module imports for test harness compatibility
-// NOTE: matchPattern, escapeRegex, isRegexPattern, getOrigin, patternMatches, substituteWildcards
-// are duplicated in ui.ts (different execution context - background vs panel/popup)
 declare var Buffer: any;
+
 function recApisKey(tabId: number): string {
   return `recentApis_${tabId}`;
 }
-
-// Compatibility bridge: expose runtime helpers on a global object to support existing tests
-(() => {
-  try {
-    const g: any =
-      typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : {};
-    if (!g.NetworkOverridesBackground) {
-      g.NetworkOverridesBackground = {};
-    }
-    // If namespace-based helpers exist, bridge them to the global surface
-    const nh = (NetworkOverridesBackground as any) ?? undefined;
-    if (nh) {
-      if (typeof nh.patternMatches === 'function') {
-        g.NetworkOverridesBackground.patternMatches = nh.patternMatches;
-      }
-      if (typeof nh.normalizeBody === 'function') {
-        g.NetworkOverridesBackground.normalizeBody = nh.normalizeBody;
-      }
-    }
-  } catch {
-    // ignore bridge errors in test harness
-  }
-})();
 function recBodiesKey(tabId: number): string {
   return `recentApiBodies_${tabId}`;
 }
 function stringToBase64Local(str: string): string {
-  // Use Browser/Node compatible base64 encoding
   if (typeof Buffer !== 'undefined') {
     try {
       return Buffer.from(str, 'utf8').toString('base64');
-    } catch {
-      // fall through to fallback
-    }
+    } catch {}
   }
   const bytes = new TextEncoder().encode(str);
   let binary = '';
   bytes.forEach(b => (binary += String.fromCharCode(b)));
-  // Fallback to btoa if available
   if (typeof (globalThis as any).btoa === 'function') {
     return (globalThis as any).btoa(binary);
   }
-  // Last resort: minimal polyfill (not perfect for all environments)
   return Buffer.from(binary, 'latin1').toString('base64');
 }
 function normalizeBodyLocal(body: string, isBase64: boolean): string {
   try {
     if (isBase64) {
-      // Decode base64 to UTF-8 in a cross-platform way
       if (typeof Buffer !== 'undefined') {
         return Buffer.from(body, 'base64').toString('utf8');
       }
       const decoded = atob(body);
-      // Decode UTF-8 sequence to string
       return decodeURIComponent(escape(decoded));
     }
     return body;
@@ -82,6 +49,7 @@ namespace NetworkOverridesBackground {
   const currentDomainMap = new Map<number, string>();
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
+  const CAPTURED_BODY_TYPES = ['xhr', 'fetch', 'script', 'image'];
 
   function isRegexPattern(pattern: string): boolean {
     return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
@@ -134,12 +102,9 @@ namespace NetworkOverridesBackground {
     return result;
   }
 
-  // Expose normalizeBody for tests and internal usage
   export function normalizeBody(body: string, isBase64: boolean): string {
     return normalizeBodyLocal(body, isBase64);
   }
-
-  // normalizeBody and stringToBase64 are now centralized in src/utils.ts
 
   function getOrigin(url: string): string {
     try {
@@ -593,7 +558,7 @@ namespace NetworkOverridesBackground {
       const match = findOverride(url, info.overrides);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
-        if (resourceType === 'xhr' || resourceType === 'fetch') {
+        if (CAPTURED_BODY_TYPES.includes(resourceType)) {
           storeResponseBody(tabId, url, params.requestId, proceed);
         } else {
           proceed();

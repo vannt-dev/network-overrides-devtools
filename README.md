@@ -189,6 +189,6 @@ Produces a ZIP in `release/` containing only the runtime files: `manifest.json`,
 
 - Overrides only apply to the tab currently attached to the debugger.
 - Recent API data is capped at 500 URLs and 100 response bodies per tab.
-- Recent API bodies are only stored for `XHR` and `Fetch` resource types.
+- Recent API bodies are only stored for XHR and Fetch resource types by default. Configure `CAPTURED_BODY_TYPES` in `src/background.ts` to add more types.
 - Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
 - The extension is designed for developer debugging only, not for end-user production use.

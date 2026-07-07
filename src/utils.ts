@@ -59,4 +59,13 @@ namespace NetworkOverridesUtils {
       return '';
     }
   }
+
+  export function matchesMethod(
+    ruleMethod: string | undefined,
+    requestMethod: string | undefined
+  ): boolean {
+    if (!ruleMethod || ruleMethod.toUpperCase() === 'ANY') return true;
+    if (!requestMethod) return false;
+    return ruleMethod.toUpperCase() === requestMethod.toUpperCase();
+  }
 }

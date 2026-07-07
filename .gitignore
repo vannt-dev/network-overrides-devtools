@@ -9,3 +9,5 @@ Thumbs.db
 *.env
 .env*
 .worktrees/
+test-output.txt
+test-results.txt

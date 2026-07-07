@@ -521,9 +521,12 @@ namespace NetworkOverridesBackground {
 
   function findOverride(
     url: string,
+    method: string | undefined,
     overrides: OverrideRule[]
   ): { override: OverrideRule; captures: string[] } | null {
     for (const test of overrides) {
+      if (test.enabled === false) continue;
+      if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       const captures = matchPattern(test.pattern, url);
       if (captures !== null) {
         return { override: test, captures };
@@ -568,7 +571,7 @@ namespace NetworkOverridesBackground {
       }
 
       try {
-        const match = findOverride(url, info.overrides);
+        const match = findOverride(url, params.request?.method, info.overrides);
         if (match && match.override.redirectUrl) {
           const newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
           if (newUrl.includes('*')) {
@@ -612,7 +615,7 @@ namespace NetworkOverridesBackground {
           typeof params.responseStatusCode === 'number' ? params.responseStatusCode : undefined,
       });
 
-      const match = findOverride(url, info.overrides);
+      const match = findOverride(url, params.request?.method, info.overrides);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (CAPTURED_BODY_TYPES.includes(resourceType)) {

@@ -24,13 +24,6 @@
     ],
     "report-dir": "coverage"
   },
-  "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{mjs,js,json,md}": "prettier --write"
-  },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",

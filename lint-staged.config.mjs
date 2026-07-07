@@ -1,3 +1,7 @@
 export default {
-  '*.{ts,js,json,md,html,css,yaml,yml}': files => `npx prettier --write ${files.join(' ')}`,
+  'src/**/*.ts': files => [
+    `npx eslint --fix ${files.join(' ')}`,
+    `npx prettier --write ${files.join(' ')}`,
+  ],
+  '*.{js,json,md,html,css,yaml,yml}': files => `npx prettier --write ${files.join(' ')}`,
 };

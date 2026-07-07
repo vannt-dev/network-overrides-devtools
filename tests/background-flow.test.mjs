@@ -452,3 +452,33 @@ test('Background does not fulfill body for redirect-only overrides at response s
   );
   assert.ok(continueCmd);
 });
+
+test('Background skips disabled rules and method-mismatched rules, falling through to the next match', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      { pattern: '/users$/', body: '{"disabled":true}', mode: 'text', enabled: false },
+      { pattern: '/users$/', body: '{"wrongMethod":true}', mode: 'text', method: 'POST' },
+      { pattern: '/users$/', body: '{"matched":true}', mode: 'text', method: 'GET' },
+    ],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-method',
+    request: { url: TEST_API_URL, method: 'GET' },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-method'
+  );
+  assert.ok(fulfill);
+  assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), '{"matched":true}');
+});

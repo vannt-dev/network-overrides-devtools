@@ -8,3 +8,4 @@ release/
 Thumbs.db
 *.env
 .env*
+.worktrees/

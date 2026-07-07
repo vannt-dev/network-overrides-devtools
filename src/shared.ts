@@ -7,6 +7,8 @@ declare namespace NetworkOverridesShared {
     body: string;
     mode: OverrideMode;
     redirectUrl?: string;
+    enabled?: boolean; // undefined/true = enabled, false = disabled
+    method?: string; // undefined/'ANY' = any method, or 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
   }
   interface OverrideState {
     enabled: boolean;

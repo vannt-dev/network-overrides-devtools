@@ -138,3 +138,14 @@ test('Background normalizes base64 response bodies and preserves bad input', () 
   assert.equal(NetworkOverridesBackground.normalizeBody('%%%', true), '');
   assert.equal(NetworkOverridesBackground.normalizeBody('plain-text', false), 'plain-text');
 });
+
+test('matchesMethod matches ANY/undefined and is case-insensitive', () => {
+  const { NetworkOverridesUtils } = createUiContext();
+
+  assert.equal(NetworkOverridesUtils.matchesMethod(undefined, 'GET'), true);
+  assert.equal(NetworkOverridesUtils.matchesMethod('ANY', 'POST'), true);
+  assert.equal(NetworkOverridesUtils.matchesMethod('get', 'GET'), true);
+  assert.equal(NetworkOverridesUtils.matchesMethod('GET', 'get'), true);
+  assert.equal(NetworkOverridesUtils.matchesMethod('POST', 'GET'), false);
+  assert.equal(NetworkOverridesUtils.matchesMethod('POST', undefined), false);
+});

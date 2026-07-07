@@ -52,6 +52,13 @@ namespace NetworkOverridesUi {
     return NetworkOverridesUtils.patternMatches(pattern, url);
   }
 
+  function wouldApply(override: OverrideRule, api: ApiEntry): boolean {
+    return (
+      NetworkOverridesUtils.matchesMethod(override.method, api.method) &&
+      patternMatches(override.pattern, api.url)
+    );
+  }
+
   function isValidPattern(pattern: string): boolean {
     const trimmed = pattern.trim();
     if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
@@ -357,10 +364,10 @@ namespace NetworkOverridesUi {
         api => !searchTerm || api.url.toLowerCase().includes(searchTerm)
       );
       const overriddenApis = visibleApis.filter(api =>
-        state.overrides.some(override => patternMatches(override.pattern, api.url))
+        state.overrides.some(override => wouldApply(override, api))
       );
       const otherApis = visibleApis.filter(
-        api => !state.overrides.some(override => patternMatches(override.pattern, api.url))
+        api => !state.overrides.some(override => wouldApply(override, api))
       );
 
       if (state.currentTab === 'overridden') {
@@ -401,7 +408,7 @@ namespace NetworkOverridesUi {
 
     function updateTabLabels(): void {
       const overriddenCount = state.apis.filter(api =>
-        state.overrides.some(override => patternMatches(override.pattern, api.url))
+        state.overrides.some(override => wouldApply(override, api))
       ).length;
       const otherCount = state.apis.length - overriddenCount;
 
@@ -447,11 +454,11 @@ namespace NetworkOverridesUi {
       apis.forEach(api => {
         const li = document.createElement('li');
         li.className = 'api-item';
-        const isOverridden = state.overrides.some(override =>
-          patternMatches(override.pattern, api.url)
-        );
+        const matchedOverride = state.overrides.find(override => wouldApply(override, api));
+        const isOverridden = !!matchedOverride;
         const isSelected = state.selectedApi ? patternMatches(state.selectedApi, api.url) : false;
         if (isOverridden) li.classList.add('active');
+        if (matchedOverride?.enabled === false) li.classList.add('api-item--rule-disabled');
         if (isSelected) li.classList.add('selected');
         li.dataset.url = api.url;
         const statusLabel =

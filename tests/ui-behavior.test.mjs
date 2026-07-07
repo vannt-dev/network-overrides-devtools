@@ -268,3 +268,37 @@ test('Tab switching shows correct APIs and search filters within a tab', async (
   assert.equal(harness.document.getElementById('overrides-section').style.display, 'block');
   assert.equal(harness.document.querySelectorAll('.override-item').length, 1);
 });
+
+test('A disabled rule still counts an API as Overridden but dims it; a method-mismatched rule does not count it at all', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [
+        { pattern: 'users', body: '{}', mode: 'text', enabled: false },
+        { pattern: 'orders', body: '{}', mode: 'text', method: 'POST' },
+      ],
+    },
+    apis: [
+      { url: `${TEST_DOMAIN}/api/users`, type: 'fetch', method: 'GET' },
+      { url: `${TEST_DOMAIN}/api/orders`, type: 'fetch', method: 'GET' },
+    ],
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overridden"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const overriddenItems = harness.document.querySelectorAll('.api-item');
+  assert.equal(overriddenItems.length, 1);
+  assert.equal(overriddenItems[0].classList.contains('api-item--rule-disabled'), true);
+
+  harness.document
+    .querySelector('[data-tab="other"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
+});

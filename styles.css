@@ -631,6 +631,9 @@ input[type='search'] {
 .api-item.active .api-status {
   background: #c8dfff;
 }
+.api-item--rule-disabled {
+  opacity: 0.55;
+}
 .api-empty-state {
   padding: 12px;
   border: 1px dashed #c9d7e6;

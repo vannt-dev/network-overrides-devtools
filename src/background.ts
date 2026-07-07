@@ -1,6 +1,13 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
-declare var Buffer: any;
+/// <reference path="./utils.ts" />
+declare const Buffer: any;
+declare function importScripts(...urls: string[]): void;
+
+// Service workers can't use <script> tags like the UI pages do, so pull in
+// the shared pattern-matching logic the same way at runtime instead of
+// duplicating it here.
+importScripts('utils.js');
 
 function recApisKey(tabId: number): string {
   return `recentApis_${tabId}`;
@@ -42,64 +49,34 @@ namespace NetworkOverridesBackground {
   type OverrideState = NetworkOverridesShared.OverrideState;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
+
+  function toFetchHeaders(headers: Record<string, unknown> | undefined): FetchHeader[] {
+    if (!headers) return [];
+    return Object.entries(headers).map(([name, value]) => ({ name, value: String(value) }));
+  }
+
   const attachedTabs = new Set<number>();
   const overridesMap = new Map<number, OverrideState>();
   const recentApisMap = new Map<number, Map<string, ApiEntry>>();
   const recentApiBodiesMap = new Map<number, Map<string, string>>();
   const currentDomainMap = new Map<number, string>();
+  const apiSubscriberPorts = new Map<number, Set<chrome.runtime.Port>>();
+  const apiBroadcastQueues = new Map<number, Map<string, ApiEntry>>();
+  const apiBroadcastTimers = new Map<number, ReturnType<typeof setTimeout>>();
   const RECENT_APIS_LIMIT = 500;
   const RECENT_API_BODIES_LIMIT = 100;
   const CAPTURED_BODY_TYPES = ['xhr', 'fetch', 'script', 'image'];
 
-  function isRegexPattern(pattern: string): boolean {
-    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
-  }
-
-  function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
   export function matchPattern(pattern: string, url: string): string[] | null {
-    const trimmed = pattern.trim();
-    if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
-      return [];
-    }
-    if (isRegexPattern(trimmed)) {
-      const lastSlash = trimmed.lastIndexOf('/');
-      const source = trimmed.slice(1, lastSlash);
-      const flags = trimmed.slice(lastSlash + 1);
-      try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url) ? [] : null;
-      } catch {
-        return null;
-      }
-    }
-    if (trimmed.includes('*')) {
-      const parts = trimmed.split('*').map(escapeRegex);
-      try {
-        const regex = new RegExp('^' + parts.join('(.+)') + '$');
-        const match = url.match(regex);
-        return match ? match.slice(1) : null;
-      } catch {
-        return null;
-      }
-    }
-    return url.includes(trimmed) ? [] : null;
+    return NetworkOverridesUtils.matchPattern(pattern, url);
   }
 
   export function patternMatches(pattern: string, url: string): boolean {
-    return matchPattern(pattern, url) !== null;
+    return NetworkOverridesUtils.patternMatches(pattern, url);
   }
 
   export function substituteWildcards(template: string, captures: string[]): string {
-    let result = template;
-    let captureIndex = 0;
-    while (result.includes('*') && captureIndex < captures.length) {
-      result = result.replace('*', captures[captureIndex]);
-      captureIndex++;
-    }
-    return result;
+    return NetworkOverridesUtils.substituteWildcards(template, captures);
   }
 
   export function normalizeBody(body: string, isBase64: boolean): string {
@@ -125,6 +102,21 @@ namespace NetworkOverridesBackground {
     recentApisMap.delete(tabId);
     recentApiBodiesMap.delete(tabId);
     currentDomainMap.delete(tabId);
+    const ports = apiSubscriberPorts.get(tabId);
+    if (ports) {
+      ports.forEach(p => {
+        try {
+          p.disconnect();
+        } catch {}
+      });
+      apiSubscriberPorts.delete(tabId);
+    }
+    const apiTimer = apiBroadcastTimers.get(tabId);
+    if (apiTimer) {
+      clearTimeout(apiTimer);
+      apiBroadcastTimers.delete(tabId);
+    }
+    apiBroadcastQueues.delete(tabId);
     const timer = persistTimers.get(tabId);
     if (timer) {
       clearTimeout(timer);
@@ -207,6 +199,41 @@ namespace NetworkOverridesBackground {
     );
   }
 
+  function scheduleApiBroadcast(tabId: number, entry: ApiEntry): void {
+    const ports = apiSubscriberPorts.get(tabId);
+    if (!ports || ports.size === 0) return;
+
+    let queue = apiBroadcastQueues.get(tabId);
+    if (!queue) {
+      queue = new Map();
+      apiBroadcastQueues.set(tabId, queue);
+    }
+    queue.set(entry.url, entry);
+
+    const existing = apiBroadcastTimers.get(tabId);
+    if (existing) return;
+
+    apiBroadcastTimers.set(
+      tabId,
+      setTimeout(() => {
+        apiBroadcastTimers.delete(tabId);
+        const queued = apiBroadcastQueues.get(tabId);
+        apiBroadcastQueues.delete(tabId);
+        if (!queued || queued.size === 0) return;
+
+        const delta = Array.from(queued.values());
+        const currentPorts = apiSubscriberPorts.get(tabId);
+        if (!currentPorts || currentPorts.size === 0) return;
+
+        currentPorts.forEach(port => {
+          try {
+            port.postMessage({ type: 'apisDelta', apis: delta });
+          } catch {}
+        });
+      }, 150)
+    );
+  }
+
   function setRecentApi(tabId: number, entry: ApiEntry): void {
     let apis = recentApisMap.get(tabId);
     if (!apis) {
@@ -227,6 +254,7 @@ namespace NetworkOverridesBackground {
 
     recentApisMap.set(tabId, apis);
     persistRecentApis(tabId, apis);
+    scheduleApiBroadcast(tabId, entry);
   }
 
   // Strongly-typed messaging surface
@@ -248,14 +276,12 @@ namespace NetworkOverridesBackground {
     }
     switch (msg.type) {
       case 'update': {
-        const tabId = Number((msg as any).tabId);
+        const tabId = Number(msg.tabId);
         if (Number.isNaN(tabId)) return;
 
-        const enabled = Boolean((msg as any).enabled);
-        const overrides = Array.isArray((msg as any).overrides)
-          ? ((msg as any).overrides as OverrideRule[])
-          : [];
-        const tabUrl = typeof (msg as any).tabUrl === 'string' ? (msg as any).tabUrl : '';
+        const enabled = Boolean(msg.enabled);
+        const overrides = Array.isArray(msg.overrides) ? msg.overrides : [];
+        const tabUrl = typeof msg.tabUrl === 'string' ? msg.tabUrl : '';
 
         if (tabUrl) {
           currentDomainMap.set(tabId, getOrigin(tabUrl));
@@ -270,7 +296,7 @@ namespace NetworkOverridesBackground {
         break;
       }
       case 'getApis': {
-        const tabId = Number((msg as any).tabId);
+        const tabId = Number(msg.tabId);
         if (Number.isNaN(tabId)) return;
         const apisMap = recentApisMap.get(tabId);
         if (apisMap && typeof sendResponse === 'function') {
@@ -302,7 +328,7 @@ namespace NetworkOverridesBackground {
         return true;
       }
       case 'clearApis': {
-        const clearTabId = Number((msg as any).tabId);
+        const clearTabId = Number(msg.tabId);
         if (!Number.isNaN(clearTabId)) {
           recentApisMap.delete(clearTabId);
           recentApiBodiesMap.delete(clearTabId);
@@ -313,8 +339,8 @@ namespace NetworkOverridesBackground {
         return;
       }
       case 'getApiData': {
-        const tabId = Number((msg as any).tabId);
-        const url = String((msg as any).url || '');
+        const tabId = Number(msg.tabId);
+        const url = String(msg.url || '');
         if (Number.isNaN(tabId) || !url) return;
 
         const bodies = recentApiBodiesMap.get(tabId);
@@ -341,6 +367,52 @@ namespace NetworkOverridesBackground {
         }
         break;
     }
+  });
+
+  chrome.runtime.onConnect.addListener(port => {
+    if (!port || port.name !== 'network-overrides-ui') return;
+
+    let subscribedTabId: number | null = null;
+
+    function unsubscribe(): void {
+      if (subscribedTabId === null) return;
+      const ports = apiSubscriberPorts.get(subscribedTabId);
+      if (ports) {
+        ports.delete(port);
+        if (ports.size === 0) {
+          apiSubscriberPorts.delete(subscribedTabId);
+        }
+      }
+      subscribedTabId = null;
+    }
+
+    port.onDisconnect.addListener(() => unsubscribe());
+
+    port.onMessage.addListener((raw: any) => {
+      if (!raw || typeof raw !== 'object') return;
+      if (raw.type !== 'subscribe') return;
+
+      const tabId = Number(raw.tabId);
+      if (Number.isNaN(tabId)) return;
+
+      if (subscribedTabId !== null && subscribedTabId !== tabId) {
+        unsubscribe();
+      }
+
+      subscribedTabId = tabId;
+      let set = apiSubscriberPorts.get(tabId);
+      if (!set) {
+        set = new Set();
+        apiSubscriberPorts.set(tabId, set);
+      }
+      set.add(port);
+
+      const apisMap = recentApisMap.get(tabId);
+      const apis = apisMap ? Array.from(apisMap.values()) : [];
+      try {
+        port.postMessage({ type: 'apis', apis });
+      } catch {}
+    });
   });
 
   function sendDebugCommand(tabId: number, method: string, params: object): Promise<void> {
@@ -439,12 +511,7 @@ namespace NetworkOverridesBackground {
           url: requestUrlInner,
           type: requestType,
           method: params.request.method,
-          headers: params.request.headers
-            ? Object.entries(params.request.headers).map(([name, value]) => ({
-                name,
-                value: String(value),
-              }))
-            : [],
+          headers: toFetchHeaders(params.request.headers),
           postData: params.request.postData,
         });
       }
@@ -495,12 +562,7 @@ namespace NetworkOverridesBackground {
           url,
           type: params.resourceType || 'other',
           method: params.request?.method,
-          headers: params.request?.headers
-            ? Object.entries(params.request.headers).map(([name, value]) => ({
-                name,
-                value: String(value),
-              }))
-            : [],
+          headers: toFetchHeaders(params.request?.headers),
           postData: params.request?.postData,
         });
       }
@@ -508,7 +570,7 @@ namespace NetworkOverridesBackground {
       try {
         const match = findOverride(url, info.overrides);
         if (match && match.override.redirectUrl) {
-          let newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
+          const newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
           if (newUrl.includes('*')) {
             console.error('[NetworkOverrides] Unsubstituted * in redirect URL:', newUrl);
             proceed();
@@ -544,12 +606,7 @@ namespace NetworkOverridesBackground {
         url,
         type: params.resourceType || 'other',
         method: params.request?.method,
-        headers: params.request?.headers
-          ? Object.entries(params.request.headers).map(([name, value]) => ({
-              name,
-              value: String(value),
-            }))
-          : [],
+        headers: toFetchHeaders(params.request?.headers),
         postData: params.request?.postData,
         statusCode:
           typeof params.responseStatusCode === 'number' ? params.responseStatusCode : undefined,

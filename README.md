@@ -32,8 +32,7 @@ src/
 ├── panel.ts           # DevTools panel UI initialization + HAR log & real-time network listener
 ├── popup.ts           # Popup UI initialization (simpler UI, no manual editor)
 ├── ui.ts              # Shared UI logic (rendering, modal, tabs, search, cURL, etc.)
-├── utils.ts           # Helpers: stringToBase64, normalizeBody
-└── storage-keys.ts    # Storage key generators
+└── utils.ts           # Helpers: pattern matching, wildcards, origin parsing
 
 dist/                  # Compiled JavaScript (from tsc)
 styles.css             # Shared styles for popup and panel

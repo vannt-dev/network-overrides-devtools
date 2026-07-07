@@ -28,7 +28,7 @@ namespace NetworkOverridesPanel {
 
     chrome.devtools.network.onRequestFinished.addListener(request => {
       if (request && request.request && request.request.url) {
-        request.getContent((content: string, encoding: string) => {
+        request.getContent((content: string, _encoding: string) => {
           ui.addApis([
             {
               url: request.request.url,

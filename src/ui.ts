@@ -141,10 +141,81 @@ namespace NetworkOverridesUi {
 
     elements.newRow.style.display = options.showManualEditor ? '' : 'none';
 
+    const apiByUrl = new Map<string, ApiEntry>();
+    let apiStreamPort: chrome.runtime.Port | null = null;
+    let subscribedTabId: number | null = null;
+
     async function persistApiUiState(): Promise<void> {
       await chrome.storage.local.set({
         apiSearchTerm: state.apiSearchTerm,
       });
+    }
+
+    function addApisToState(newApis: ApiEntry[]): void {
+      let changed = false;
+      newApis.forEach(entry => {
+        const { url } = entry;
+        const existing = apiByUrl.get(url);
+        if (existing) {
+          if (entry.body && !existing.body) {
+            existing.body = entry.body;
+            changed = true;
+          }
+        } else {
+          state.apis.push(entry);
+          apiByUrl.set(url, entry);
+          changed = true;
+        }
+      });
+      if (changed) {
+        renderApis();
+      }
+    }
+
+    async function startApiStream(): Promise<void> {
+      const tab = await getActiveTab();
+      const tabId = tab?.id;
+      if (typeof tabId !== 'number') return;
+
+      if (apiStreamPort && subscribedTabId === tabId) {
+        return;
+      }
+
+      try {
+        if (apiStreamPort) {
+          try {
+            apiStreamPort.disconnect();
+          } catch {}
+        }
+
+        const port = chrome.runtime.connect({ name: 'network-overrides-ui' });
+        apiStreamPort = port;
+        subscribedTabId = tabId;
+        port.onDisconnect.addListener(() => {
+          if (apiStreamPort === port) {
+            apiStreamPort = null;
+            subscribedTabId = null;
+          }
+        });
+        port.onMessage.addListener((msg: any) => {
+          if (!msg || typeof msg !== 'object') return;
+          if (msg.type === 'apis' && Array.isArray(msg.apis)) {
+            addApisToState(msg.apis as ApiEntry[]);
+            return;
+          }
+          if (msg.type === 'apisDelta' && Array.isArray(msg.apis)) {
+            addApisToState(msg.apis as ApiEntry[]);
+            return;
+          }
+          if (msg.type === 'api' && msg.api && typeof msg.api.url === 'string') {
+            addApisToState([msg.api as ApiEntry]);
+            return;
+          }
+        });
+        port.postMessage({ type: 'subscribe', tabId });
+      } catch {
+        // Port is optional; keep manual refresh working.
+      }
     }
 
     function renderList(): void {
@@ -252,7 +323,7 @@ namespace NetworkOverridesUi {
         elements.modalRedirectUrl.value = '';
         setModalOverrideType('body');
 
-        const apiEntry = state.apis.find(api => api.url === url);
+        const apiEntry = apiByUrl.get(url);
         if (apiEntry?.body) {
           elements.modalBody.value = formatJsonIfPossible(apiEntry.body);
         } else {
@@ -460,6 +531,8 @@ namespace NetworkOverridesUi {
             });
 
             state.apis = apisResponse;
+            apiByUrl.clear();
+            state.apis.forEach(api => apiByUrl.set(api.url, api));
 
             state.apis.forEach(api => {
               if (!api.body && existingBodies.has(api.url)) {
@@ -474,15 +547,6 @@ namespace NetworkOverridesUi {
 
           resolve(0);
         });
-      });
-    }
-
-    async function clearApisInBackground(): Promise<void> {
-      const tab = await getActiveTab();
-      const tabId = tab?.id;
-      if (typeof tabId !== 'number') return;
-      return new Promise(resolve => {
-        chrome.runtime.sendMessage({ type: 'clearApis', tabId }, () => resolve());
       });
     }
 
@@ -742,8 +806,14 @@ namespace NetworkOverridesUi {
 
       await notifyBackground();
       await refreshApisWithRetry();
+      await startApiStream();
       switchTab('other');
     })();
+
+    window.addEventListener('focus', () => void startApiStream());
+    // onDisconnect already triggers a reconnect as soon as the port dies; this is
+    // just a low-frequency safety net in case a disconnect event is ever missed.
+    window.setInterval(() => void startApiStream(), 15000);
 
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     const scrollContainers = [
@@ -763,25 +833,7 @@ namespace NetworkOverridesUi {
     );
 
     return {
-      addApis(newApis: ApiEntry[]): void {
-        let changed = false;
-        newApis.forEach(entry => {
-          const { url } = entry;
-          const existing = state.apis.find(api => api.url === url);
-          if (existing) {
-            if (entry.body && !existing.body) {
-              existing.body = entry.body;
-              changed = true;
-            }
-          } else {
-            state.apis.push(entry);
-            changed = true;
-          }
-        });
-        if (changed) {
-          renderApis();
-        }
-      },
+      addApis: addApisToState,
     };
   }
 

@@ -38,10 +38,14 @@ export function createBackgroundContext() {
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,
+    // utils.js is already loaded into this context below; real service workers
+    // use importScripts to do the same thing at runtime.
+    importScripts: noop,
     chrome: {
       runtime: {
         lastError: null,
         onMessage: { addListener: noop },
+        onConnect: { addListener: noop },
       },
       tabs: {
         onRemoved: { addListener: noop },
@@ -218,6 +222,34 @@ export function createUiHarness({
       },
     },
     runtime: {
+      connect() {
+        const listeners = new Set();
+        const disconnectListeners = new Set();
+        return {
+          name: 'network-overrides-ui',
+          onMessage: {
+            addListener(fn) {
+              listeners.add(fn);
+            },
+            removeListener(fn) {
+              listeners.delete(fn);
+            },
+          },
+          onDisconnect: {
+            addListener(fn) {
+              disconnectListeners.add(fn);
+            },
+            removeListener(fn) {
+              disconnectListeners.delete(fn);
+            },
+          },
+          postMessage() {},
+          disconnect() {
+            listeners.clear();
+            disconnectListeners.clear();
+          },
+        };
+      },
       sendMessage(message, callback) {
         sentMessages.push(structuredClone(message));
         if (message.type === 'getApis') {
@@ -270,6 +302,7 @@ export async function flushUi(window, ticks = 3) {
 export function createBackgroundHarness() {
   const listeners = {
     onMessage: null,
+    onConnect: null,
     onRemoved: null,
     onEvent: null,
     onDetach: null,
@@ -288,6 +321,11 @@ export function createBackgroundHarness() {
       onMessage: {
         addListener(listener) {
           listeners.onMessage = listener;
+        },
+      },
+      onConnect: {
+        addListener(listener) {
+          listeners.onConnect = listener;
         },
       },
     },
@@ -363,6 +401,9 @@ export function createBackgroundHarness() {
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,
+    // utils.js is already loaded into this context below; real service workers
+    // use importScripts to do the same thing at runtime.
+    importScripts: () => {},
     chrome,
   };
   vm.createContext(context);

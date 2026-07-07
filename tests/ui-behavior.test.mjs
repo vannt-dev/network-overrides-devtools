@@ -302,3 +302,27 @@ test('A disabled rule still counts an API as Overridden but dims it; a method-mi
 
   assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
 });
+
+test('When a disabled rule and an enabled rule both match the same API, the enabled rule wins for dimming', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [
+        { pattern: 'users', body: '{}', mode: 'text', enabled: false },
+        { pattern: 'users', body: '{}', mode: 'text', enabled: true },
+      ],
+    },
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch' }],
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overridden"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const item = harness.document.querySelector('.api-item');
+  assert.equal(item.classList.contains('active'), true);
+  assert.equal(item.classList.contains('api-item--rule-disabled'), false);
+});

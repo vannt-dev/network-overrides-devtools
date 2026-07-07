@@ -454,8 +454,10 @@ namespace NetworkOverridesUi {
       apis.forEach(api => {
         const li = document.createElement('li');
         li.className = 'api-item';
-        const matchedOverride = state.overrides.find(override => wouldApply(override, api));
-        const isOverridden = !!matchedOverride;
+        const matchingOverrides = state.overrides.filter(override => wouldApply(override, api));
+        const matchedOverride =
+          matchingOverrides.find(override => override.enabled !== false) ?? matchingOverrides[0];
+        const isOverridden = matchingOverrides.length > 0;
         const isSelected = state.selectedApi ? patternMatches(state.selectedApi, api.url) : false;
         if (isOverridden) li.classList.add('active');
         if (matchedOverride?.enabled === false) li.classList.add('api-item--rule-disabled');

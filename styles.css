@@ -231,6 +231,24 @@ input[type='search'] {
 .override-item-actions button:hover {
   background: #eef4fa;
 }
+.override-item--disabled {
+  opacity: 0.55;
+}
+.override-enabled-toggle {
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+.override-method-badge {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: #eef4fa;
+  color: #35506b;
+  font-weight: 600;
+  font-size: 0.78em;
+  margin-right: 4px;
+}
 .override-meta {
   margin-top: 4px;
   font-size: 0.82em;

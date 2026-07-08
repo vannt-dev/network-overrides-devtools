@@ -230,12 +230,26 @@ namespace NetworkOverridesUi {
       state.overrides.forEach((override, index) => {
         const li = document.createElement('li');
         li.className = 'override-item';
+        if (override.enabled === false) {
+          li.classList.add('override-item--disabled');
+        }
+        const methodBadge =
+          override.method && override.method !== 'ANY'
+            ? `<span class="override-method-badge">${escapeHtml(override.method)}</span> `
+            : '';
         li.innerHTML = `
           <div class="override-item-main">
+            <input
+              type="checkbox"
+              class="override-enabled-toggle"
+              data-index="${index}"
+              ${override.enabled === false ? '' : 'checked'}
+              title="Enable/disable this rule"
+            />
             <div class="override-item-info">
               <b class="override-pattern">${escapeHtml(override.pattern)}</b>
               ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
-              <div class="override-meta">${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
+              <div class="override-meta">${methodBadge}${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
             </div>
             <div class="override-item-actions">
               <button data-index="${index}" class="edit-btn" title="Edit">✎</button>
@@ -651,6 +665,22 @@ namespace NetworkOverridesUi {
       }
 
       state.overrides.splice(index, 1);
+      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+      renderList();
+      renderApis();
+      await notifyBackground();
+    });
+
+    elements.listEl.addEventListener('change', async event => {
+      const target = event.target as HTMLElement;
+      if (!target.classList.contains('override-enabled-toggle')) {
+        return;
+      }
+      const index = Number(target.dataset.index);
+      if (Number.isNaN(index) || !state.overrides[index]) {
+        return;
+      }
+      state.overrides[index].enabled = (target as HTMLInputElement).checked;
       await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
       renderList();
       renderApis();

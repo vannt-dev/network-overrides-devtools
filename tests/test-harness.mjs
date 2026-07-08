@@ -139,6 +139,7 @@ function buildUiHtml() {
         <option value="text">Text</option>
         <option value="file">Raw base64</option>
       </select>
+      <button id="export-rules-btn" type="button">Export</button>
       <ul id="list"></ul>
     </body>
   </html>`;
@@ -179,6 +180,7 @@ export function createUiHarness({
   const sentMessages = [];
   const storageSets = [];
   const alerts = [];
+  const downloads = [];
   let getApisCallCount = 0;
 
   const chrome = {
@@ -281,6 +283,26 @@ export function createUiHarness({
     chrome,
     alert: message => alerts.push(String(message)),
   });
+  window.URL.createObjectURL = blob => {
+    const entry = { content: '', filename: '' };
+    downloads.push(entry);
+    blob
+      .text()
+      .then(text => {
+        entry.content = text;
+      })
+      .catch(() => {});
+    return 'blob:mock-url';
+  };
+  window.URL.revokeObjectURL = () => {};
+  const originalClick = window.HTMLAnchorElement.prototype.click;
+  window.HTMLAnchorElement.prototype.click = function click() {
+    const pending = downloads.at(-1);
+    if (pending) {
+      pending.filename = this.download;
+    }
+    return originalClick.call(this);
+  };
 
   const context = dom.getInternalVMContext();
   runDistFile('utils.js', context);
@@ -296,6 +318,7 @@ export function createUiHarness({
     sentMessages,
     storageSets,
     alerts,
+    downloads,
     localState,
     getApisCallCount: () => getApisCallCount,
   };

@@ -122,6 +122,7 @@ namespace NetworkOverridesUi {
     infoBtn: HTMLButtonElement;
     redirectUrlInput: HTMLInputElement;
     addApiBtn: HTMLButtonElement;
+    exportRulesBtn: HTMLButtonElement;
   }
 
   export interface AppOptions {
@@ -810,6 +811,25 @@ namespace NetworkOverridesUi {
       elements.modalPattern.focus();
     });
 
+    elements.exportRulesBtn.addEventListener('click', () => {
+      const payload = {
+        version: 1,
+        domain: currentDomain,
+        exportedAt: new Date().toISOString(),
+        overrides: state.overrides,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const safeDomain = currentDomain.replace(/[^a-z0-9.-]+/gi, '_') || 'rules';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `network-overrides-${safeDomain}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
     elements.tabsContainer.addEventListener('click', event => {
       const btn = (event.target as HTMLElement).closest('.tab-btn') as HTMLElement;
       if (btn?.dataset.tab) {
@@ -959,6 +979,7 @@ namespace NetworkOverridesUi {
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
       addApiBtn: document.getElementById('add-api-btn') as HTMLButtonElement,
+      exportRulesBtn: document.getElementById('export-rules-btn') as HTMLButtonElement,
     };
   }
 

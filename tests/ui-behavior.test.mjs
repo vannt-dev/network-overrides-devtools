@@ -382,3 +382,33 @@ test('Opening the modal from a captured API pre-selects its method; saving persi
 
   assert.equal(harness.localState.overrides[0].method, 'POST');
 });
+
+test('Export builds the documented JSON envelope and triggers a download', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('export-rules-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.downloads.length, 1);
+  const exported = JSON.parse(harness.downloads[0].content);
+  assert.equal(exported.version, 1);
+  assert.equal(exported.domain, TEST_DOMAIN);
+  assert.equal(typeof exported.exportedAt, 'string');
+  assert.deepEqual(exported.overrides, [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }]);
+});

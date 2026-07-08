@@ -359,3 +359,26 @@ test('Toggling a rule checkbox persists its enabled state, dims the row, and not
   const lastUpdate = harness.sentMessages.filter(message => message.type === 'update').at(-1);
   assert.equal(lastUpdate.overrides[0].enabled, false);
 });
+
+test('Opening the modal from a captured API pre-selects its method; saving persists a non-ANY method', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [] },
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch', method: 'POST' }],
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('.api-item')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.document.getElementById('modal-method').value, 'POST');
+
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides[0].method, 'POST');
+});

@@ -107,6 +107,7 @@ namespace NetworkOverridesUi {
     modalUrl: HTMLElement;
     modalTitleText: HTMLElement;
     modalPattern: HTMLInputElement;
+    modalMethod: HTMLSelectElement;
     modalMode: HTMLSelectElement;
     modalBody: HTMLTextAreaElement;
     modalRedirectUrl: HTMLInputElement;
@@ -305,6 +306,7 @@ namespace NetworkOverridesUi {
       elements.modalUrl.title = existing.pattern;
       elements.modalTitleText.textContent = 'Edit override';
       elements.modalPattern.value = existing.pattern;
+      elements.modalMethod.value = existing.method || 'ANY';
       elements.modalMode.value = existing.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(existing.body || '');
       elements.modalRedirectUrl.value = existing.redirectUrl || '';
@@ -336,6 +338,7 @@ namespace NetworkOverridesUi {
         elements.modalTitleText.textContent = 'Edit override';
         elements.modalBody.value = formatJsonIfPossible(existing.body || '');
         elements.modalMode.value = existing.mode || 'text';
+        elements.modalMethod.value = existing.method || 'ANY';
         elements.modalRedirectUrl.value = existing.redirectUrl || '';
         setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
       } else {
@@ -343,6 +346,11 @@ namespace NetworkOverridesUi {
         elements.modalMode.value = 'text';
         elements.modalRedirectUrl.value = '';
         setModalOverrideType('body');
+
+        const capturedMethod = apiByUrl.get(url)?.method?.toUpperCase();
+        const knownMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        elements.modalMethod.value =
+          capturedMethod && knownMethods.includes(capturedMethod) ? capturedMethod : 'ANY';
 
         const apiEntry = apiByUrl.get(url);
         if (apiEntry?.body) {
@@ -714,16 +722,23 @@ namespace NetworkOverridesUi {
       const redirectUrl = isRedirect
         ? elements.modalRedirectUrl.value.trim() || undefined
         : undefined;
-
-      const override: OverrideRule = { pattern, body, mode };
-      if (redirectUrl) {
-        override.redirectUrl = redirectUrl;
-      }
+      const method = elements.modalMethod.value;
 
       const oldOverride =
         state.currentEditIndex !== null && state.overrides[state.currentEditIndex]
           ? { ...state.overrides[state.currentEditIndex] }
           : null;
+
+      const override: OverrideRule = { pattern, body, mode };
+      if (redirectUrl) {
+        override.redirectUrl = redirectUrl;
+      }
+      if (method && method !== 'ANY') {
+        override.method = method;
+      }
+      if (oldOverride?.enabled === false) {
+        override.enabled = false;
+      }
 
       if (state.currentEditIndex !== null && state.overrides[state.currentEditIndex]) {
         state.overrides[state.currentEditIndex] = override;
@@ -784,6 +799,7 @@ namespace NetworkOverridesUi {
       elements.modalUrl.title = '';
       elements.modalTitleText.textContent = 'New override';
       elements.modalPattern.value = '';
+      elements.modalMethod.value = 'ANY';
       elements.modalMode.value = 'text';
       elements.modalBody.value = '';
       elements.modalRedirectUrl.value = '';
@@ -928,6 +944,7 @@ namespace NetworkOverridesUi {
       modalUrl: document.getElementById('modal-url') as HTMLElement,
       modalTitleText: document.getElementById('modal-title-text') as HTMLElement,
       modalPattern: document.getElementById('modal-pattern') as HTMLInputElement,
+      modalMethod: document.getElementById('modal-method') as HTMLSelectElement,
       modalMode: document.getElementById('modal-mode') as HTMLSelectElement,
       modalBody: document.getElementById('modal-body') as HTMLTextAreaElement,
       modalRedirectUrl: document.getElementById('modal-redirect-url') as HTMLInputElement,

@@ -123,6 +123,8 @@ namespace NetworkOverridesUi {
     redirectUrlInput: HTMLInputElement;
     addApiBtn: HTMLButtonElement;
     exportRulesBtn: HTMLButtonElement;
+    importRulesBtn: HTMLButtonElement;
+    importRulesInput: HTMLInputElement;
   }
 
   export interface AppOptions {
@@ -830,6 +832,54 @@ namespace NetworkOverridesUi {
       URL.revokeObjectURL(url);
     });
 
+    elements.importRulesBtn.addEventListener('click', () => {
+      elements.importRulesInput.value = '';
+      elements.importRulesInput.click();
+    });
+
+    elements.importRulesInput.addEventListener('change', async () => {
+      const file = elements.importRulesInput.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(await file.text());
+      } catch (e) {
+        alert(`Invalid file: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+
+      if (!parsed || !Array.isArray(parsed.overrides)) {
+        alert('Invalid file: missing "overrides" list.');
+        return;
+      }
+
+      const isValidRule = (rule: any): boolean =>
+        !!rule && typeof rule.pattern === 'string' && typeof rule.mode === 'string';
+      if (!parsed.overrides.every(isValidRule)) {
+        alert('Invalid file: a rule is missing "pattern" or "mode".');
+        return;
+      }
+
+      const importedRules = parsed.overrides as OverrideRule[];
+
+      if (state.overrides.length > 0) {
+        const merge = confirm(
+          'Rules already exist for this domain.\nOK = append the imported rules to the end of the list.\nCancel = delete the existing rules and replace them with the imported file.'
+        );
+        state.overrides = merge ? [...state.overrides, ...importedRules] : importedRules;
+      } else {
+        state.overrides = importedRules;
+      }
+
+      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+      renderList();
+      renderApis();
+      await notifyBackground();
+    });
+
     elements.tabsContainer.addEventListener('click', event => {
       const btn = (event.target as HTMLElement).closest('.tab-btn') as HTMLElement;
       if (btn?.dataset.tab) {
@@ -980,6 +1030,8 @@ namespace NetworkOverridesUi {
       redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
       addApiBtn: document.getElementById('add-api-btn') as HTMLButtonElement,
       exportRulesBtn: document.getElementById('export-rules-btn') as HTMLButtonElement,
+      importRulesBtn: document.getElementById('import-rules-btn') as HTMLButtonElement,
+      importRulesInput: document.getElementById('import-rules-input') as HTMLInputElement,
     };
   }
 

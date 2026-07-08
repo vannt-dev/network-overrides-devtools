@@ -412,3 +412,94 @@ test('Export builds the documented JSON envelope and triggers a download', async
   assert.equal(typeof exported.exportedAt, 'string');
   assert.deepEqual(exported.overrides, [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }]);
 });
+
+function selectImportFile(harness, jsonText) {
+  const file = new harness.window.File([jsonText], 'rules.json', { type: 'application/json' });
+  const input = harness.document.getElementById('import-rules-input');
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+}
+
+test('Import merges when confirm() returns true and there are existing rules', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
+    },
+    apis: [],
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.setConfirmResult(true);
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides.length, 2);
+  assert.equal(harness.localState.overrides[0].pattern, 'existing');
+  assert.equal(harness.localState.overrides[1].pattern, 'imported');
+});
+
+test('Import replaces when confirm() returns false and there are existing rules', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
+    },
+    apis: [],
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.setConfirmResult(false);
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState.overrides, [
+    { pattern: 'imported', body: '{}', mode: 'text' },
+  ]);
+});
+
+test('Import shows an alert and makes no changes when the file is not valid JSON', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
+    apis: [],
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  selectImportFile(harness, 'not json');
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides.length, 1);
+  assert.equal(harness.localState.overrides[0].pattern, 'existing');
+  assert.equal(harness.alerts.length, 1);
+});

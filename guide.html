@@ -314,6 +314,13 @@
       <ul>
         <li><strong>Pattern</strong>: URL pattern for matching.</li>
         <li>
+          <strong>HTTP Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>,
+          <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the
+          rule to a specific request method. Defaults to <code>Any</code>, which matches every
+          method (same as before this field existed). Pre-filled from the captured request's method
+          when opening the modal from a captured API.
+        </li>
+        <li>
           <strong>Override body / Redirect to URL</strong>: Choose the override type via radio
           buttons.
         </li>
@@ -355,7 +362,12 @@
       <ol>
         <li>Go to <strong>Captured APIs</strong> or <strong>Overridden</strong> tab.</li>
         <li>Click an API you want to override.</li>
-        <li>The modal opens with the pattern pre-filled.</li>
+        <li>
+          The modal opens with the pattern pre-filled, and the <strong>Method</strong> dropdown
+          pre-selected to the captured request's method if it's one of
+          <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code>DELETE</code>
+          (otherwise it defaults to <code>Any</code>).
+        </li>
         <li>If the API has a stored response body, it will be auto-filled.</li>
         <li>Edit the content → <strong>Save Override</strong>.</li>
       </ol>
@@ -434,6 +446,16 @@ Pattern: all</pre
         Rules are evaluated in list order. <strong>The first matching rule wins</strong>.
         Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in
         the desired order.
+      </p>
+
+      <h3>5.6. HTTP method</h3>
+      <p>
+        Besides the URL pattern, a rule can also be scoped to a specific HTTP method via the
+        <strong>Method</strong> field in the override modal (see <a href="#interface">3.3</a> and
+        <a href="#basic-usage">4</a>). A rule with a specific method (<code>GET</code>,
+        <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) only applies
+        to requests using that method; <code>Any</code> (the default) matches every method,
+        regardless of pattern type.
       </p>
 
       <!-- ============ 6 ============ -->
@@ -565,7 +587,15 @@ Pattern: all</pre
       <h3>8.1. View rules</h3>
       <p>Go to the <strong>Rules</strong> tab. Each rule displays:</p>
       <ul>
+        <li>
+          <strong>Enabled checkbox</strong>: at the start of the row. Unchecked means the rule is
+          disabled (see 8.5).
+        </li>
         <li><strong>Pattern</strong>: Bold blue text.</li>
+        <li>
+          <strong>Method badge</strong> (if set to something other than <code>Any</code>): a small
+          badge (e.g. <code>POST</code>) next to the body preview.
+        </li>
         <li><strong>Redirect URL</strong> (if set): Arrow → followed by the URL.</li>
         <li>
           <strong>Body preview</strong>: First 80 characters + mode label
@@ -586,6 +616,70 @@ Pattern: all</pre
       <p>
         Rules are stored in <code>chrome.storage.local</code> →
         <strong>they never disappear</strong> on page refresh, DevTools close, or browser restart.
+      </p>
+
+      <h3>8.5. Enable/disable a rule</h3>
+      <p>
+        Each rule has a checkbox at the start of its row. Unchecking it
+        <strong>disables</strong> the rule (<code>enabled: false</code>) without deleting it:
+      </p>
+      <ul>
+        <li>The rule stays visible in the <strong>Rules</strong> list, dimmed.</li>
+        <li>
+          Any API it targets stays in the <strong>Overridden</strong> tab (it still "would apply" by
+          pattern and method) but is also shown dimmed, since a disabled rule is no longer actively
+          applied.
+        </li>
+        <li>
+          The background service worker skips disabled rules when deciding which override to apply
+          to a request.
+        </li>
+      </ul>
+      <p>
+        Checking the box re-enables the rule. New rules, and rules that existed before this feature
+        was added, default to <strong>enabled</strong>.
+      </p>
+
+      <h3>8.6. Export rules</h3>
+      <p>
+        Click <strong>Export</strong> in the <strong>Rules</strong> tab to download the rules for
+        the <strong>currently active domain</strong> as a JSON file (named after the domain). The
+        file has this shape:
+      </p>
+      <pre><code>{
+  "version": 1,
+  "domain": "https://example.com",
+  "exportedAt": "2026-07-07T00:00:00.000Z",
+  "overrides": [
+    /* OverrideRule[] */
+  ]
+}</code></pre>
+      <p>Export only includes rules for the domain currently open in the panel, not all domains.</p>
+
+      <h3>8.7. Import rules</h3>
+      <p>
+        Click <strong>Import</strong> in the <strong>Rules</strong> tab and pick a previously
+        exported (or hand-crafted) JSON file:
+      </p>
+      <ul>
+        <li>
+          If the current domain <strong>already has rules</strong>, a confirm dialog asks how to
+          combine them: <strong>OK</strong> merges — the imported rules are appended to the end of
+          the existing list; <strong>Cancel</strong> replaces — all existing rules for the current
+          domain are overwritten by the imported ones.
+        </li>
+        <li>
+          If the current domain <strong>has no rules yet</strong>, the import is applied directly
+          with no prompt.
+        </li>
+        <li>
+          Invalid files (not valid JSON, missing the <code>overrides</code> array, or a rule missing
+          required fields) are rejected with an alert, and nothing is changed.
+        </li>
+      </ul>
+      <p>
+        Like Export, Import always operates on the domain currently active in the panel — never all
+        domains at once.
       </p>
 
       <!-- ============ 9 ============ -->
@@ -739,6 +833,12 @@ Pattern: all</pre
       <div class="faq-a">
         No. The extension uses <code>chrome.storage.local</code> (10MB limit). Sync storage is not
         used since rules may contain large response bodies.
+      </div>
+
+      <div class="faq-q">Q: Can I import rules exported from a different domain?</div>
+      <div class="faq-a">
+        Yes. Import always writes into the domain that's currently active in the panel, regardless
+        of which domain the file's <code>domain</code> field says it was exported from.
       </div>
 
       <hr />

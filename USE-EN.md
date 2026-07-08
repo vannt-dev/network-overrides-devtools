@@ -80,6 +80,7 @@ Open DevTools (F12) → **Overrides** tab. Same as popup, plus:
 Click an API to open the modal with:
 
 - **Pattern**: URL pattern for matching.
+- **HTTP Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method (same as before this field existed). Pre-filled from the captured request's method when opening the modal from a captured API.
 - **Override body / Redirect to URL**: Choose the override type.
 - **Response body**: Custom response content (for body override).
 - **Redirect URL**: Target URL (for redirect).
@@ -112,7 +113,7 @@ Browse your application normally. API requests will appear automatically in the 
 
 1. Go to **Captured APIs** or **Overridden** tab.
 2. Click an API you want to override.
-3. The modal opens with the pattern pre-filled.
+3. The modal opens with the pattern pre-filled, and the **Method** dropdown pre-selected to the captured request's method if it's one of `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (otherwise it defaults to `Any`).
 4. If the API has a stored response body, it will be auto-filled into the **Response body** field.
 5. Edit the content → **Save Override**.
 
@@ -189,6 +190,10 @@ Matches **every request**.
 ### 5.5. Rule order
 
 Rules are evaluated in list order. **The first matching rule wins**. Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in the desired order.
+
+### 5.6. HTTP method
+
+Besides the URL pattern, a rule can also be scoped to a specific HTTP method via the **Method** field in the override modal (see [3.3](#33-override-modal) and [4](#4-basic-usage)). A rule with a specific method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) only applies to requests using that method; `Any` (the default) matches every method, regardless of pattern type.
 
 ---
 
@@ -272,7 +277,9 @@ If any `*` remains unsubstituted in the Redirect URL, the extension logs an erro
 
 Go to the **Rules** tab. Each rule displays:
 
+- **Enabled checkbox**: at the start of the row. Unchecked means the rule is disabled (see [8.5](#85-enabledisable-a-rule)).
 - **Pattern**: Bold blue text.
+- **Method badge** (if set to something other than `Any`): a small badge (e.g. `POST`) next to the body preview.
 - **Redirect URL** (if set): Arrow → followed by the URL.
 - **Body preview**: First 80 characters + mode label (`text`/`file`).
 
@@ -288,6 +295,43 @@ Click **✕** → rule is removed immediately.
 
 - Rules are stored in `chrome.storage.local` → **they never disappear** on page refresh, DevTools close, or browser restart.
 - No need to worry about losing your configuration.
+
+### 8.5. Enable/disable a rule
+
+Each rule has a checkbox at the start of its row. Unchecking it **disables** the rule (`enabled: false`) without deleting it:
+
+- The rule stays visible in the **Rules** list, dimmed.
+- Any API it targets stays in the **Overridden** tab (it still "would apply" by pattern and method) but is also shown dimmed, since a disabled rule is no longer actively applied.
+- The background service worker skips disabled rules when deciding which override to apply to a request.
+
+Checking the box re-enables the rule. New rules, and rules that existed before this feature was added, default to **enabled**.
+
+### 8.6. Export rules
+
+Click **Export** in the **Rules** tab to download the rules for the **currently active domain** as a JSON file (named after the domain). The file has this shape:
+
+```json
+{
+  "version": 1,
+  "domain": "https://example.com",
+  "exportedAt": "2026-07-07T00:00:00.000Z",
+  "overrides": [
+    /* OverrideRule[] */
+  ]
+}
+```
+
+Export only includes rules for the domain currently open in the panel, not all domains.
+
+### 8.7. Import rules
+
+Click **Import** in the **Rules** tab and pick a previously exported (or hand-crafted) JSON file:
+
+- If the current domain **already has rules**, a confirm dialog asks how to combine them: **OK** merges — the imported rules are appended to the end of the existing list; **Cancel** replaces — all existing rules for the current domain are overwritten by the imported ones.
+- If the current domain **has no rules yet**, the import is applied directly with no prompt.
+- Invalid files (not valid JSON, missing the `overrides` array, or a rule missing required fields) are rejected with an alert, and nothing is changed.
+
+Like Export, Import always operates on the domain currently active in the panel — never all domains at once.
 
 ---
 
@@ -432,3 +476,7 @@ No. The extension uses `chrome.storage.local` (10MB limit). Sync storage is not 
 ### Q: Can I override WebSocket connections?
 
 No. The extension only intercepts HTTP requests (XHR, Fetch) via Chrome's Fetch domain. WebSocket is not supported.
+
+### Q: Can I import rules exported from a different domain?
+
+Yes. Import always writes into the domain that's currently active in the panel, regardless of which domain the file's `domain` field says it was exported from.

@@ -231,6 +231,23 @@ input[type='search'] {
 .override-item-actions button:hover {
   background: #eef4fa;
 }
+.rules-io-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.rules-io-btn {
+  border: 1px solid #c9d7e6;
+  border-radius: 4px;
+  background: #f7fafd;
+  color: #35506b;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.rules-io-btn:hover {
+  background: #eef4fa;
+}
 .override-item--disabled {
   opacity: 0.55;
 }

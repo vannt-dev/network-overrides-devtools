@@ -140,6 +140,8 @@ function buildUiHtml() {
         <option value="file">Raw base64</option>
       </select>
       <button id="export-rules-btn" type="button">Export</button>
+      <button id="import-rules-btn" type="button">Import</button>
+      <input id="import-rules-input" type="file">
       <ul id="list"></ul>
     </body>
   </html>`;
@@ -181,6 +183,8 @@ export function createUiHarness({
   const storageSets = [];
   const alerts = [];
   const downloads = [];
+  let confirmResult = true;
+  const confirms = [];
   let getApisCallCount = 0;
 
   const chrome = {
@@ -282,6 +286,10 @@ export function createUiHarness({
   Object.assign(window, {
     chrome,
     alert: message => alerts.push(String(message)),
+    confirm: message => {
+      confirms.push(String(message));
+      return confirmResult;
+    },
   });
   window.URL.createObjectURL = blob => {
     const entry = { content: '', filename: '' };
@@ -319,6 +327,10 @@ export function createUiHarness({
     storageSets,
     alerts,
     downloads,
+    confirms,
+    setConfirmResult: value => {
+      confirmResult = value;
+    },
     localState,
     getApisCallCount: () => getApisCallCount,
   };

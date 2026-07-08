@@ -5,6 +5,21 @@ import { JSDOM } from 'jsdom';
 
 const repoRoot = process.cwd();
 
+// createUiHarness() boots real jsdom windows to run src/ui.ts's init code,
+// which schedules a real window.setInterval (see ui.ts's periodic
+// startApiStream retry). jsdom backs window timers with real Node timers,
+// so a window that's never closed leaves a live interval running. With many
+// harnesses created across the suite and --test-isolation=none, those
+// accumulate and keep the process alive after tests finish. Track every
+// window here so closeAllUiHarnessWindows() can close them all in one place.
+const activeUiWindows = [];
+
+export function closeAllUiHarnessWindows() {
+  while (activeUiWindows.length) {
+    activeUiWindows.pop().close();
+  }
+}
+
 export function readDistFile(name) {
   return fs.readFileSync(path.join(repoRoot, 'dist', name), 'utf8');
 }
@@ -161,6 +176,7 @@ export function createUiHarness({
     runScripts: 'outside-only',
   });
   const { window } = dom;
+  activeUiWindows.push(window);
   const localState = structuredClone(storageState);
 
   let tabDomain = '';

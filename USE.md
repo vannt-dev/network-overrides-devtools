@@ -80,6 +80,7 @@ Mở DevTools (F12) → tab **Overrides**. Giống popup nhưng có thêm:
 Khi click vào một API, modal hiện ra với:
 
 - **Pattern**: URL pattern để matching.
+- **HTTP Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method (giống như hành vi trước khi có field này). Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
 - **Override body / Redirect to URL**: Chọn loại override.
 - **Response body**: Nội dung response ghi đè (nếu chọn Override body).
 - **Redirect URL**: URL chuyển hướng (nếu chọn Redirect to URL).
@@ -112,7 +113,7 @@ Duyệt web / dùng ứng dụng như bình thường. Các API request sẽ t�
 
 1. Vào tab **Captured APIs** hoặc **Overridden**.
 2. Click vào API muốn ghi đè.
-3. Modal hiện ra với pattern được điền sẵn.
+3. Modal hiện ra với pattern được điền sẵn, và dropdown **Method** được chọn sẵn theo method của request đã capture nếu đó là `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (nếu không, mặc định là `Any`).
 4. Nếu API có response body, nó sẽ được tự động điền vào ô **Response body**.
 5. Chỉnh sửa nội dung → **Save Override**.
 
@@ -189,6 +190,10 @@ Khớp với **mọi request**.
 ### 5.5. Thứ tự ưu tiên
 
 Rules được duyệt theo thứ tự trong danh sách. **Rule đầu tiên** khớp sẽ được áp dụng. Kéo thả không hỗ trợ — nếu cần ưu tiên, xóa và tạo lại rule theo thứ tự mong muốn.
+
+### 5.6. HTTP method
+
+Bên cạnh URL pattern, một rule còn có thể được giới hạn theo HTTP method cụ thể thông qua field **Method** trong modal (xem mục 3.3 và 4 ở trên). Rule có method cụ thể (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) chỉ áp dụng cho request dùng đúng method đó; `Any` (mặc định) khớp với mọi method, không phân biệt loại pattern.
 
 ---
 
@@ -272,7 +277,9 @@ Nếu còn `*` chưa được thay thế trong Redirect URL, extension sẽ log 
 
 Vào tab **Rules**. Mỗi rule hiển thị:
 
+- **Checkbox enable**: ở đầu dòng. Bỏ tick nghĩa là rule đang bị tắt (xem mục 8.5).
 - **Pattern**: In đậm màu xanh.
+- **Method badge** (nếu khác `Any`): một badge nhỏ (ví dụ `POST`) cạnh phần preview body.
 - **Redirect URL** (nếu có): Mũi tên → kèm URL.
 - **Body preview**: 80 ký tự đầu của body, kèm mode (`text`/`file`).
 
@@ -288,6 +295,43 @@ Click **✕** → rule bị xóa ngay lập tức.
 
 - Rules được lưu trong `chrome.storage.local` → **không mất** khi refresh trang, đóng/mở DevTools, restart trình duyệt.
 - Không cần lo lắng về việc mất dữ liệu.
+
+### 8.5. Bật/tắt một rule
+
+Mỗi rule có một checkbox ở đầu dòng. Bỏ tick sẽ **tắt** rule đó (`enabled: false`) mà không xóa rule:
+
+- Rule vẫn hiển thị trong danh sách **Rules**, nhưng bị làm mờ (dimmed).
+- Các API mà rule này nhắm tới vẫn nằm trong tab **Overridden** (vì vẫn khớp pattern và method), nhưng cũng được hiển thị mờ đi, vì rule đã tắt thì không còn thực sự được áp dụng.
+- Background service worker sẽ bỏ qua các rule đang tắt khi quyết định override request nào.
+
+Tick lại checkbox để bật rule trở lại. Rule mới tạo, cũng như các rule đã tồn tại trước khi có tính năng này, mặc định là **đang bật (enabled)**.
+
+### 8.6. Export rules
+
+Click **Export** trong tab **Rules** để tải xuống các rule của **domain đang active** dưới dạng file JSON (đặt tên theo domain). File có cấu trúc:
+
+```json
+{
+  "version": 1,
+  "domain": "https://example.com",
+  "exportedAt": "2026-07-07T00:00:00.000Z",
+  "overrides": [
+    /* OverrideRule[] */
+  ]
+}
+```
+
+Export chỉ bao gồm rules của domain đang mở trong panel, không phải tất cả các domain.
+
+### 8.7. Import rules
+
+Click **Import** trong tab **Rules** và chọn một file JSON đã export trước đó (hoặc tự tạo tay):
+
+- Nếu domain hiện tại **đã có rules**, một hộp thoại confirm sẽ hỏi cách kết hợp: **OK** = merge — các rule import được nối thêm vào cuối danh sách hiện có; **Cancel** = replace — toàn bộ rule hiện có của domain này bị thay thế bằng các rule trong file import.
+- Nếu domain hiện tại **chưa có rule nào**, import sẽ được áp dụng ngay, không hỏi.
+- File không hợp lệ (không phải JSON hợp lệ, thiếu mảng `overrides`, hoặc có rule thiếu field bắt buộc) sẽ bị từ chối kèm cảnh báo (alert), và không có gì thay đổi.
+
+Giống Export, Import luôn thao tác trên domain đang active trong panel — không bao giờ áp dụng cho tất cả domain cùng lúc.
 
 ---
 
@@ -432,3 +476,7 @@ Không. Extension dùng `chrome.storage.local` (dung lượng 10MB). Không dùn
 ### Q: Có thể override WebSocket không?
 
 Không. Extension chỉ hoạt động với HTTP request (XHR, Fetch) thông qua Fetch domain của CDP. WebSocket không nằm trong phạm vi này.
+
+### Q: Có thể import file rules được export từ domain khác không?
+
+Có. Import luôn ghi vào domain đang active trong panel, bất kể field `domain` trong file được export từ domain nào.

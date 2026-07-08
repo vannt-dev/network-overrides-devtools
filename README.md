@@ -5,6 +5,9 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 ## Features
 
 - **Enable/disable** overrides per active tab via a toggle switch.
+- **Per-rule enable/disable toggle**: disable an individual rule without deleting it; it stays visible (dimmed) and is skipped by the background worker until re-enabled.
+- **HTTP method matching**: scope a rule to `GET`/`POST`/`PUT`/`PATCH`/`DELETE`, or leave it at `Any` to match every method (default, pre-filled from the captured request when available).
+- **Import/export rules as JSON**: back up or share the current domain's rules as a downloadable file, and load them back in with a merge-or-replace choice.
 - **Three pattern matching modes** for override rules:
   - URL substring match (e.g. `/api/users`)
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
@@ -117,7 +120,7 @@ In the modal, choose:
 
 ### 5. Manage rules
 
-Switch to the **Rules** tab to view, edit (✎), or delete (✕) all saved rules. The **Overridden** tab shows which captured APIs are currently matched by any rule.
+Switch to the **Rules** tab to view, edit (✎), or delete (✕) all saved rules. Each rule has an enabled checkbox (uncheck to disable without deleting — the rule stays visible but dimmed and is skipped by the background worker) and an optional method field (scope the rule to one HTTP method instead of any). Use the **Export**/**Import** buttons to save the current domain's rules to a JSON file or load them back in (import offers a merge-or-replace choice when rules already exist). The **Overridden** tab shows which captured APIs are currently matched by any rule.
 
 ### 6. Copy cURL
 

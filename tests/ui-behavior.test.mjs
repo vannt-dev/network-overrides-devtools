@@ -503,3 +503,31 @@ test('Import shows an alert and makes no changes when the file is not valid JSON
   assert.equal(harness.localState.overrides[0].pattern, 'existing');
   assert.equal(harness.alerts.length, 1);
 });
+
+test('Import shows an alert and makes no changes when a rule has a non-string method', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
+    apis: [],
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text', method: 123 }],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides.length, 1);
+  assert.equal(harness.localState.overrides[0].pattern, 'existing');
+  assert.equal(harness.alerts.length, 1);
+});

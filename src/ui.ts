@@ -857,9 +857,15 @@ namespace NetworkOverridesUi {
       }
 
       const isValidRule = (rule: any): boolean =>
-        !!rule && typeof rule.pattern === 'string' && typeof rule.mode === 'string';
+        !!rule &&
+        typeof rule.pattern === 'string' &&
+        typeof rule.mode === 'string' &&
+        (rule.method === undefined || typeof rule.method === 'string') &&
+        (rule.body === undefined || typeof rule.body === 'string') &&
+        (rule.redirectUrl === undefined || typeof rule.redirectUrl === 'string') &&
+        (rule.enabled === undefined || typeof rule.enabled === 'boolean');
       if (!parsed.overrides.every(isValidRule)) {
-        alert('Invalid file: a rule is missing "pattern" or "mode".');
+        alert('Invalid file: a rule is missing "pattern"/"mode", or has an invalid field type.');
         return;
       }
 

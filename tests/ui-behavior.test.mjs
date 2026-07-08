@@ -326,3 +326,36 @@ test('When a disabled rule and an enabled rule both match the same API, the enab
   assert.equal(item.classList.contains('active'), true);
   assert.equal(item.classList.contains('api-item--rule-disabled'), false);
 });
+
+test('Toggling a rule checkbox persists its enabled state, dims the row, and notifies background', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
+    },
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch' }],
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const checkbox = harness.document.querySelector('.override-enabled-toggle');
+  assert.equal(checkbox.checked, true);
+
+  checkbox.checked = false;
+  checkbox.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides[0].enabled, false);
+  assert.equal(
+    harness.document.querySelector('.override-item').classList.contains('override-item--disabled'),
+    true
+  );
+
+  const lastUpdate = harness.sentMessages.filter(message => message.type === 'update').at(-1);
+  assert.equal(lastUpdate.overrides[0].enabled, false);
+});

@@ -96,6 +96,14 @@ function buildUiHtml() {
           <span id="modal-url"></span>
         </h4>
         <input id="modal-pattern" type="text">
+        <select id="modal-method">
+          <option value="ANY">Any</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+        </select>
         <div class="override-type-selector">
           <label class="type-radio">
             <input type="radio" name="modal-override-type" value="body" checked />

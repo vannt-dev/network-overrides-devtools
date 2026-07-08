@@ -1,7 +1,15 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createUiHarness, flushUi } from './test-harness.mjs';
+import { createUiHarness, flushUi, closeAllUiHarnessWindows } from './test-harness.mjs';
 import { TEST_API_URL, TEST_DOMAIN } from './config.mjs';
+
+// Every createUiHarness() call in this file boots a real jsdom window whose
+// window.setInterval (from ui.ts's init) keeps running until the window is
+// closed. Close them all once, after this file's tests finish, so the
+// process can exit instead of hanging on leaked timers.
+after(() => {
+  closeAllUiHarnessWindows();
+});
 
 test('UI init renders captured APIs and respects the manual editor option', async () => {
   const harness = createUiHarness({

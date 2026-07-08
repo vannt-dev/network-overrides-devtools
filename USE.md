@@ -327,9 +327,11 @@ Export chỉ bao gồm rules của domain đang mở trong panel, không phải 
 
 Click **Import** trong tab **Rules** và chọn một file JSON đã export trước đó (hoặc tự tạo tay):
 
+- Nếu field `domain` trong file có giá trị và khác với domain đang active trong panel, một hộp thoại confirm sẽ cảnh báo và hỏi có muốn import vào domain hiện tại không. Nhấn Cancel sẽ hủy import, không có gì thay đổi.
 - Nếu domain hiện tại **đã có rules**, một hộp thoại confirm sẽ hỏi cách kết hợp: **OK** = merge — các rule import được nối thêm vào cuối danh sách hiện có; **Cancel** = replace — toàn bộ rule hiện có của domain này bị thay thế bằng các rule trong file import.
 - Nếu domain hiện tại **chưa có rule nào**, import sẽ được áp dụng ngay, không hỏi.
 - File không hợp lệ (không phải JSON hợp lệ, thiếu mảng `overrides`, hoặc có rule thiếu field bắt buộc) sẽ bị từ chối kèm cảnh báo (alert), và không có gì thay đổi.
+- Chỉ các field hợp lệ của rule (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) được giữ lại từ mỗi rule import; các property khác trong file sẽ bị bỏ qua.
 
 Giống Export, Import luôn thao tác trên domain đang active trong panel — không bao giờ áp dụng cho tất cả domain cùng lúc.
 
@@ -479,4 +481,4 @@ Không. Extension chỉ hoạt động với HTTP request (XHR, Fetch) thông qu
 
 ### Q: Có thể import file rules được export từ domain khác không?
 
-Có. Import luôn ghi vào domain đang active trong panel, bất kể field `domain` trong file được export từ domain nào.
+Có. Import luôn ghi vào domain đang active trong panel, bất kể field `domain` trong file được export từ domain nào — nhưng nếu field đó khác domain hiện tại, một hộp thoại confirm sẽ cảnh báo trước, để sự khác biệt này không bị bỏ qua âm thầm.

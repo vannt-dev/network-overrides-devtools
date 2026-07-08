@@ -663,6 +663,11 @@ Pattern: all</pre
       </p>
       <ul>
         <li>
+          If the file's <code>domain</code> field is present and doesn't match the domain currently
+          active in the panel, a confirm dialog warns you and asks whether to import into the
+          current domain anyway. Canceling aborts the import with no changes.
+        </li>
+        <li>
           If the current domain <strong>already has rules</strong>, a confirm dialog asks how to
           combine them: <strong>OK</strong> merges — the imported rules are appended to the end of
           the existing list; <strong>Cancel</strong> replaces — all existing rules for the current
@@ -675,6 +680,11 @@ Pattern: all</pre
         <li>
           Invalid files (not valid JSON, missing the <code>overrides</code> array, or a rule missing
           required fields) are rejected with an alert, and nothing is changed.
+        </li>
+        <li>
+          Only known rule fields (<code>pattern</code>, <code>mode</code>, <code>body</code>,
+          <code>redirectUrl</code>, <code>method</code>, <code>enabled</code>) are kept from each
+          imported rule; any other properties in the file are dropped.
         </li>
       </ul>
       <p>
@@ -838,7 +848,9 @@ Pattern: all</pre
       <div class="faq-q">Q: Can I import rules exported from a different domain?</div>
       <div class="faq-a">
         Yes. Import always writes into the domain that's currently active in the panel, regardless
-        of which domain the file's <code>domain</code> field says it was exported from.
+        of which domain the file's <code>domain</code> field says it was exported from — but if that
+        field doesn't match the current domain, a confirm dialog warns you first, so the mismatch
+        isn't silent.
       </div>
 
       <hr />

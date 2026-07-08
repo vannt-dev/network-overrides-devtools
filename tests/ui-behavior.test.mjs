@@ -383,6 +383,41 @@ test('Opening the modal from a captured API pre-selects its method; saving persi
   assert.equal(harness.localState.overrides[0].method, 'POST');
 });
 
+test('Editing a rule with an out-of-range stored method falls back to ANY in the modal instead of saving silently', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{}', mode: 'text', method: 'TRACE' }],
+    },
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch' }],
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('.edit-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.document.getElementById('modal-method').value, 'ANY');
+
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  // Saving after the fallback must not silently persist an ANY method for what
+  // was originally a method-restricted rule with an out-of-range value; it
+  // should end up unset (ANY), which is the honest reflection of what the
+  // modal showed and the user had the chance to review.
+  assert.equal(harness.localState.overrides[0].method, undefined);
+});
+
 test('Export builds the documented JSON envelope and triggers a download', async () => {
   const harness = createUiHarness({
     storageState: {
@@ -413,6 +448,42 @@ test('Export builds the documented JSON envelope and triggers a download', async
   assert.deepEqual(exported.overrides, [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }]);
 });
 
+test('Export shows an alert and does not attempt a download when Blob construction fails', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const OriginalBlob = harness.window.Blob;
+  harness.window.Blob = function BrokenBlob() {
+    throw new Error('Blob construction boom');
+  };
+
+  try {
+    harness.document
+      .getElementById('export-rules-btn')
+      .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+    await flushUi(harness.window);
+
+    assert.equal(harness.downloads.length, 0);
+    assert.equal(harness.alerts.length, 1);
+    assert.match(harness.alerts[0], /Failed to export rules/);
+  } finally {
+    harness.window.Blob = OriginalBlob;
+  }
+});
+
 function selectImportFile(harness, jsonText) {
   const file = new harness.window.File([jsonText], 'rules.json', { type: 'application/json' });
   const input = harness.document.getElementById('import-rules-input');
@@ -427,6 +498,7 @@ test('Import merges when confirm() returns true and there are existing rules', a
       overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
     },
     apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
   });
 
   await flushUi(harness.window);
@@ -459,6 +531,7 @@ test('Import replaces when confirm() returns false and there are existing rules'
       overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
     },
     apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
   });
 
   await flushUi(harness.window);
@@ -530,4 +603,177 @@ test('Import shows an alert and makes no changes when a rule has a non-string me
   assert.equal(harness.localState.overrides.length, 1);
   assert.equal(harness.localState.overrides[0].pattern, 'existing');
   assert.equal(harness.alerts.length, 1);
+});
+
+test('Import shows an alert and makes no changes when an "overrides" entry is not an object', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
+    apis: [],
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [null],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides.length, 1);
+  assert.equal(harness.localState.overrides[0].pattern, 'existing');
+  assert.equal(harness.alerts.length, 1);
+});
+
+test('Import with no existing rules writes them directly and never prompts to merge or replace', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [] },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState.overrides, [
+    { pattern: 'imported', body: '{}', mode: 'text' },
+  ]);
+  assert.equal(harness.confirms.length, 0);
+});
+
+test('Import strips unknown fields from rule objects, keeping only known OverrideRule fields', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [] },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [
+        {
+          pattern: 'imported',
+          body: '{}',
+          mode: 'text',
+          method: 'POST',
+          enabled: false,
+          redirectUrl: 'https://example.com/new',
+          notAKnownField: 'should be dropped',
+        },
+      ],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState.overrides, [
+    {
+      pattern: 'imported',
+      body: '{}',
+      mode: 'text',
+      method: 'POST',
+      enabled: false,
+      redirectUrl: 'https://example.com/new',
+    },
+  ]);
+});
+
+test('Import with mismatched domain prompts to confirm and proceeds when accepted', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true, overrides: [] },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.setConfirmResult(true);
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: 'https://other-domain.example',
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.confirms.length, 1);
+  assert.match(harness.confirms[0], /other-domain\.example/);
+  assert.deepEqual(harness.localState.overrides, [
+    { pattern: 'imported', body: '{}', mode: 'text' },
+  ]);
+});
+
+test('Import with mismatched domain aborts with no changes when the confirm is cancelled', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.setConfirmResult(false);
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: 'https://other-domain.example',
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  // Only the domain-mismatch confirm should have fired; the import aborted
+  // before ever reaching the merge/replace confirm.
+  assert.equal(harness.confirms.length, 1);
+  assert.deepEqual(harness.localState.overrides, [
+    { pattern: 'existing', body: '{}', mode: 'text' },
+  ]);
+  assert.equal(harness.alerts.length, 0);
 });

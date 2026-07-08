@@ -327,9 +327,11 @@ Export only includes rules for the domain currently open in the panel, not all d
 
 Click **Import** in the **Rules** tab and pick a previously exported (or hand-crafted) JSON file:
 
+- If the file's `domain` field is present and doesn't match the domain currently active in the panel, a confirm dialog warns you and asks whether to import into the current domain anyway. Canceling aborts the import with no changes.
 - If the current domain **already has rules**, a confirm dialog asks how to combine them: **OK** merges — the imported rules are appended to the end of the existing list; **Cancel** replaces — all existing rules for the current domain are overwritten by the imported ones.
 - If the current domain **has no rules yet**, the import is applied directly with no prompt.
 - Invalid files (not valid JSON, missing the `overrides` array, or a rule missing required fields) are rejected with an alert, and nothing is changed.
+- Only known rule fields (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) are kept from each imported rule; any other properties in the file are dropped.
 
 Like Export, Import always operates on the domain currently active in the panel — never all domains at once.
 
@@ -479,4 +481,4 @@ No. The extension only intercepts HTTP requests (XHR, Fetch) via Chrome's Fetch 
 
 ### Q: Can I import rules exported from a different domain?
 
-Yes. Import always writes into the domain that's currently active in the panel, regardless of which domain the file's `domain` field says it was exported from.
+Yes. Import always writes into the domain that's currently active in the panel, regardless of which domain the file's `domain` field says it was exported from — but if that field doesn't match the current domain, a confirm dialog warns you first, so the mismatch isn't silent.

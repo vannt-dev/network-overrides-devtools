@@ -482,3 +482,85 @@ test('Background skips disabled rules and method-mismatched rules, falling throu
   assert.ok(fulfill);
   assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), '{"matched":true}');
 });
+
+// The test above proves a disabled/mismatched rule is skipped in favor of a later
+// matching rule. These two prove the terminal case an import can produce: a single
+// rule, written to storage exactly as ui.ts's persistOverrides() would write it
+// (only known OverrideRule fields, disabled or method-restricted), with nothing
+// else to fall through to — the request must pass through completely untouched.
+test('Background enforces an imported disabled rule by not applying it: request passes through untouched', async () => {
+  const harness = createBackgroundHarness();
+  const domainOverridesKey = `overrides_${TEST_DOMAIN}`;
+
+  // Shape this exactly like ui.ts's import handler now persists rules: only the
+  // known OverrideRule fields, written under the domain-scoped storage key.
+  harness.storageState[domainOverridesKey] = [
+    { pattern: '/users$/', body: '{"shouldNotApply":true}', mode: 'text', enabled: false },
+  ];
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: harness.storageState[domainOverridesKey],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-disabled-only',
+    request: { url: TEST_API_URL, method: 'GET' },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-disabled-only'
+  );
+  assert.equal(fulfill, undefined);
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-disabled-only'
+  );
+  assert.ok(continueCmd);
+  assert.equal(continueCmd.params.body, undefined);
+});
+
+test('Background enforces an imported method-restricted rule by not applying it: request passes through untouched', async () => {
+  const harness = createBackgroundHarness();
+  const domainOverridesKey = `overrides_${TEST_DOMAIN}`;
+
+  harness.storageState[domainOverridesKey] = [
+    { pattern: '/users$/', body: '{"shouldNotApply":true}', mode: 'text', method: 'POST' },
+  ];
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: harness.storageState[domainOverridesKey],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-method-only',
+    request: { url: TEST_API_URL, method: 'GET' },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-method-only'
+  );
+  assert.equal(fulfill, undefined);
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-method-only'
+  );
+  assert.ok(continueCmd);
+});

@@ -59,6 +59,12 @@ namespace NetworkOverridesUi {
     );
   }
 
+  const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+  function resolveModalMethodValue(method: string | undefined): string {
+    return method && KNOWN_METHODS.includes(method) ? method : 'ANY';
+  }
+
   function isValidPattern(pattern: string): boolean {
     const trimmed = pattern.trim();
     if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
@@ -309,7 +315,7 @@ namespace NetworkOverridesUi {
       elements.modalUrl.title = existing.pattern;
       elements.modalTitleText.textContent = 'Edit override';
       elements.modalPattern.value = existing.pattern;
-      elements.modalMethod.value = existing.method || 'ANY';
+      elements.modalMethod.value = resolveModalMethodValue(existing.method);
       elements.modalMode.value = existing.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(existing.body || '');
       elements.modalRedirectUrl.value = existing.redirectUrl || '';
@@ -341,7 +347,7 @@ namespace NetworkOverridesUi {
         elements.modalTitleText.textContent = 'Edit override';
         elements.modalBody.value = formatJsonIfPossible(existing.body || '');
         elements.modalMode.value = existing.mode || 'text';
-        elements.modalMethod.value = existing.method || 'ANY';
+        elements.modalMethod.value = resolveModalMethodValue(existing.method);
         elements.modalRedirectUrl.value = existing.redirectUrl || '';
         setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
       } else {
@@ -351,9 +357,7 @@ namespace NetworkOverridesUi {
         setModalOverrideType('body');
 
         const capturedMethod = apiByUrl.get(url)?.method?.toUpperCase();
-        const knownMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-        elements.modalMethod.value =
-          capturedMethod && knownMethods.includes(capturedMethod) ? capturedMethod : 'ANY';
+        elements.modalMethod.value = resolveModalMethodValue(capturedMethod);
 
         const apiEntry = apiByUrl.get(url);
         if (apiEntry?.body) {
@@ -621,6 +625,13 @@ namespace NetworkOverridesUi {
       });
     }
 
+    async function persistOverrides(): Promise<void> {
+      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+      renderList();
+      renderApis();
+      await notifyBackground();
+    }
+
     elements.addBtn.addEventListener('click', async () => {
       const pattern = elements.patternInput.value.trim();
       if (!pattern) {
@@ -692,10 +703,7 @@ namespace NetworkOverridesUi {
         return;
       }
       state.overrides[index].enabled = (target as HTMLInputElement).checked;
-      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
-      renderList();
-      renderApis();
-      await notifyBackground();
+      await persistOverrides();
     });
 
     elements.closeModal.addEventListener('click', closeOverrideModal);
@@ -750,7 +758,7 @@ namespace NetworkOverridesUi {
       }
 
       try {
-        await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
+        await persistOverrides();
       } catch (e) {
         if (oldOverride) {
           state.overrides[state.currentEditIndex!] = oldOverride;
@@ -760,8 +768,6 @@ namespace NetworkOverridesUi {
         alert(`Failed to save override: ${e instanceof Error ? e.message : String(e)}`);
         return;
       }
-      renderList();
-      await notifyBackground();
       closeOverrideModal();
     });
 
@@ -814,13 +820,19 @@ namespace NetworkOverridesUi {
     });
 
     elements.exportRulesBtn.addEventListener('click', () => {
-      const payload = {
-        version: 1,
-        domain: currentDomain,
-        exportedAt: new Date().toISOString(),
-        overrides: state.overrides,
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      let blob: Blob;
+      try {
+        const payload = {
+          version: 1,
+          domain: currentDomain,
+          exportedAt: new Date().toISOString(),
+          overrides: state.overrides,
+        };
+        blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      } catch (e) {
+        alert(`Failed to export rules: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const safeDomain = currentDomain.replace(/[^a-z0-9.-]+/gi, '_') || 'rules';
       const a = document.createElement('a');
@@ -869,7 +881,25 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      const importedRules = parsed.overrides as OverrideRule[];
+      if (typeof parsed.domain === 'string' && parsed.domain && parsed.domain !== currentDomain) {
+        const proceedDespiteDomainMismatch = confirm(
+          `This file was exported from "${parsed.domain}", but you are on "${currentDomain}". Import into "${currentDomain}" anyway?`
+        );
+        if (!proceedDespiteDomainMismatch) {
+          return;
+        }
+      }
+
+      // Only carry over known OverrideRule fields; drop anything else an
+      // untrusted file might have included so it never reaches storage/background.
+      const importedRules: OverrideRule[] = parsed.overrides.map((rule: any): OverrideRule => {
+        const clean = { pattern: rule.pattern, mode: rule.mode } as OverrideRule;
+        if (rule.body !== undefined) clean.body = rule.body;
+        if (rule.redirectUrl !== undefined) clean.redirectUrl = rule.redirectUrl;
+        if (rule.enabled !== undefined) clean.enabled = rule.enabled;
+        if (rule.method !== undefined) clean.method = rule.method;
+        return clean;
+      });
 
       if (state.overrides.length > 0) {
         const merge = confirm(
@@ -880,10 +910,7 @@ namespace NetworkOverridesUi {
         state.overrides = importedRules;
       }
 
-      await chrome.storage.local.set({ [domainKey('overrides')]: state.overrides });
-      renderList();
-      renderApis();
-      await notifyBackground();
+      await persistOverrides();
     });
 
     elements.tabsContainer.addEventListener('click', event => {

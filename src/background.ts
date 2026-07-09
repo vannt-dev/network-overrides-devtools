@@ -538,4 +538,35 @@ namespace NetworkOverridesBackground {
       proceed();
     }
   }
+
+  async function migrateLegacyLocalKeys(): Promise<void> {
+    try {
+      const all: Record<string, unknown> = await Promise.resolve(chrome.storage.local.get(null));
+      const legacy = Object.keys(all || {}).filter(
+        key => key.startsWith('recentApis_') || key.startsWith('recentApiBodies_')
+      );
+      if (legacy.length > 0) {
+        await Promise.resolve(chrome.storage.local.remove(legacy));
+      }
+    } catch {
+      // Non-fatal: migration retries on the next worker start.
+    }
+  }
+
+  export const ready: Promise<void> = (async () => {
+    const reattach = await TabState.rehydrate();
+    for (const tabId of reattach) {
+      try {
+        await attachDebugger(tabId);
+      } catch (error) {
+        console.error('[NetworkOverrides] Re-attach failed for tab', tabId, error);
+        const state = TabState.get(tabId);
+        if (state) {
+          state.enabled = false;
+          TabState.schedulePersist(tabId);
+        }
+      }
+    }
+    await migrateLegacyLocalKeys();
+  })();
 }

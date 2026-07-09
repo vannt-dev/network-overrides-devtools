@@ -371,7 +371,11 @@ export async function flushUi(window, ticks = 3) {
   }
 }
 
-export function createBackgroundHarness() {
+export function createBackgroundHarness({
+  sessionState: initialSessionState = {},
+  storageState: initialStorageState = {},
+  existingTabIds = [7],
+} = {}) {
   const listeners = {
     onMessage: null,
     onConnect: null,
@@ -379,9 +383,9 @@ export function createBackgroundHarness() {
     onEvent: null,
     onDetach: null,
   };
-  const storageState = {};
-  const sessionState = {};
-  const existingTabs = new Set([7]);
+  const storageState = structuredClone(initialStorageState);
+  const sessionState = structuredClone(initialSessionState);
+  const existingTabs = new Set(existingTabIds);
   const storageSets = [];
   const commandLog = [];
   const attachedTabs = [];

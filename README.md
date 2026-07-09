@@ -55,23 +55,22 @@ manifest.json          # Manifest V3 configuration
    - **Request stage**: Checks override rules for a `redirectUrl`. If found and pattern matches, the request is redirected via `Fetch.continueRequest` with a modified URL. Wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
    - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with original headers + `x-network-overrides: true` marker. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
 
-4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), persisted to `chrome.storage.local` under keys `recentApis_{tabId}` and `recentApiBodies_{tabId}`. Capped at 500 URLs and 100 bodies.
+4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
 
 5. **UI state**: `enabled`, `overrides[]`, and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts.
 
 ## Storage
 
-All data is stored locally in `chrome.storage.local`:
+Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runtime state is stored in `chrome.storage.session` (cleared when the browser exits):
 
-| Key                       | Type                       | Persistence                                                   |
-| ------------------------- | -------------------------- | ------------------------------------------------------------- |
-| `enabled`                 | `boolean`                  | Permanent — survives browser restart                          |
-| `overrides`               | `OverrideRule[]`           | Permanent — survives browser restart                          |
-| `apiSearchTerm`           | `string`                   | Permanent — survives browser restart                          |
-| `recentApis_{tabId}`      | `Record<string, ApiEntry>` | Per tab — persists in storage but tabId changes on tab reopen |
-| `recentApiBodies_{tabId}` | `Record<string, string>`   | Per tab — same as above                                       |
+| Key                | Type                                                                      | Persistence                                                                                             |
+| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `enabled`          | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
+| `overrides`        | `OverrideRule[]`                                                          | Permanent — survives browser restart                                                                    |
+| `apiSearchTerm`    | `string`                                                                  | Permanent — survives browser restart                                                                    |
+| `tabState_{tabId}` | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
 
-**Important**: Override rules are never lost. Recent API data is keyed by `tabId` and only visible when the same tab is active.
+**Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys from older extension versions are automatically removed from `chrome.storage.local` on worker startup.
 
 ## Pattern Reference
 

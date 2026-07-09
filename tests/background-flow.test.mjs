@@ -531,6 +531,51 @@ test('Background enforces an imported disabled rule by not applying it: request 
   assert.equal(continueCmd.params.body, undefined);
 });
 
+test('Background rehydrates from storage.session and re-attaches enabled tabs on startup', async () => {
+  const harness = createBackgroundHarness({
+    existingTabIds: [7, 8],
+    sessionState: {
+      tabState_8: {
+        enabled: true,
+        origin: 'https://b.test',
+        overrides: [{ pattern: 'users', body: '{"mocked":true}', mode: 'text' }],
+        attached: true,
+        recentApis: {},
+        recentApiBodies: {},
+      },
+    },
+  });
+
+  await harness.context.NetworkOverridesBackground.ready;
+
+  assert.deepEqual(normalize(harness.attachedTabs), [{ target: { tabId: 8 }, version: '1.3' }]);
+  const state = harness.context.NetworkOverridesTabState.get(8);
+  assert.equal(state.attached, true);
+  assert.deepEqual(normalize(state.overrides), [
+    { pattern: 'users', body: '{"mocked":true}', mode: 'text' },
+  ]);
+});
+
+test('Background startup removes legacy recentApis_* keys from storage.local', async () => {
+  const harness = createBackgroundHarness({
+    storageState: {
+      recentApis_42: { 'https://x.test/a': { url: 'https://x.test/a', type: 'xhr' } },
+      recentApiBodies_42: { 'https://x.test/a': '{}' },
+      'overrides_https://x.test': [{ pattern: 'keep', body: '', mode: 'text' }],
+      enabled: true,
+    },
+  });
+
+  await harness.context.NetworkOverridesBackground.ready;
+
+  assert.equal(harness.storageState.recentApis_42, undefined);
+  assert.equal(harness.storageState.recentApiBodies_42, undefined);
+  assert.deepEqual(normalize(harness.storageState['overrides_https://x.test']), [
+    { pattern: 'keep', body: '', mode: 'text' },
+  ]);
+  assert.equal(harness.storageState.enabled, true);
+});
+
 test('Background enforces an imported method-restricted rule by not applying it: request passes through untouched', async () => {
   const harness = createBackgroundHarness();
   const domainOverridesKey = `overrides_${TEST_DOMAIN}`;

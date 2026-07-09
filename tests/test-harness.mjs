@@ -49,6 +49,7 @@ export function createBackgroundContext() {
   const noop = () => {};
   const context = {
     console,
+    URL,
     atob: value => Buffer.from(value, 'base64').toString('binary'),
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
@@ -382,6 +383,7 @@ export function createBackgroundHarness({
     onRemoved: null,
     onEvent: null,
     onDetach: null,
+    onUpdated: null,
   };
   const storageState = structuredClone(initialStorageState);
   const sessionState = structuredClone(initialSessionState);
@@ -411,6 +413,11 @@ export function createBackgroundHarness({
       onRemoved: {
         addListener(listener) {
           listeners.onRemoved = listener;
+        },
+      },
+      onUpdated: {
+        addListener(listener) {
+          listeners.onUpdated = listener;
         },
       },
       async get(tabId) {
@@ -502,6 +509,7 @@ export function createBackgroundHarness({
     Buffer,
     TextEncoder,
     TextDecoder,
+    URL,
     atob: value => Buffer.from(value, 'base64').toString('binary'),
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
@@ -542,6 +550,9 @@ export function createBackgroundHarness({
     },
     removeTab(tabId = 7) {
       listeners.onRemoved?.(tabId);
+    },
+    navigateTab(tabId, url) {
+      listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
     },
   };
 }

@@ -576,6 +576,87 @@ test('Background startup removes legacy recentApis_* keys from storage.local', a
   assert.equal(harness.storageState.enabled, true);
 });
 
+test('Navigating to a new origin loads that origin saved rules and clears captured APIs', async () => {
+  const harness = createBackgroundHarness({
+    storageState: {
+      'overrides_https://new.test': [{ pattern: 'orders', body: '{"new":true}', mode: 'text' }],
+    },
+  });
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://old.test/',
+    enabled: true,
+    overrides: [{ pattern: 'users', body: '{"old":true}', mode: 'text' }],
+  });
+  await Promise.resolve();
+  harness.emitDebuggerEvent('Network.requestWillBeSent', {
+    request: { url: 'https://old.test/api/users' },
+    type: 'Fetch',
+  });
+
+  harness.navigateTab(7, 'https://new.test/home');
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const state = harness.context.NetworkOverridesTabState.get(7);
+  assert.equal(state.origin, 'https://new.test');
+  assert.deepEqual(normalize(state.overrides), [
+    { pattern: 'orders', body: '{"new":true}', mode: 'text' },
+  ]);
+  assert.equal(state.recentApis.size, 0);
+});
+
+test('Same-origin navigation leaves rules and captured APIs untouched', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://old.test/',
+    enabled: true,
+    overrides: [{ pattern: 'users', body: '{}', mode: 'text' }],
+  });
+  await Promise.resolve();
+  harness.emitDebuggerEvent('Network.requestWillBeSent', {
+    request: { url: 'https://old.test/api/users' },
+    type: 'Fetch',
+  });
+
+  harness.navigateTab(7, 'https://old.test/other-page');
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const state = harness.context.NetworkOverridesTabState.get(7);
+  assert.equal(state.overrides.length, 1);
+  assert.equal(state.recentApis.size, 1);
+});
+
+test('Cross-origin requests are captured', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://app.test/',
+    enabled: true,
+    overrides: [],
+  });
+  await Promise.resolve();
+
+  harness.emitDebuggerEvent('Network.requestWillBeSent', {
+    request: { url: 'https://api.other.test/v1/users' },
+    type: 'Fetch',
+  });
+
+  const { response } = harness.callMessage({ type: 'getApis', tabId: 7 });
+  assert.deepEqual(normalize(response.apis.map(api => api.url)), [
+    'https://api.other.test/v1/users',
+  ]);
+});
+
 test('Background enforces an imported method-restricted rule by not applying it: request passes through untouched', async () => {
   const harness = createBackgroundHarness();
   const domainOverridesKey = `overrides_${TEST_DOMAIN}`;

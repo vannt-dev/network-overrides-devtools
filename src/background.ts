@@ -69,11 +69,6 @@ namespace NetworkOverridesBackground {
     return normalizeBodyLocal(body, isBase64);
   }
 
-  function urlMatchesDomain(url: string, domain: string): boolean {
-    if (!domain) return true;
-    return NetworkOverridesUtils.getOrigin(url) === domain;
-  }
-
   function recordApi(tabId: number, entry: ApiEntry): void {
     TabState.setRecentApi(tabId, entry);
     scheduleApiBroadcast(tabId, entry);
@@ -330,6 +325,24 @@ namespace NetworkOverridesBackground {
     TabState.dispose(tabId);
   });
 
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (typeof changeInfo.url !== 'string') return;
+    const state = TabState.get(tabId);
+    if (!state) return;
+    const newOrigin = NetworkOverridesUtils.getOrigin(changeInfo.url);
+    if (!newOrigin || newOrigin === state.origin) return;
+
+    state.origin = newOrigin;
+    state.recentApis.clear();
+    state.recentApiBodies.clear();
+    const overridesKey = `overrides_${newOrigin}`;
+    chrome.storage.local.get([overridesKey], (data: any) => {
+      const saved = data?.[overridesKey];
+      state.overrides = Array.isArray(saved) ? saved : [];
+      TabState.schedulePersist(tabId);
+    });
+  });
+
   chrome.debugger.onDetach.addListener(source => {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
@@ -346,10 +359,6 @@ namespace NetworkOverridesBackground {
     }
 
     if (!TabState.get(tabId)?.attached) return;
-
-    const requestUrl = params?.request?.url || params?.response?.url || '';
-    const tabDomain = TabState.get(tabId)?.origin ?? '';
-    if (requestUrl && !urlMatchesDomain(requestUrl, tabDomain)) return;
 
     if (method === 'Network.requestWillBeSent') {
       const requestUrlInner = params?.request?.url;

@@ -84,7 +84,7 @@ namespace NetworkOverridesUi {
     if (trimmed.includes('*')) {
       const parts = trimmed.split('*').map(NetworkOverridesUtils.escapeRegex);
       try {
-        new RegExp('^' + parts.join('(.+)') + '$');
+        new RegExp('^' + parts.join('(.*)') + '$');
         return true;
       } catch {
         return false;

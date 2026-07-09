@@ -77,13 +77,13 @@ All data is stored locally in `chrome.storage.local`:
 
 Override rules are evaluated in order; the first matching rule for a URL is used.
 
-| Pattern                       | Matches                                          |
-| ----------------------------- | ------------------------------------------------ |
-| `/api/users`                  | Any URL containing `/api/users`                  |
-| `*` or `all`                  | Every request                                    |
-| `https://site.com/api/*/list` | URLs matching the glob; `*` captures any segment |
-| `/\/api\/v\d+\/users/`        | Regex match (literal `/` delimiters, no flags)   |
-| `/\/api\/user\/(\d+)/gi`      | Regex with flags `g` and `i`                     |
+| Pattern                       | Matches                                                      |
+| ----------------------------- | ------------------------------------------------------------ |
+| `/api/users`                  | Any URL containing `/api/users`                              |
+| `*` or `all`                  | Every request                                                |
+| `https://site.com/api/*/list` | URLs matching the glob; `*` captures zero or more characters |
+| `/\/api\/v\d+\/users/`        | Regex match (literal `/` delimiters, no flags)               |
+| `/\/api\/user\/(\d+)/gi`      | Regex with flags `g` and `i`                                 |
 
 In redirect URLs, `*` substitutes captured wildcards in order. For example:
 

@@ -149,3 +149,30 @@ test('matchesMethod matches ANY/undefined and is case-insensitive', () => {
   assert.equal(NetworkOverridesUtils.matchesMethod('POST', 'GET'), false);
   assert.equal(NetworkOverridesUtils.matchesMethod('POST', undefined), false);
 });
+
+test('substituteWildcards does not re-substitute * inside captured values', () => {
+  const { NetworkOverridesUi } = createUiContext();
+  const result = NetworkOverridesUi.substituteWildcards('https://new.test/*/x/*', [
+    'a*b',
+    'second',
+  ]);
+  assert.equal(result, 'https://new.test/a*b/x/second');
+});
+
+test('substituteWildcards keeps leftover * literal when captures run out', () => {
+  const { NetworkOverridesUi } = createUiContext();
+  const result = NetworkOverridesUi.substituteWildcards('https://new.test/*/x/*', ['only']);
+  assert.equal(result, 'https://new.test/only/x/*');
+});
+
+test('glob * matches the empty string', () => {
+  const { NetworkOverridesUi } = createUiContext();
+  assert.equal(
+    NetworkOverridesUi.matchPattern('https://a.test/api/*', 'https://a.test/api/')?.[0],
+    ''
+  );
+  assert.equal(
+    NetworkOverridesUi.patternMatches('https://a.test/api/*', 'https://a.test/api/'),
+    true
+  );
+});

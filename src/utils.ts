@@ -28,7 +28,7 @@ namespace NetworkOverridesUtils {
     if (trimmed.includes('*')) {
       const parts = trimmed.split('*').map(escapeRegex);
       try {
-        const regex = new RegExp('^' + parts.join('(.+)') + '$');
+        const regex = new RegExp('^' + parts.join('(.*)') + '$');
         const match = url.match(regex);
         return match ? match.slice(1) : null;
       } catch {
@@ -43,11 +43,11 @@ namespace NetworkOverridesUtils {
   }
 
   export function substituteWildcards(template: string, captures: string[]): string {
-    let result = template;
-    let captureIndex = 0;
-    while (result.includes('*') && captureIndex < captures.length) {
-      result = result.replace('*', captures[captureIndex]);
-      captureIndex++;
+    const parts = template.split('*');
+    if (parts.length === 1) return template;
+    let result = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+      result += (i - 1 < captures.length ? captures[i - 1] : '*') + parts[i];
     }
     return result;
   }

@@ -337,6 +337,7 @@ namespace NetworkOverridesBackground {
     state.recentApiBodies.clear();
     const overridesKey = `overrides_${newOrigin}`;
     chrome.storage.local.get([overridesKey], (data: any) => {
+      if (state.origin !== newOrigin) return;
       const saved = data?.[overridesKey];
       state.overrides = Array.isArray(saved) ? saved : [];
       TabState.schedulePersist(tabId);

@@ -1,20 +1,15 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
 /// <reference path="./utils.ts" />
+/// <reference path="./tab-state.ts" />
 declare const Buffer: any;
 declare function importScripts(...urls: string[]): void;
 
 // Service workers can't use <script> tags like the UI pages do, so pull in
 // the shared pattern-matching logic the same way at runtime instead of
 // duplicating it here.
-importScripts('utils.js');
+importScripts('utils.js', 'tab-state.js');
 
-function recApisKey(tabId: number): string {
-  return `recentApis_${tabId}`;
-}
-function recBodiesKey(tabId: number): string {
-  return `recentApiBodies_${tabId}`;
-}
 function stringToBase64Local(str: string): string {
   if (typeof Buffer !== 'undefined') {
     try {
@@ -23,11 +18,11 @@ function stringToBase64Local(str: string): string {
   }
   const bytes = new TextEncoder().encode(str);
   let binary = '';
-  bytes.forEach(b => (binary += String.fromCharCode(b)));
-  if (typeof (globalThis as any).btoa === 'function') {
-    return (globalThis as any).btoa(binary);
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
   }
-  return Buffer.from(binary, 'latin1').toString('base64');
+  return btoa(binary);
 }
 function normalizeBodyLocal(body: string, isBase64: boolean): string {
   try {
@@ -45,8 +40,9 @@ function normalizeBodyLocal(body: string, isBase64: boolean): string {
 }
 
 namespace NetworkOverridesBackground {
+  import TabState = NetworkOverridesTabState;
+
   type OverrideRule = NetworkOverridesShared.OverrideRule;
-  type OverrideState = NetworkOverridesShared.OverrideState;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
 
@@ -55,17 +51,7 @@ namespace NetworkOverridesBackground {
     return Object.entries(headers).map(([name, value]) => ({ name, value: String(value) }));
   }
 
-  const attachedTabs = new Set<number>();
-  const overridesMap = new Map<number, OverrideState>();
-  const recentApisMap = new Map<number, Map<string, ApiEntry>>();
-  const recentApiBodiesMap = new Map<number, Map<string, string>>();
-  const currentDomainMap = new Map<number, string>();
-  const apiSubscriberPorts = new Map<number, Set<chrome.runtime.Port>>();
-  const apiBroadcastQueues = new Map<number, Map<string, ApiEntry>>();
-  const apiBroadcastTimers = new Map<number, ReturnType<typeof setTimeout>>();
-  const RECENT_APIS_LIMIT = 500;
-  const RECENT_API_BODIES_LIMIT = 100;
-  const CAPTURED_BODY_TYPES = ['xhr', 'fetch', 'script', 'image'];
+  const CAPTURED_BODY_TYPES = ['xhr', 'fetch'];
 
   export function matchPattern(pattern: string, url: string): string[] | null {
     return NetworkOverridesUtils.matchPattern(pattern, url);
@@ -83,50 +69,32 @@ namespace NetworkOverridesBackground {
     return normalizeBodyLocal(body, isBase64);
   }
 
-  function getOrigin(url: string): string {
-    try {
-      return new URL(url).origin;
-    } catch {
-      return '';
-    }
-  }
-
   function urlMatchesDomain(url: string, domain: string): boolean {
     if (!domain) return true;
-    return getOrigin(url) === domain;
+    return NetworkOverridesUtils.getOrigin(url) === domain;
   }
 
-  function cleanupTabData(tabId: number): void {
-    attachedTabs.delete(tabId);
-    overridesMap.delete(tabId);
-    recentApisMap.delete(tabId);
-    recentApiBodiesMap.delete(tabId);
-    currentDomainMap.delete(tabId);
-    const ports = apiSubscriberPorts.get(tabId);
-    if (ports) {
-      ports.forEach(p => {
+  function recordApi(tabId: number, entry: ApiEntry): void {
+    TabState.setRecentApi(tabId, entry);
+    scheduleApiBroadcast(tabId, entry);
+  }
+
+  function scheduleApiBroadcast(tabId: number, entry: ApiEntry): void {
+    const rt = TabState.runtime(tabId);
+    if (rt.subscriberPorts.size === 0) return;
+    rt.broadcastQueue.set(entry.url, entry);
+    if (rt.broadcastTimer) return;
+    rt.broadcastTimer = setTimeout(() => {
+      rt.broadcastTimer = null;
+      const delta = Array.from(rt.broadcastQueue.values());
+      rt.broadcastQueue.clear();
+      if (delta.length === 0 || rt.subscriberPorts.size === 0) return;
+      rt.subscriberPorts.forEach(port => {
         try {
-          p.disconnect();
+          port.postMessage({ type: 'apisDelta', apis: delta });
         } catch {}
       });
-      apiSubscriberPorts.delete(tabId);
-    }
-    const apiTimer = apiBroadcastTimers.get(tabId);
-    if (apiTimer) {
-      clearTimeout(apiTimer);
-      apiBroadcastTimers.delete(tabId);
-    }
-    apiBroadcastQueues.delete(tabId);
-    const timer = persistTimers.get(tabId);
-    if (timer) {
-      clearTimeout(timer);
-      persistTimers.delete(tabId);
-    }
-    const bodyTimer = bodyPersistTimers.get(tabId);
-    if (bodyTimer) {
-      clearTimeout(bodyTimer);
-      bodyPersistTimers.delete(tabId);
-    }
+    }, 150);
   }
 
   function storeResponseBody(
@@ -140,121 +108,13 @@ namespace NetworkOverridesBackground {
       'Fetch.getResponseBody',
       { requestId },
       (response: { body?: string; base64Encoded?: boolean } | undefined) => {
-        if (chrome.runtime.lastError) {
-          if (chrome.runtime.lastError.message?.includes('Quota')) {
-            callback();
-            return;
-          }
-        }
-
         if (!chrome.runtime.lastError && response && typeof response.body === 'string') {
           const rawBody = normalizeBody(response.body, response.base64Encoded ?? false);
-          let map = recentApiBodiesMap.get(tabId);
-          if (!map) {
-            map = new Map<string, string>();
-          }
-          if (map.has(url)) {
-            map.delete(url);
-          }
-          map.set(url, rawBody);
-          if (map.size > RECENT_API_BODIES_LIMIT) {
-            const entries = Array.from(map.entries());
-            for (let i = 0; i < entries.length - RECENT_API_BODIES_LIMIT; i++) {
-              map.delete(entries[i][0]);
-            }
-          }
-          recentApiBodiesMap.set(tabId, map);
-
-          const existingBodyTimer = bodyPersistTimers.get(tabId);
-          if (existingBodyTimer) clearTimeout(existingBodyTimer);
-          bodyPersistTimers.set(
-            tabId,
-            setTimeout(() => {
-              bodyPersistTimers.delete(tabId);
-              const persisted = Object.fromEntries(map.entries());
-              const storageKey = recBodiesKey(tabId);
-              chrome.storage.local.set({ [storageKey]: persisted });
-            }, 500)
-          );
+          TabState.setRecentApiBody(tabId, url, rawBody);
         }
         callback();
       }
     );
-  }
-
-  const persistTimers = new Map<number, ReturnType<typeof setTimeout>>();
-  const bodyPersistTimers = new Map<number, ReturnType<typeof setTimeout>>();
-
-  function persistRecentApis(tabId: number, apis: Map<string, ApiEntry>): void {
-    const existing = persistTimers.get(tabId);
-    if (existing) clearTimeout(existing);
-    persistTimers.set(
-      tabId,
-      setTimeout(() => {
-        persistTimers.delete(tabId);
-        const persisted = Object.fromEntries(apis.entries());
-        const storageKey = recApisKey(tabId);
-        chrome.storage.local.set({ [storageKey]: persisted });
-      }, 500)
-    );
-  }
-
-  function scheduleApiBroadcast(tabId: number, entry: ApiEntry): void {
-    const ports = apiSubscriberPorts.get(tabId);
-    if (!ports || ports.size === 0) return;
-
-    let queue = apiBroadcastQueues.get(tabId);
-    if (!queue) {
-      queue = new Map();
-      apiBroadcastQueues.set(tabId, queue);
-    }
-    queue.set(entry.url, entry);
-
-    const existing = apiBroadcastTimers.get(tabId);
-    if (existing) return;
-
-    apiBroadcastTimers.set(
-      tabId,
-      setTimeout(() => {
-        apiBroadcastTimers.delete(tabId);
-        const queued = apiBroadcastQueues.get(tabId);
-        apiBroadcastQueues.delete(tabId);
-        if (!queued || queued.size === 0) return;
-
-        const delta = Array.from(queued.values());
-        const currentPorts = apiSubscriberPorts.get(tabId);
-        if (!currentPorts || currentPorts.size === 0) return;
-
-        currentPorts.forEach(port => {
-          try {
-            port.postMessage({ type: 'apisDelta', apis: delta });
-          } catch {}
-        });
-      }, 150)
-    );
-  }
-
-  function setRecentApi(tabId: number, entry: ApiEntry): void {
-    let apis = recentApisMap.get(tabId);
-    if (!apis) {
-      apis = new Map<string, ApiEntry>();
-    }
-
-    const { url } = entry;
-    if (apis.has(url)) {
-      apis.delete(url);
-    }
-    apis.set(url, entry);
-    if (apis.size > RECENT_APIS_LIMIT) {
-      const entries = Array.from(apis.entries());
-      for (let i = 0; i < entries.length - RECENT_APIS_LIMIT; i++) {
-        apis.delete(entries[i][0]);
-      }
-    }
-
-    recentApisMap.set(tabId, apis);
-    persistRecentApis(tabId, apis);
-    scheduleApiBroadcast(tabId, entry);
   }
 
   // Strongly-typed messaging surface
@@ -283,11 +143,11 @@ namespace NetworkOverridesBackground {
         const overrides = Array.isArray(msg.overrides) ? msg.overrides : [];
         const tabUrl = typeof msg.tabUrl === 'string' ? msg.tabUrl : '';
 
-        if (tabUrl) {
-          currentDomainMap.set(tabId, getOrigin(tabUrl));
-        }
-
-        overridesMap.set(tabId, { enabled, overrides });
+        const state = TabState.ensure(tabId);
+        state.enabled = enabled;
+        state.overrides = overrides;
+        if (tabUrl) state.origin = NetworkOverridesUtils.getOrigin(tabUrl);
+        TabState.schedulePersist(tabId);
         if (enabled) {
           attachDebugger(tabId).catch(console.error);
         } else {
@@ -298,40 +158,32 @@ namespace NetworkOverridesBackground {
       case 'getApis': {
         const tabId = Number(msg.tabId);
         if (Number.isNaN(tabId)) return;
-        const apisMap = recentApisMap.get(tabId);
-        if (apisMap && typeof sendResponse === 'function') {
-          const apis = Array.from(apisMap.values());
-          sendResponse({ type: 'apisResponse', apis });
+        const state = TabState.get(tabId);
+        if (state && typeof sendResponse === 'function') {
+          sendResponse({ type: 'apisResponse', apis: Array.from(state.recentApis.values()) });
           return true;
         }
 
-        const storageKey = recApisKey(tabId);
-        chrome.storage.local.get([storageKey], (data: any) => {
-          const obj = data[storageKey] || {};
-          const apis = Object.values(obj)
-            .map((val: any) => {
-              if (typeof val === 'string') {
-                return null;
-              }
-              return val;
-            })
-            .filter(Boolean);
-
-          const legacyApis = Object.entries(obj)
-            .filter(([_, val]) => typeof val === 'string')
-            .map(([url, type]) => ({ url, type: String(type) }));
-
-          if (typeof sendResponse === 'function') {
-            sendResponse({ type: 'apisResponse', apis: [...apis, ...legacyApis] });
+        void Promise.resolve(chrome.storage.session.get(TabState.stateKey(tabId))).then(
+          (data: any) => {
+            const snapshot = data?.[TabState.stateKey(tabId)];
+            const apis = snapshot?.recentApis ? Object.values(snapshot.recentApis) : [];
+            if (typeof sendResponse === 'function') {
+              sendResponse({ type: 'apisResponse', apis });
+            }
           }
-        });
+        );
         return true;
       }
       case 'clearApis': {
         const clearTabId = Number(msg.tabId);
         if (!Number.isNaN(clearTabId)) {
-          recentApisMap.delete(clearTabId);
-          recentApiBodiesMap.delete(clearTabId);
+          const state = TabState.get(clearTabId);
+          if (state) {
+            state.recentApis.clear();
+            state.recentApiBodies.clear();
+            TabState.schedulePersist(clearTabId);
+          }
         }
         if (typeof sendResponse === 'function') {
           sendResponse({ type: 'clearApisResponse', success: true });
@@ -343,22 +195,27 @@ namespace NetworkOverridesBackground {
         const url = String(msg.url || '');
         if (Number.isNaN(tabId) || !url) return;
 
-        const bodies = recentApiBodiesMap.get(tabId);
-        if (bodies?.has(url)) {
+        const state = TabState.get(tabId);
+        if (state?.recentApiBodies.has(url)) {
           if (typeof sendResponse === 'function') {
-            sendResponse({ type: 'apiDataResponse', url, body: bodies.get(url) || '' });
+            sendResponse({
+              type: 'apiDataResponse',
+              url,
+              body: state.recentApiBodies.get(url) || '',
+            });
           }
           return true;
         }
 
-        const storageKey = recBodiesKey(tabId);
-        chrome.storage.local.get([storageKey], (data: any) => {
-          const obj = data[storageKey] || {};
-          const body = typeof obj[url] === 'string' ? obj[url] : '';
-          if (typeof sendResponse === 'function') {
-            sendResponse({ type: 'apiDataResponse', url, body });
+        void Promise.resolve(chrome.storage.session.get(TabState.stateKey(tabId))).then(
+          (data: any) => {
+            const snapshot = data?.[TabState.stateKey(tabId)];
+            const body = snapshot?.recentApiBodies?.[url] ?? '';
+            if (typeof sendResponse === 'function') {
+              sendResponse({ type: 'apiDataResponse', url, body });
+            }
           }
-        });
+        );
         return true;
       }
       default:
@@ -376,13 +233,7 @@ namespace NetworkOverridesBackground {
 
     function unsubscribe(): void {
       if (subscribedTabId === null) return;
-      const ports = apiSubscriberPorts.get(subscribedTabId);
-      if (ports) {
-        ports.delete(port);
-        if (ports.size === 0) {
-          apiSubscriberPorts.delete(subscribedTabId);
-        }
-      }
+      TabState.runtime(subscribedTabId).subscriberPorts.delete(port);
       subscribedTabId = null;
     }
 
@@ -400,15 +251,10 @@ namespace NetworkOverridesBackground {
       }
 
       subscribedTabId = tabId;
-      let set = apiSubscriberPorts.get(tabId);
-      if (!set) {
-        set = new Set();
-        apiSubscriberPorts.set(tabId, set);
-      }
-      set.add(port);
+      TabState.runtime(tabId).subscriberPorts.add(port);
 
-      const apisMap = recentApisMap.get(tabId);
-      const apis = apisMap ? Array.from(apisMap.values()) : [];
+      const state = TabState.get(tabId);
+      const apis = state ? Array.from(state.recentApis.values()) : [];
       try {
         port.postMessage({ type: 'apis', apis });
       } catch {}
@@ -428,7 +274,7 @@ namespace NetworkOverridesBackground {
   }
 
   async function attachDebugger(tabId: number): Promise<void> {
-    if (attachedTabs.has(tabId)) return;
+    if (TabState.get(tabId)?.attached) return;
     return new Promise((resolve, reject) => {
       try {
         chrome.debugger.attach({ tabId }, '1.3', async () => {
@@ -436,7 +282,9 @@ namespace NetworkOverridesBackground {
             return reject(chrome.runtime.lastError);
           }
 
-          attachedTabs.add(tabId);
+          const state = TabState.ensure(tabId);
+          state.attached = true;
+          TabState.schedulePersist(tabId);
 
           try {
             await sendDebugCommand(tabId, 'Network.enable', {});
@@ -446,7 +294,7 @@ namespace NetworkOverridesBackground {
             resolve();
           } catch (err) {
             console.error('Failed to enable debugger commands:', err);
-            cleanupTabData(tabId);
+            state.attached = false;
             chrome.debugger.detach({ tabId }, () => {});
             reject(err);
           }
@@ -458,13 +306,13 @@ namespace NetworkOverridesBackground {
   }
 
   async function detachDebugger(tabId: number): Promise<void> {
-    if (!attachedTabs.has(tabId)) return;
+    if (!TabState.get(tabId)?.attached) return;
 
     return new Promise(resolve => {
       try {
         chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
           chrome.debugger.detach({ tabId }, () => {
-            cleanupTabData(tabId);
+            TabState.dispose(tabId);
             resolve();
           });
         });
@@ -476,16 +324,16 @@ namespace NetworkOverridesBackground {
   }
 
   chrome.tabs.onRemoved.addListener(tabId => {
-    if (attachedTabs.has(tabId)) {
+    if (TabState.get(tabId)?.attached) {
       detachDebugger(tabId).catch(console.error);
     }
-    cleanupTabData(tabId);
+    TabState.dispose(tabId);
   });
 
   chrome.debugger.onDetach.addListener(source => {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
-    cleanupTabData(tabId);
+    TabState.dispose(tabId);
   });
 
   chrome.debugger.onEvent.addListener((source, method, params: any) => {
@@ -497,17 +345,17 @@ namespace NetworkOverridesBackground {
       return;
     }
 
-    if (!attachedTabs.has(tabId)) return;
+    if (!TabState.get(tabId)?.attached) return;
 
     const requestUrl = params?.request?.url || params?.response?.url || '';
-    const tabDomain = currentDomainMap.get(tabId) || '';
+    const tabDomain = TabState.get(tabId)?.origin ?? '';
     if (requestUrl && !urlMatchesDomain(requestUrl, tabDomain)) return;
 
     if (method === 'Network.requestWillBeSent') {
       const requestUrlInner = params?.request?.url;
       const requestType = params?.type || 'other';
       if (typeof requestUrlInner === 'string') {
-        setRecentApi(tabId, {
+        recordApi(tabId, {
           url: requestUrlInner,
           type: requestType,
           method: params.request.method,
@@ -538,7 +386,7 @@ namespace NetworkOverridesBackground {
   function handleRequestPaused(tabId: number, params: any): void {
     const isRequestStage = typeof params.responseStatusCode !== 'number';
     const url = params.request?.url || '';
-    const info = overridesMap.get(tabId);
+    const state = TabState.get(tabId);
 
     const proceed = () => {
       chrome.debugger.sendCommand(
@@ -553,15 +401,14 @@ namespace NetworkOverridesBackground {
       );
     };
 
-    if (!attachedTabs.has(tabId) || !info?.enabled) {
+    if (!state || !state.attached || !state.enabled) {
       proceed();
       return;
     }
 
     if (isRequestStage) {
-      const apis = recentApisMap.get(tabId);
-      if (!apis?.has(url)) {
-        setRecentApi(tabId, {
+      if (!state.recentApis.has(url)) {
+        recordApi(tabId, {
           url,
           type: params.resourceType || 'other',
           method: params.request?.method,
@@ -571,7 +418,7 @@ namespace NetworkOverridesBackground {
       }
 
       try {
-        const match = findOverride(url, params.request?.method, info.overrides);
+        const match = findOverride(url, params.request?.method, state.overrides);
         if (match && match.override.redirectUrl) {
           const newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
           if (newUrl.includes('*')) {
@@ -605,7 +452,7 @@ namespace NetworkOverridesBackground {
     console.log('[NetworkOverrides] Response:', url);
 
     try {
-      setRecentApi(tabId, {
+      recordApi(tabId, {
         url,
         type: params.resourceType || 'other',
         method: params.request?.method,
@@ -615,7 +462,7 @@ namespace NetworkOverridesBackground {
           typeof params.responseStatusCode === 'number' ? params.responseStatusCode : undefined,
       });
 
-      const match = findOverride(url, params.request?.method, info.overrides);
+      const match = findOverride(url, params.request?.method, state.overrides);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (CAPTURED_BODY_TYPES.includes(resourceType)) {

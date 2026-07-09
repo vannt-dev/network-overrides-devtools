@@ -240,38 +240,41 @@ test('Background fulfills matching requests with override headers and body', asy
   );
 });
 
-test('Background falls back to chrome.storage.local when API caches are empty', () => {
+test('Background falls back to chrome.storage.session when memory is empty (cold start)', async () => {
   const harness = createBackgroundHarness();
-  const storageUrl = `${TEST_DOMAIN}/api/from-storage`;
-  harness.storageState.recentApis_42 = {
-    [storageUrl]: 'fetch',
-  };
-  harness.storageState.recentApiBodies_42 = {
-    [storageUrl]: '{"source":"storage"}',
+  harness.sessionState['tabState_7'] = {
+    enabled: false,
+    origin: '',
+    overrides: [],
+    recentApis: { [TEST_API_URL]: { url: TEST_API_URL, type: 'fetch' } },
+    recentApiBodies: { [TEST_API_URL]: '{"cached":true}' },
   };
 
-  const apisResponse = harness.callMessage({ type: 'getApis', tabId: 42 });
-  assert.equal(apisResponse.keepAlive, true);
-  assert.deepEqual(normalize(apisResponse.response), {
+  let apisResult;
+  const apisKeepAlive = harness.listeners.onMessage({ type: 'getApis', tabId: 7 }, {}, value => {
+    apisResult = value;
+  });
+  assert.equal(apisKeepAlive, true);
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(normalize(apisResult), {
     type: 'apisResponse',
-    apis: [
-      {
-        url: storageUrl,
-        type: 'fetch',
-      },
-    ],
+    apis: [{ url: TEST_API_URL, type: 'fetch' }],
   });
 
-  const bodyResponse = harness.callMessage({
-    type: 'getApiData',
-    tabId: 42,
-    url: storageUrl,
-  });
-  assert.equal(bodyResponse.keepAlive, true);
-  assert.deepEqual(normalize(bodyResponse.response), {
+  let bodyResult;
+  const bodyKeepAlive = harness.listeners.onMessage(
+    { type: 'getApiData', tabId: 7, url: TEST_API_URL },
+    {},
+    value => {
+      bodyResult = value;
+    }
+  );
+  assert.equal(bodyKeepAlive, true);
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(normalize(bodyResult), {
     type: 'apiDataResponse',
-    url: storageUrl,
-    body: '{"source":"storage"}',
+    url: TEST_API_URL,
+    body: '{"cached":true}',
   });
 });
 

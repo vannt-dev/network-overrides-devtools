@@ -63,7 +63,9 @@ export function createBackgroundContext() {
         onConnect: { addListener: noop },
       },
       tabs: {
+        get: async () => ({ id: 0 }),
         onRemoved: { addListener: noop },
+        onUpdated: { addListener: noop },
       },
       debugger: {
         onEvent: { addListener: noop },
@@ -74,8 +76,18 @@ export function createBackgroundContext() {
       },
       storage: {
         local: {
-          get: noop,
+          get: (keys, cb) => (cb ? cb({}) : Promise.resolve({})),
           set: noop,
+          remove: async () => {},
+        },
+        session: {
+          async get(keys) {
+            if (keys === null || keys === undefined) return {};
+            if (Array.isArray(keys)) return {};
+            return { [keys]: undefined };
+          },
+          async set() {},
+          async remove() {},
         },
       },
     },
@@ -83,6 +95,7 @@ export function createBackgroundContext() {
   vm.createContext(context);
   runDistFile('utils.js', context);
   runDistFile('shared.js', context);
+  runDistFile('tab-state.js', context);
   runDistFile('background.js', context);
   return context;
 }
@@ -367,6 +380,8 @@ export function createBackgroundHarness() {
     onDetach: null,
   };
   const storageState = {};
+  const sessionState = {};
+  const existingTabs = new Set([7]);
   const storageSets = [];
   const commandLog = [];
   const attachedTabs = [];
@@ -393,6 +408,10 @@ export function createBackgroundHarness() {
         addListener(listener) {
           listeners.onRemoved = listener;
         },
+      },
+      async get(tabId) {
+        if (!existingTabs.has(tabId)) throw new Error(`No tab with id: ${tabId}`);
+        return { id: tabId };
       },
     },
     debugger: {
@@ -426,19 +445,42 @@ export function createBackgroundHarness() {
     storage: {
       local: {
         get(keys, callback) {
-          if (Array.isArray(keys)) {
-            callback(Object.fromEntries(keys.map(key => [key, storageState[key]])));
+          const result = Array.isArray(keys)
+            ? Object.fromEntries(keys.map(key => [key, storageState[key]]))
+            : typeof keys === 'string'
+              ? { [keys]: storageState[keys] }
+              : { ...storageState };
+          if (callback) {
+            callback(result);
             return;
           }
-          if (typeof keys === 'string') {
-            callback({ [keys]: storageState[keys] });
-            return;
-          }
-          callback({ ...storageState });
+          return Promise.resolve(result);
         },
         set(value) {
           storageSets.push(structuredClone(value));
           Object.assign(storageState, structuredClone(value));
+        },
+        async remove(keys) {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete storageState[key];
+          }
+        },
+      },
+      session: {
+        async get(keys) {
+          if (keys === null || keys === undefined) return { ...sessionState };
+          if (Array.isArray(keys)) {
+            return Object.fromEntries(keys.map(key => [key, sessionState[key]]));
+          }
+          return { [keys]: sessionState[keys] };
+        },
+        async set(value) {
+          Object.assign(sessionState, structuredClone(value));
+        },
+        async remove(keys) {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete sessionState[key];
+          }
         },
       },
     },
@@ -468,12 +510,16 @@ export function createBackgroundHarness() {
   vm.createContext(context);
   runDistFile('utils.js', context);
   runDistFile('shared.js', context);
+  runDistFile('tab-state.js', context);
   runDistFile('background.js', context);
 
   return {
+    context,
     chrome,
     listeners,
     storageState,
+    sessionState,
+    existingTabs,
     storageSets,
     commandLog,
     attachedTabs,

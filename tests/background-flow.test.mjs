@@ -212,6 +212,65 @@ test('Background keeps raw base64 body unchanged when override mode is file', as
   );
 });
 
+test('Background falls back to text encoding when a file-mode body is not valid base64', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: 'download', body: 'not@base64!!', mode: 'file' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-bad-base64',
+    request: { url: TEST_DOWNLOAD_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-bad-base64'
+  );
+  assert.ok(fulfill);
+  assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), 'not@base64!!');
+});
+
+test('Background passes the request through when the redirect URL has unsubstituted wildcards', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      // pattern has no wildcard, so there is no capture to substitute into the redirect
+      { pattern: `${TEST_DOMAIN}/api/users`, body: '', mode: 'text', redirectUrl: 'https://new.test/*' },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-unsub',
+    request: { url: TEST_API_URL },
+    resourceType: 'Fetch',
+  });
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.continueRequest' && params.requestId === 'req-unsub'
+  );
+  assert.ok(continueCmd);
+  assert.equal(continueCmd.params.url, undefined); // passed through, not redirected
+  assert.equal(
+    harness.errors.some(args => args.some(arg => String(arg).includes('Unsubstituted'))),
+    true
+  );
+});
+
 test('Background glob matching with * wildcard', () => {
   const { NetworkOverridesBackground } = createBackgroundContext();
 

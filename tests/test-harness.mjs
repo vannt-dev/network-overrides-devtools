@@ -555,7 +555,14 @@ export function createBackgroundHarness({
     TextEncoder,
     TextDecoder,
     URL,
-    atob: value => Buffer.from(value, 'base64').toString('binary'),
+    // Strict like the browser: Buffer.from silently ignores invalid characters,
+    // which would make the invalid-base64 fallback branch unreachable in tests.
+    atob: value => {
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+        throw new Error('Invalid character in base64 string');
+      }
+      return Buffer.from(value, 'base64').toString('binary');
+    },
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,

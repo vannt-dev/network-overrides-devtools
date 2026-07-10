@@ -34,8 +34,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             npx commitlint --from origin/${{ github.base_ref }} --to HEAD
-          else
+          elif git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
             npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
+          else
+            # Force-push or new branch: the "before" SHA no longer exists; lint just the head commit.
+            npx commitlint --last
           fi
 
       - name: Run tests with coverage

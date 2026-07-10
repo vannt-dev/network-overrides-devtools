@@ -123,7 +123,8 @@ namespace NetworkOverridesBackground {
       }
     | { type: 'getApis'; tabId: number }
     | { type: 'getApiData'; tabId: number; url?: string }
-    | { type: 'clearApis'; tabId: number };
+    | { type: 'clearApis'; tabId: number }
+    | { type: 'getStatus'; tabId: number };
 
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
@@ -182,6 +183,20 @@ namespace NetworkOverridesBackground {
         }
         if (typeof sendResponse === 'function') {
           sendResponse({ type: 'clearApisResponse', success: true });
+        }
+        return;
+      }
+      case 'getStatus': {
+        const tabId = Number(msg.tabId);
+        if (Number.isNaN(tabId)) return;
+        const state = TabState.get(tabId);
+        if (typeof sendResponse === 'function') {
+          const payload: { type: string; attached: boolean; error?: string } = {
+            type: 'statusResponse',
+            attached: !!state?.attached,
+          };
+          if (state?.attachError) payload.error = state.attachError;
+          sendResponse(payload);
         }
         return;
       }
@@ -268,19 +283,34 @@ namespace NetworkOverridesBackground {
     });
   }
 
-  async function attachDebugger(tabId: number): Promise<void> {
-    if (TabState.get(tabId)?.attached) return;
-    return new Promise((resolve, reject) => {
+  function broadcastStatus(tabId: number): void {
+    const state = TabState.get(tabId);
+    if (!state) return;
+    const payload: { type: string; tabId: number; attached: boolean; error?: string } = {
+      type: 'status',
+      tabId,
+      attached: state.attached,
+    };
+    if (state.attachError) payload.error = state.attachError;
+    TabState.runtime(tabId).subscriberPorts.forEach(port => {
+      try {
+        port.postMessage(payload);
+      } catch {}
+    });
+  }
+
+  function attachDebugger(tabId: number): Promise<void> {
+    const state = TabState.ensure(tabId);
+    const rt = TabState.runtime(tabId);
+    if (state.attached) return Promise.resolve();
+    if (rt.attachPromise) return rt.attachPromise;
+
+    const attempt = new Promise<void>((resolve, reject) => {
       try {
         chrome.debugger.attach({ tabId }, '1.3', async () => {
           if (chrome.runtime.lastError) {
-            return reject(chrome.runtime.lastError);
+            return reject(new Error(chrome.runtime.lastError.message));
           }
-
-          const state = TabState.ensure(tabId);
-          state.attached = true;
-          TabState.schedulePersist(tabId);
-
           try {
             await sendDebugCommand(tabId, 'Network.enable', {});
             await sendDebugCommand(tabId, 'Fetch.enable', {
@@ -288,16 +318,34 @@ namespace NetworkOverridesBackground {
             });
             resolve();
           } catch (err) {
-            console.error('Failed to enable debugger commands:', err);
-            state.attached = false;
             chrome.debugger.detach({ tabId }, () => {});
-            reject(err);
+            reject(err instanceof Error ? err : new Error(String(err)));
           }
         });
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
-    });
+    })
+      .then(() => {
+        state.attached = true;
+        state.attachError = undefined;
+        TabState.schedulePersist(tabId);
+        broadcastStatus(tabId);
+      })
+      .catch(error => {
+        state.attached = false;
+        state.attachError = error instanceof Error ? error.message : String(error);
+        state.enabled = false;
+        TabState.schedulePersist(tabId);
+        broadcastStatus(tabId);
+        throw error;
+      })
+      .finally(() => {
+        rt.attachPromise = null;
+      });
+
+    rt.attachPromise = attempt;
+    return attempt;
   }
 
   async function detachDebugger(tabId: number): Promise<void> {
@@ -566,16 +614,10 @@ namespace NetworkOverridesBackground {
   export const ready: Promise<void> = (async () => {
     const reattach = await TabState.rehydrate();
     for (const tabId of reattach) {
-      try {
-        await attachDebugger(tabId);
-      } catch (error) {
+      // attachDebugger's catch already records the error and disables the tab.
+      await attachDebugger(tabId).catch(error => {
         console.error('[NetworkOverrides] Re-attach failed for tab', tabId, error);
-        const state = TabState.get(tabId);
-        if (state) {
-          state.enabled = false;
-          TabState.schedulePersist(tabId);
-        }
-      }
+      });
     }
     await migrateLegacyLocalKeys();
   })();

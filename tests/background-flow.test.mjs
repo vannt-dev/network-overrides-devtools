@@ -13,7 +13,7 @@ test('Background handles update messages by attaching and detaching the debugger
     enabled: true,
     overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.deepEqual(normalize(harness.attachedTabs), [{ target: { tabId: 7 }, version: '1.3' }]);
   assert.deepEqual(
@@ -28,7 +28,7 @@ test('Background handles update messages by attaching and detaching the debugger
   );
 
   harness.removeTab(7);
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.equal(
     harness.commandLog.some(({ method }) => method === 'Fetch.disable'),
@@ -37,7 +37,7 @@ test('Background handles update messages by attaching and detaching the debugger
   assert.deepEqual(normalize(harness.detachedTabs), [{ tabId: 7 }]);
 });
 
-test('Background stores recent APIs and response bodies, then returns them through message handlers', () => {
+test('Background stores recent APIs and response bodies, then returns them through message handlers', async () => {
   const harness = createBackgroundHarness();
 
   harness.callMessage({
@@ -47,6 +47,7 @@ test('Background stores recent APIs and response bodies, then returns them throu
     enabled: true,
     overrides: [],
   });
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Network.requestWillBeSent', {
     request: { url: TEST_API_URL },
@@ -103,7 +104,7 @@ test('Background fulfills matching requests with override headers and body', asy
     enabled: true,
     overrides: [{ pattern: '/users$/', body: '{"mocked":true}', mode: 'text' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-2',
@@ -113,7 +114,7 @@ test('Background fulfills matching requests with override headers and body', asy
     responseStatusText: 'Created',
     resourceType: 'Fetch',
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.deepEqual(normalize(harness.attachedTabs), [{ target: { tabId: 7 }, version: '1.3' }]);
   assert.deepEqual(
@@ -128,7 +129,7 @@ test('Background fulfills matching requests with override headers and body', asy
   );
 
   harness.removeTab(7);
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.equal(
     harness.commandLog.some(({ method }) => method === 'Fetch.disable'),
@@ -137,7 +138,7 @@ test('Background fulfills matching requests with override headers and body', asy
   assert.deepEqual(normalize(harness.detachedTabs), [{ tabId: 7 }]);
 });
 
-test('Background stores recent APIs and response bodies, then returns them through message handlers', () => {
+test('Background stores recent APIs and response bodies, then returns them through message handlers', async () => {
   const harness = createBackgroundHarness();
 
   harness.callMessage({
@@ -147,6 +148,7 @@ test('Background stores recent APIs and response bodies, then returns them throu
     enabled: true,
     overrides: [],
   });
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Network.requestWillBeSent', {
     request: { url: TEST_API_URL },
@@ -203,7 +205,7 @@ test('Background fulfills matching requests with override headers and body', asy
     enabled: true,
     overrides: [{ pattern: '/users$/', body: '{"mocked":true}', mode: 'text' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-2',
@@ -288,7 +290,7 @@ test('Background keeps raw base64 body unchanged when override mode is file', as
     enabled: true,
     overrides: [{ pattern: 'download', body: 'UERGREFUQQ==', mode: 'file' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-file',
@@ -399,7 +401,7 @@ test('Background redirects requests when override has redirectUrl', async () => 
       },
     ],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-redirect',
@@ -432,7 +434,7 @@ test('Background does not fulfill body for redirect-only overrides at response s
       },
     ],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-response-redirect',
@@ -441,7 +443,7 @@ test('Background does not fulfill body for redirect-only overrides at response s
     responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
     resourceType: 'Fetch',
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   const fulfillCmd = harness.commandLog.find(
     ({ method, params }) =>
@@ -470,7 +472,7 @@ test('Background skips disabled rules and method-mismatched rules, falling throu
       { pattern: '/users$/', body: '{"matched":true}', mode: 'text', method: 'GET' },
     ],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-method',
@@ -508,7 +510,7 @@ test('Background enforces an imported disabled rule by not applying it: request 
     enabled: true,
     overrides: harness.storageState[domainOverridesKey],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-disabled-only',
@@ -591,7 +593,7 @@ test('Navigating to a new origin loads that origin saved rules and clears captur
     enabled: true,
     overrides: [{ pattern: 'users', body: '{"old":true}', mode: 'text' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
   harness.emitDebuggerEvent('Network.requestWillBeSent', {
     request: { url: 'https://old.test/api/users' },
     type: 'Fetch',
@@ -619,7 +621,7 @@ test('Same-origin navigation leaves rules and captured APIs untouched', async ()
     enabled: true,
     overrides: [{ pattern: 'users', body: '{}', mode: 'text' }],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
   harness.emitDebuggerEvent('Network.requestWillBeSent', {
     request: { url: 'https://old.test/api/users' },
     type: 'Fetch',
@@ -644,7 +646,7 @@ test('Cross-origin requests are captured', async () => {
     enabled: true,
     overrides: [],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Network.requestWillBeSent', {
     request: { url: 'https://api.other.test/v1/users' },
@@ -672,7 +674,7 @@ test('Background enforces an imported method-restricted rule by not applying it:
     enabled: true,
     overrides: harness.storageState[domainOverridesKey],
   });
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   harness.emitDebuggerEvent('Fetch.requestPaused', {
     requestId: 'req-method-only',
@@ -692,4 +694,51 @@ test('Background enforces an imported method-restricted rule by not applying it:
       method === 'Fetch.continueRequest' && params.requestId === 'req-method-only'
   );
   assert.ok(continueCmd);
+});
+
+test('getStatus reports attach success and failure', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://a.test/',
+    enabled: true,
+    overrides: [],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  let { response } = harness.callMessage({ type: 'getStatus', tabId: 7 });
+  assert.deepEqual(normalize(response), { type: 'statusResponse', attached: true });
+
+  const failing = createBackgroundHarness();
+  await failing.context.NetworkOverridesBackground.ready;
+  failing.setAttachError('Another debugger is already attached');
+  failing.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://a.test/',
+    enabled: true,
+    overrides: [],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  ({ response } = failing.callMessage({ type: 'getStatus', tabId: 7 }));
+  assert.deepEqual(normalize(response), {
+    type: 'statusResponse',
+    attached: false,
+    error: 'Another debugger is already attached',
+  });
+  assert.equal(failing.context.NetworkOverridesTabState.get(7).enabled, false);
+});
+
+test('Concurrent update messages attach the debugger exactly once', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  const msg = { type: 'update', tabId: 7, tabUrl: 'https://a.test/', enabled: true, overrides: [] };
+  harness.callMessage(msg);
+  harness.callMessage(msg);
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(harness.attachedTabs.length, 1);
 });

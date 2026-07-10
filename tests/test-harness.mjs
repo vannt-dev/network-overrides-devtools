@@ -394,6 +394,7 @@ export function createBackgroundHarness({
   const detachedTabs = [];
   const responseBodies = new Map();
   const errors = [];
+  let attachError = null;
 
   const chrome = {
     runtime: {
@@ -438,7 +439,16 @@ export function createBackgroundHarness({
       },
       attach(target, version, callback) {
         attachedTabs.push({ target, version });
-        callback?.();
+        // Async like the real API so double-attach races are reproducible.
+        setTimeout(() => {
+          if (attachError) {
+            chrome.runtime.lastError = { message: attachError };
+            callback?.();
+            chrome.runtime.lastError = null;
+            return;
+          }
+          callback?.();
+        }, 0);
       },
       detach(target, callback) {
         detachedTabs.push(target);
@@ -553,6 +563,9 @@ export function createBackgroundHarness({
     },
     navigateTab(tabId, url) {
       listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
+    },
+    setAttachError(message) {
+      attachError = message;
     },
   };
 }

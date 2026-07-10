@@ -30,8 +30,8 @@ test('UI init renders captured APIs and respects the manual editor option', asyn
   assert.equal(harness.document.getElementById('new-row').style.display, 'none');
   assert.equal(harness.document.getElementById('apis-section').style.display, 'block');
   assert.deepEqual(
-    harness.sentMessages.slice(0, 2).map(message => message.type),
-    ['update', 'getApis']
+    harness.sentMessages.slice(0, 3).map(message => message.type),
+    ['update', 'getStatus', 'getApis']
   );
 
   // Default tab is Captured APIs (non-overridden); switch to Overridden tab
@@ -784,4 +784,40 @@ test('Import with mismatched domain aborts with no changes when the confirm is c
     { pattern: 'existing', body: '{}', mode: 'text' },
   ]);
   assert.equal(harness.alerts.length, 0);
+});
+
+test('UI shows attach status and unchecks the toggle on attach failure', async () => {
+  // Seed one captured API so init's loadApis succeeds immediately and the
+  // status port connects within flushUi instead of after the ~1s retry loop.
+  const harness = createUiHarness({
+    storageState: { enabled: true },
+    apis: [{ url: TEST_API_URL, type: 'fetch' }],
+  });
+  await flushUi(harness.window);
+
+  harness.emitPortMessage({ type: 'status', tabId: 99, attached: true });
+  const statusEl = harness.document.getElementById('attach-status');
+  assert.equal(statusEl.textContent, 'Intercepting requests');
+  assert.equal(statusEl.classList.contains('attach-status--on'), true);
+
+  harness.emitPortMessage({
+    type: 'status',
+    tabId: 99,
+    attached: false,
+    error: 'Another debugger is already attached',
+  });
+  await flushUi(harness.window);
+  assert.equal(statusEl.textContent, 'Attach failed: Another debugger is already attached');
+  assert.equal(statusEl.classList.contains('attach-status--error'), true);
+  assert.equal(harness.document.getElementById('enable').checked, false);
+  assert.equal(harness.localState.enabled, false);
+});
+
+test('UI queries getStatus on load', async () => {
+  const harness = createUiHarness();
+  await flushUi(harness.window);
+  assert.equal(
+    harness.sentMessages.some(msg => msg.type === 'getStatus'),
+    true
+  );
 });

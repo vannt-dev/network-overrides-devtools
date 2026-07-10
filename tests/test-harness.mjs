@@ -106,6 +106,7 @@ function buildUiHtml() {
   <html>
     <body>
       <input id="enable" type="checkbox">
+      <span id="attach-status" style="display:none"></span>
       <button id="refresh-apis" type="button">↻</button>
       <button id="info-btn" type="button">ⓘ</button>
       <div class="tabs">
@@ -216,6 +217,7 @@ export function createUiHarness({
   let confirmResult = true;
   const confirms = [];
   let getApisCallCount = 0;
+  const uiPorts = [];
 
   const chrome = {
     storage: {
@@ -269,6 +271,7 @@ export function createUiHarness({
       connect() {
         const listeners = new Set();
         const disconnectListeners = new Set();
+        uiPorts.push({ listeners });
         return {
           name: 'network-overrides-ui',
           onMessage: {
@@ -306,6 +309,10 @@ export function createUiHarness({
         }
         if (message.type === 'getApiData') {
           callback?.({ body: apiBodies[message.url] || '' });
+          return;
+        }
+        if (message.type === 'getStatus') {
+          callback?.({ type: 'statusResponse', attached: false });
           return;
         }
         callback?.({ success: true });
@@ -363,6 +370,9 @@ export function createUiHarness({
     },
     localState,
     getApisCallCount: () => getApisCallCount,
+    emitPortMessage(msg) {
+      uiPorts.forEach(({ listeners }) => listeners.forEach(fn => fn(structuredClone(msg))));
+    },
   };
 }
 

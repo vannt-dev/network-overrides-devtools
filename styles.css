@@ -727,3 +727,14 @@ input[type='search'] {
   border-bottom-color: #0a4f9c;
   font-weight: 600;
 }
+
+.attach-status {
+  font-size: 11px;
+  margin-left: 8px;
+}
+.attach-status--on {
+  color: #2e7d32;
+}
+.attach-status--error {
+  color: #c62828;
+}

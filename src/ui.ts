@@ -99,6 +99,7 @@ namespace NetworkOverridesUi {
 
   interface Elements {
     enableCheckbox: HTMLInputElement;
+    attachStatus: HTMLElement;
     patternInput: HTMLInputElement;
     bodyInput: HTMLTextAreaElement;
     addBtn: HTMLButtonElement;
@@ -168,6 +169,35 @@ namespace NetworkOverridesUi {
       });
     }
 
+    function renderAttachStatus(attached: boolean, error?: string): void {
+      const el = elements.attachStatus;
+      if (!el) return;
+      el.classList.remove('attach-status--on', 'attach-status--error');
+      if (error) {
+        el.classList.add('attach-status--error');
+        el.textContent = `Attach failed: ${error}`;
+        el.style.display = '';
+      } else if (attached) {
+        el.classList.add('attach-status--on');
+        el.textContent = 'Intercepting requests';
+        el.style.display = '';
+      } else {
+        el.textContent = '';
+        el.style.display = 'none';
+      }
+    }
+
+    async function refreshAttachStatus(): Promise<void> {
+      const tab = await getActiveTab();
+      if (typeof tab?.id !== 'number') return;
+      const response = await new Promise<any>(resolve => {
+        chrome.runtime.sendMessage({ type: 'getStatus', tabId: tab.id }, resolve);
+      });
+      if (response?.type === 'statusResponse') {
+        renderAttachStatus(!!response.attached, response.error);
+      }
+    }
+
     function addApisToState(newApis: ApiEntry[]): void {
       let changed = false;
       newApis.forEach(entry => {
@@ -216,6 +246,14 @@ namespace NetworkOverridesUi {
         });
         port.onMessage.addListener((msg: any) => {
           if (!msg || typeof msg !== 'object') return;
+          if (msg.type === 'status') {
+            renderAttachStatus(!!msg.attached, msg.error);
+            if (msg.error) {
+              elements.enableCheckbox.checked = false;
+              void chrome.storage.local.set({ enabled: false });
+            }
+            return;
+          }
           if (msg.type === 'apis' && Array.isArray(msg.apis)) {
             addApisToState(msg.apis as ApiEntry[]);
             return;
@@ -791,6 +829,8 @@ namespace NetworkOverridesUi {
     elements.enableCheckbox.addEventListener('change', async () => {
       await chrome.storage.local.set({ enabled: elements.enableCheckbox.checked });
       await notifyBackground();
+      // The port broadcast corrects this moments later if attach is still in flight.
+      await refreshAttachStatus();
     });
 
     elements.refreshBtn.addEventListener('click', async () => {
@@ -963,6 +1003,7 @@ namespace NetworkOverridesUi {
       elements.apiSearchInput.value = state.apiSearchTerm;
 
       await notifyBackground();
+      await refreshAttachStatus();
       await refreshApisWithRetry();
       await startApiStream();
       switchTab('other');
@@ -1033,6 +1074,7 @@ namespace NetworkOverridesUi {
   function getElements(): Elements {
     return {
       enableCheckbox: document.getElementById('enable') as HTMLInputElement,
+      attachStatus: document.getElementById('attach-status') as HTMLElement,
       patternInput: document.getElementById('pattern') as HTMLInputElement,
       bodyInput: document.getElementById('body') as HTMLTextAreaElement,
       addBtn: document.getElementById('add') as HTMLButtonElement,

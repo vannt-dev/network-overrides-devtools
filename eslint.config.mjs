@@ -14,7 +14,12 @@ export default tseslint.config(
       },
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // The NetworkOverrides* namespaces are consumed cross-file at runtime
+      // (script tags / importScripts), so eslint sees them as unused.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^NetworkOverrides' },
+      ],
       '@typescript-eslint/no-explicit-any': 'off',
       'no-empty': ['warn', { allowEmptyCatch: true }],
       // This extension shares code between separately-compiled entry points via

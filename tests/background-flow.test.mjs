@@ -731,6 +731,63 @@ test('getStatus reports attach success and failure', async () => {
   assert.equal(failing.context.NetworkOverridesTabState.get(7).enabled, false);
 });
 
+test('Rehydrate adopts a debugger session that survived the worker restart', async () => {
+  // chrome.debugger sessions belong to the extension, not the worker instance:
+  // after an idle-kill the session is still attached, so the fresh attach fails
+  // with "already attached". The background must adopt that session instead of
+  // treating it as a failure and disabling the tab.
+  const harness = createBackgroundHarness({
+    existingTabIds: [7, 8],
+    preAttachedTabIds: [8],
+    sessionState: {
+      tabState_8: {
+        enabled: true,
+        origin: 'https://b.test',
+        overrides: [{ pattern: 'users', body: '{"mocked":true}', mode: 'text' }],
+        attached: true,
+        recentApis: {},
+        recentApiBodies: {},
+      },
+    },
+  });
+
+  await harness.context.NetworkOverridesBackground.ready;
+
+  const state = harness.context.NetworkOverridesTabState.get(8);
+  assert.equal(state.attached, true);
+  assert.equal(state.enabled, true);
+  assert.equal(state.attachError, undefined);
+  assert.equal(
+    harness.commandLog.some(
+      ({ target, method }) => target.tabId === 8 && method === 'Fetch.enable'
+    ),
+    true
+  );
+});
+
+test('getStatus during an in-flight attach waits for the outcome instead of answering stale state', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://a.test/',
+    enabled: true,
+    overrides: [],
+  });
+  // No timer flush: the attach callback has not run yet, so a naive getStatus
+  // would answer { attached: false } with no error.
+  let response;
+  const keepAlive = harness.listeners.onMessage({ type: 'getStatus', tabId: 7 }, {}, value => {
+    response = value;
+  });
+  assert.equal(keepAlive, true);
+  assert.equal(response, undefined); // must not answer before the attach settles
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(normalize(response), { type: 'statusResponse', attached: true });
+});
+
 test('Concurrent update messages attach the debugger exactly once', async () => {
   const harness = createBackgroundHarness();
   await harness.context.NetworkOverridesBackground.ready;

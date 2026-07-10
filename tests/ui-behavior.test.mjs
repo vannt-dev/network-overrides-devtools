@@ -822,6 +822,23 @@ test('UI queries getStatus on load', async () => {
   );
 });
 
+test('UI unchecks the toggle when getStatus itself reports an attach error', async () => {
+  const harness = createUiHarness({
+    storageState: { enabled: true },
+    statusResponse: {
+      type: 'statusResponse',
+      attached: false,
+      error: 'Cannot access a chrome:// URL',
+    },
+  });
+  await flushUi(harness.window);
+
+  const statusEl = harness.document.getElementById('attach-status');
+  assert.equal(statusEl.textContent, 'Attach failed: Cannot access a chrome:// URL');
+  assert.equal(harness.document.getElementById('enable').checked, false);
+  assert.equal(harness.localState.enabled, false);
+});
+
 test('Import rejects rules with an unknown mode or method', async () => {
   const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
   await flushUi(harness.window);

@@ -189,16 +189,26 @@ namespace NetworkOverridesBackground {
       case 'getStatus': {
         const tabId = Number(msg.tabId);
         if (Number.isNaN(tabId)) return;
-        const state = TabState.get(tabId);
-        if (typeof sendResponse === 'function') {
-          const payload: { type: string; attached: boolean; error?: string } = {
-            type: 'statusResponse',
-            attached: !!state?.attached,
-          };
-          if (state?.attachError) payload.error = state.attachError;
-          sendResponse(payload);
+        const respond = () => {
+          const state = TabState.get(tabId);
+          if (typeof sendResponse === 'function') {
+            const payload: { type: string; attached: boolean; error?: string } = {
+              type: 'statusResponse',
+              attached: !!state?.attached,
+            };
+            if (state?.attachError) payload.error = state.attachError;
+            sendResponse(payload);
+          }
+        };
+        // Answering mid-attach would report a stale { attached: false } with no
+        // error; wait for the in-flight attempt so the UI sees the real outcome.
+        const pending = TabState.runtime(tabId).attachPromise;
+        if (pending) {
+          void pending.catch(() => {}).then(respond);
+        } else {
+          respond();
         }
-        return;
+        return true;
       }
       case 'getApiData': {
         const tabId = Number(msg.tabId);
@@ -271,6 +281,13 @@ namespace NetworkOverridesBackground {
     });
   });
 
+  async function enableInterception(tabId: number): Promise<void> {
+    await sendDebugCommand(tabId, 'Network.enable', {});
+    await sendDebugCommand(tabId, 'Fetch.enable', {
+      patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
+    });
+  }
+
   function sendDebugCommand(tabId: number, method: string, params: object): Promise<void> {
     return new Promise((resolve, reject) => {
       chrome.debugger.sendCommand({ tabId }, method, params, () => {
@@ -309,13 +326,23 @@ namespace NetworkOverridesBackground {
       try {
         chrome.debugger.attach({ tabId }, '1.3', async () => {
           if (chrome.runtime.lastError) {
-            return reject(new Error(chrome.runtime.lastError.message));
+            const message = chrome.runtime.lastError.message || 'attach failed';
+            // Debugger sessions belong to the extension, not the worker
+            // instance, so our own session survives a worker restart and makes
+            // this attach fail. If commands still work, adopt that session;
+            // if they fail too, a foreign debugger (e.g. DevTools) owns the tab.
+            if (/already attached/i.test(message)) {
+              try {
+                await enableInterception(tabId);
+                return resolve();
+              } catch {
+                return reject(new Error(message));
+              }
+            }
+            return reject(new Error(message));
           }
           try {
-            await sendDebugCommand(tabId, 'Network.enable', {});
-            await sendDebugCommand(tabId, 'Fetch.enable', {
-              patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
-            });
+            await enableInterception(tabId);
             resolve();
           } catch (err) {
             chrome.debugger.detach({ tabId }, () => {});

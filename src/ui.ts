@@ -195,6 +195,12 @@ namespace NetworkOverridesUi {
       });
       if (response?.type === 'statusResponse') {
         renderAttachStatus(!!response.attached, response.error);
+        // Same behavior as the port 'status' push: a failed attach means
+        // nothing is intercepted, so the toggle must not stay checked.
+        if (response.error) {
+          elements.enableCheckbox.checked = false;
+          void chrome.storage.local.set({ enabled: false });
+        }
       }
     }
 

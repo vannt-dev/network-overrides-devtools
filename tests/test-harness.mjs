@@ -185,6 +185,7 @@ export function createUiHarness({
   tabId = 99,
   tabUrl = 'https://example.test/',
   options = { autoFillOnOpen: true, showManualEditor: false },
+  statusResponse = { type: 'statusResponse', attached: false },
 } = {}) {
   const dom = new JSDOM(buildUiHtml(), {
     url: tabUrl,
@@ -312,7 +313,7 @@ export function createUiHarness({
           return;
         }
         if (message.type === 'getStatus') {
-          callback?.({ type: 'statusResponse', attached: false });
+          callback?.(structuredClone(statusResponse));
           return;
         }
         callback?.({ success: true });
@@ -386,6 +387,7 @@ export function createBackgroundHarness({
   sessionState: initialSessionState = {},
   storageState: initialStorageState = {},
   existingTabIds = [7],
+  preAttachedTabIds = [],
 } = {}) {
   const listeners = {
     onMessage: null,
@@ -405,6 +407,9 @@ export function createBackgroundHarness({
   const responseBodies = new Map();
   const errors = [];
   let attachError = null;
+  // Browser-side attachment state: chrome.debugger sessions belong to the
+  // extension, not the worker instance, so they survive worker restarts.
+  const attachedTargets = new Set(preAttachedTabIds);
 
   const chrome = {
     runtime: {
@@ -457,20 +462,40 @@ export function createBackgroundHarness({
             chrome.runtime.lastError = null;
             return;
           }
+          if (attachedTargets.has(target.tabId)) {
+            chrome.runtime.lastError = {
+              message: `Another debugger is already attached to the tab with id: ${target.tabId}.`,
+            };
+            callback?.();
+            chrome.runtime.lastError = null;
+            return;
+          }
+          attachedTargets.add(target.tabId);
           callback?.();
         }, 0);
       },
       detach(target, callback) {
         detachedTabs.push(target);
+        attachedTargets.delete(target.tabId);
         callback?.();
       },
       sendCommand(target, method, params, callback) {
         commandLog.push({ target, method, params });
-        if (method === 'Fetch.getResponseBody') {
+        // Real Chrome scopes runtime.lastError per callback; this mock runs
+        // callbacks synchronously, so isolate it from any enclosing callback.
+        const priorLastError = chrome.runtime.lastError;
+        chrome.runtime.lastError = null;
+        if (!attachedTargets.has(target.tabId)) {
+          chrome.runtime.lastError = {
+            message: `Debugger is not attached to the tab with id: ${target.tabId}.`,
+          };
+          callback?.();
+        } else if (method === 'Fetch.getResponseBody') {
           callback?.(responseBodies.get(params.requestId) || {});
-          return;
+        } else {
+          callback?.();
         }
-        callback?.();
+        chrome.runtime.lastError = priorLastError;
       },
     },
     storage: {

@@ -453,7 +453,7 @@ test('Export builds the documented JSON envelope and triggers a download', async
   assert.equal(exported.version, 1);
   assert.equal(exported.domain, TEST_DOMAIN);
   assert.equal(typeof exported.exportedAt, 'string');
-  assert.deepEqual(exported.overrides, [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }]);
+  assert.deepEqual(exported.overrides, [{ pattern: 'users', body: { ok: true }, mode: 'text' }]);
 });
 
 test('Export compacts pretty-printed JSON bodies and leaves non-JSON bodies untouched', async () => {
@@ -481,11 +481,36 @@ test('Export compacts pretty-printed JSON bodies and leaves non-JSON bodies unto
   await flushUi(harness.window);
 
   const exported = JSON.parse(harness.downloads[0].content);
-  assert.equal(exported.overrides[0].body, '{"ok":true,"items":[1,2]}');
+  // JSON bodies are exported as real nested JSON (no escaped-string noise)
+  assert.deepEqual(exported.overrides[0].body, { ok: true, items: [1, 2] });
   // non-JSON bodies must survive byte-for-byte
   assert.equal(exported.overrides[1].body, 'not json\nwith a newline');
   // the stored rules themselves must not be rewritten by exporting
   assert.match(harness.localState.overrides[0].body, /\n/);
+});
+
+test('Import accepts a nested JSON body and stores it as a string rule body', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [
+        { pattern: 'users', mode: 'text', body: { ok: true, items: [1, 2] } },
+        { pattern: 'plain', mode: 'text', body: 'raw text' },
+      ],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.alerts.length, 0);
+  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
+  const rules = saved[`overrides_${TEST_DOMAIN}`];
+  assert.equal(rules[0].body, '{"ok":true,"items":[1,2]}');
+  assert.equal(rules[1].body, 'raw text');
 });
 
 test('Export shows an alert and does not attempt a download when Blob construction fails', async () => {

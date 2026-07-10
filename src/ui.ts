@@ -868,12 +868,17 @@ namespace NetworkOverridesUi {
     elements.exportRulesBtn.addEventListener('click', () => {
       let blob: Blob;
       try {
-        // Compact JSON bodies so the exported file is not littered with \n
-        // escapes; the UI pretty-prints bodies on display, so nothing is lost.
+        // Bodies that hold JSON objects/arrays are exported as real nested
+        // JSON (pretty-printed with the envelope, no escaped-string noise);
+        // import converts them back to string bodies.
         const compactRules = state.overrides.map(override => {
           if (!override.body) return override;
           try {
-            return { ...override, body: JSON.stringify(JSON.parse(override.body)) };
+            const parsed = JSON.parse(override.body);
+            if (parsed !== null && typeof parsed === 'object') {
+              return { ...override, body: parsed as unknown as string };
+            }
+            return override;
           } catch {
             return override;
           }
@@ -930,7 +935,9 @@ namespace NetworkOverridesUi {
         (rule.mode === 'text' || rule.mode === 'file') &&
         (rule.method === undefined ||
           (typeof rule.method === 'string' && KNOWN_METHODS.includes(rule.method.toUpperCase()))) &&
-        (rule.body === undefined || typeof rule.body === 'string') &&
+        (rule.body === undefined ||
+          typeof rule.body === 'string' ||
+          (typeof rule.body === 'object' && rule.body !== null)) &&
         (rule.redirectUrl === undefined || typeof rule.redirectUrl === 'string') &&
         (rule.enabled === undefined || typeof rule.enabled === 'boolean');
       if (!parsed.overrides.every(isValidRule)) {
@@ -953,7 +960,10 @@ namespace NetworkOverridesUi {
       // untrusted file might have included so it never reaches storage/background.
       const importedRules: OverrideRule[] = parsed.overrides.map((rule: any): OverrideRule => {
         const clean = { pattern: rule.pattern, mode: rule.mode } as OverrideRule;
-        if (rule.body !== undefined) clean.body = rule.body;
+        if (rule.body !== undefined) {
+          // Nested-JSON bodies (the export format) become string bodies again.
+          clean.body = typeof rule.body === 'string' ? rule.body : JSON.stringify(rule.body);
+        }
         if (rule.redirectUrl !== undefined) clean.redirectUrl = rule.redirectUrl;
         if (rule.enabled !== undefined) clean.enabled = rule.enabled;
         if (rule.method !== undefined) clean.method = rule.method.toUpperCase();

@@ -821,3 +821,51 @@ test('UI queries getStatus on load', async () => {
     true
   );
 });
+
+test('Import rejects rules with an unknown mode or method', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [{ pattern: 'x', mode: 'yaml', body: '' }],
+    })
+  );
+  await flushUi(harness.window);
+  assert.equal(harness.alerts.length, 1);
+  assert.match(harness.alerts[0], /invalid/i);
+  assert.equal(harness.localState.overrides, undefined);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [{ pattern: 'x', mode: 'text', body: '', method: 'TRACE' }],
+    })
+  );
+  await flushUi(harness.window);
+  assert.equal(harness.alerts.length, 2);
+  assert.equal(harness.localState.overrides, undefined);
+});
+
+test('Import normalizes method casing to uppercase', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [{ pattern: 'x', mode: 'text', body: '', method: 'get' }],
+    })
+  );
+  await flushUi(harness.window);
+
+  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
+  assert.equal(saved[`overrides_${TEST_DOMAIN}`][0].method, 'GET');
+});

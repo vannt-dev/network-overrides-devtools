@@ -911,13 +911,16 @@ namespace NetworkOverridesUi {
       const isValidRule = (rule: any): boolean =>
         !!rule &&
         typeof rule.pattern === 'string' &&
-        typeof rule.mode === 'string' &&
-        (rule.method === undefined || typeof rule.method === 'string') &&
+        (rule.mode === 'text' || rule.mode === 'file') &&
+        (rule.method === undefined ||
+          (typeof rule.method === 'string' && KNOWN_METHODS.includes(rule.method.toUpperCase()))) &&
         (rule.body === undefined || typeof rule.body === 'string') &&
         (rule.redirectUrl === undefined || typeof rule.redirectUrl === 'string') &&
         (rule.enabled === undefined || typeof rule.enabled === 'boolean');
       if (!parsed.overrides.every(isValidRule)) {
-        alert('Invalid file: a rule is missing "pattern"/"mode", or has an invalid field type.');
+        alert(
+          'Invalid file: a rule has a missing/invalid "pattern", "mode", "method", or field type.'
+        );
         return;
       }
 
@@ -937,7 +940,7 @@ namespace NetworkOverridesUi {
         if (rule.body !== undefined) clean.body = rule.body;
         if (rule.redirectUrl !== undefined) clean.redirectUrl = rule.redirectUrl;
         if (rule.enabled !== undefined) clean.enabled = rule.enabled;
-        if (rule.method !== undefined) clean.method = rule.method;
+        if (rule.method !== undefined) clean.method = rule.method.toUpperCase();
         return clean;
       });
 

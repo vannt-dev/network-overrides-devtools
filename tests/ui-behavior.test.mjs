@@ -456,6 +456,38 @@ test('Export builds the documented JSON envelope and triggers a download', async
   assert.deepEqual(exported.overrides, [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }]);
 });
 
+test('Export compacts pretty-printed JSON bodies and leaves non-JSON bodies untouched', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [
+        { pattern: 'users', body: '{\n  "ok": true,\n  "items": [\n    1,\n    2\n  ]\n}', mode: 'text' },
+        { pattern: 'plain', body: 'not json\nwith a newline', mode: 'text' },
+      ],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('export-rules-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const exported = JSON.parse(harness.downloads[0].content);
+  assert.equal(exported.overrides[0].body, '{"ok":true,"items":[1,2]}');
+  // non-JSON bodies must survive byte-for-byte
+  assert.equal(exported.overrides[1].body, 'not json\nwith a newline');
+  // the stored rules themselves must not be rewritten by exporting
+  assert.match(harness.localState.overrides[0].body, /\n/);
+});
+
 test('Export shows an alert and does not attempt a download when Blob construction fails', async () => {
   const harness = createUiHarness({
     storageState: {

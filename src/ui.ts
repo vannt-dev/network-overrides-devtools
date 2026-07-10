@@ -868,11 +868,21 @@ namespace NetworkOverridesUi {
     elements.exportRulesBtn.addEventListener('click', () => {
       let blob: Blob;
       try {
+        // Compact JSON bodies so the exported file is not littered with \n
+        // escapes; the UI pretty-prints bodies on display, so nothing is lost.
+        const compactRules = state.overrides.map(override => {
+          if (!override.body) return override;
+          try {
+            return { ...override, body: JSON.stringify(JSON.parse(override.body)) };
+          } catch {
+            return override;
+          }
+        });
         const payload = {
           version: 1,
           domain: currentDomain,
           exportedAt: new Date().toISOString(),
-          overrides: state.overrides,
+          overrides: compactRules,
         };
         blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       } catch (e) {

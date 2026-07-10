@@ -603,6 +603,12 @@ export function createBackgroundHarness({
     removeTab(tabId = 7) {
       listeners.onRemoved?.(tabId);
     },
+    emitDetach(tabId = 7, reason = 'canceled_by_user') {
+      // An external detach (infobar Cancel, DevTools takeover) has already
+      // released the browser-side session before the event reaches us.
+      attachedTargets.delete(tabId);
+      listeners.onDetach?.({ tabId }, reason);
+    },
     navigateTab(tabId, url) {
       listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
     },

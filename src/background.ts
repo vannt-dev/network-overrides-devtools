@@ -419,10 +419,19 @@ namespace NetworkOverridesBackground {
     });
   });
 
-  chrome.debugger.onDetach.addListener(source => {
+  chrome.debugger.onDetach.addListener((source, reason) => {
     const tabId = source.tabId;
     if (typeof tabId !== 'number') return;
-    TabState.dispose(tabId);
+    // The tab is still open (infobar Cancel, DevTools takeover, browser-side
+    // teardown) — keep captured data and rules, only record that interception
+    // stopped. enabled goes off so a worker restart honors the cancellation.
+    const state = TabState.get(tabId);
+    if (!state) return;
+    state.attached = false;
+    state.enabled = false;
+    state.attachError = `Debugger detached (${reason || 'unknown reason'})`;
+    TabState.schedulePersist(tabId);
+    broadcastStatus(tabId);
   });
 
   chrome.debugger.onEvent.addListener((source, method, params: any) => {

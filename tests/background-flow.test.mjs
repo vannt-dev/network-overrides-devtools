@@ -723,6 +723,47 @@ test('Rehydrate adopts a debugger session that survived the worker restart', asy
   );
 });
 
+test('External debugger detach disables interception but keeps captured data', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: 'users', body: '{}', mode: 'text' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  harness.emitDebuggerEvent('Network.requestWillBeSent', {
+    request: { url: TEST_API_URL },
+    type: 'Fetch',
+  });
+
+  // User clicks Cancel on the debugging infobar: the tab is still open, so the
+  // captured data and rules must survive — only interception stops.
+  harness.emitDetach(7, 'canceled_by_user');
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const state = harness.context.NetworkOverridesTabState.get(7);
+  assert.ok(state, 'tab state must not be disposed');
+  assert.equal(state.attached, false);
+  assert.equal(state.enabled, false);
+  assert.equal(state.recentApis.size, 1);
+  assert.equal(state.overrides.length, 1);
+
+  // The persisted snapshot must survive too, with enabled off so a worker
+  // restart does not silently re-attach against the user's cancellation.
+  await harness.context.NetworkOverridesTabState.flushPersist(7);
+  const snapshot = harness.sessionState['tabState_7'];
+  assert.ok(snapshot);
+  assert.equal(snapshot.enabled, false);
+
+  const { response } = harness.callMessage({ type: 'getStatus', tabId: 7 });
+  assert.equal(response.attached, false);
+  assert.match(String(response.error), /detach/i);
+});
+
 test('getStatus during an in-flight attach waits for the outcome instead of answering stale state', async () => {
   const harness = createBackgroundHarness();
   await harness.context.NetworkOverridesBackground.ready;

@@ -168,13 +168,17 @@ try {
   await setEnable(false);
   await popup.waitForTimeout(500);
   await setEnable(true);
+  // The cross-scheme navigation itself may already have painted a red detach
+  // status, so wait for the toggle to uncheck — that only happens once the new
+  // attach attempt fails.
   let failText = '';
+  let unchecked = false;
   for (let i = 0; i < 20; i++) {
+    unchecked = !(await popup.isChecked('#enable'));
     failText = (await popup.textContent('#attach-status'))?.trim() ?? '';
-    if (failText.startsWith('Attach failed:')) break;
+    if (unchecked && failText.startsWith('Attach failed:')) break;
     await popup.waitForTimeout(500);
   }
-  const unchecked = !(await popup.isChecked('#enable'));
   report('attach failure shows red status line', failText.startsWith('Attach failed:'), failText || '(empty)');
   report('attach failure unchecks the enable toggle', unchecked);
   await popup.screenshot({ path: path.join(WORK_DIR, '3-attach-failed.png') });

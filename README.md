@@ -150,6 +150,7 @@ npm run build          # Compile TypeScript → dist/
 npm test               # Build + run test suite
 npm run coverage       # Build + run tests with coverage report
 npm run ci:test        # CI pipeline (same as coverage)
+npm run smoke          # Real-browser smoke test (loads the unpacked extension into Chromium)
 npm run package:store  # Create a ZIP for Chrome Web Store / Edge Add-ons
 ```
 
@@ -167,6 +168,8 @@ Tests live in `tests/` and cover:
 - UI behavior with DOM mocks (`ui-behavior.test.mjs`)
 - Background debugger event handling (`background-flow.test.mjs`)
 - Entrypoint bootstrapping (`entrypoints.test.mjs`)
+
+`npm run smoke` (`scripts/smoke.mjs`) additionally drives the real unpacked extension in Chromium via Playwright — attach status, interception, worker-restart recovery, cross-origin navigation, and attach failures. Run it before releases; it needs a display (headed browser) and downloads Chromium on first use.
 
 ## CI
 

@@ -9,6 +9,7 @@
     "build": "tsc",
     "lint": "eslint src",
     "test": "npm run build && node --test --test-isolation=none tests/*.test.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs",
     "coverage": "npm run build && c8 --reporter=text --reporter=lcov --reporter=html --report-dir coverage node --test --test-isolation=none tests/*.test.mjs",
     "ci:test": "npm run coverage",
     "package:store": "npm run build && node scripts/package-store.mjs",
@@ -34,6 +35,7 @@
     "husky": "^9.1.5",
     "jsdom": "^29.0.1",
     "lint-staged": "^15.2.10",
+    "playwright": "^1.61.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.63.0"

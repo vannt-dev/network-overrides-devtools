@@ -1,0 +1,188 @@
+// Real-browser smoke test: loads the unpacked extension into Chromium and
+// exercises the reliability paths that unit tests cannot reach — debugger
+// attach/adopt, request interception, worker restart, and attach failures.
+//
+// Usage: npm run smoke   (downloads Chromium on first run via playwright)
+//
+// The popup is driven as a regular tab. Because its getActiveTab() resolves
+// the active tab of its own window, the site tab is kept active and a focus
+// event is dispatched so the API-stream port subscribes against the site tab.
+import http from 'node:http';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const EXT_PATH = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'network-overrides-smoke-'));
+const PROFILE = path.join(WORK_DIR, 'profile');
+console.log('screenshots + profile in', WORK_DIR);
+
+const results = [];
+function report(name, ok, detail = '') {
+  results.push({ name, ok, detail });
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
+}
+
+const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/api/users')) {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end('{"real":true}');
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end('<!doctype html><title>smoke</title><h1>smoke page</h1>');
+});
+await new Promise(resolve => server.listen(0, resolve));
+const PORT = server.address().port;
+
+const context = await chromium.launchPersistentContext(PROFILE, {
+  headless: false,
+  viewport: { width: 1100, height: 800 },
+  args: [`--disable-extensions-except=${EXT_PATH}`, `--load-extension=${EXT_PATH}`],
+});
+
+try {
+  // ---- extension id from its service worker
+  let [sw] = context.serviceWorkers();
+  if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 15000 });
+  const extId = new URL(sw.url()).host;
+
+  // ---- open site tab (active) and popup as a background tab in the same window
+  const site = context.pages()[0] ?? (await context.newPage());
+  await site.goto(`http://127.0.0.1:${PORT}/`);
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extId}/popup.html`);
+  await site.bringToFront(); // popup's getActiveTab() must resolve to the site tab
+  // The popup subscribed its API-stream port while it was itself the active tab;
+  // fire a focus event so startApiStream re-subscribes against the site tab.
+  await popup.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await popup.waitForTimeout(500);
+
+  // The #enable input is visually hidden behind the switch slider; toggle via the slider.
+  async function setEnable(want) {
+    const checked = await popup.locator('#enable').isChecked();
+    if (checked !== want) await popup.click('.switch-slider');
+  }
+
+  // ---- 1. enable -> debugger attaches -> green status line
+  await setEnable(true);
+  let statusText = '';
+  for (let i = 0; i < 20; i++) {
+    statusText = (await popup.textContent('#attach-status'))?.trim() ?? '';
+    if (statusText) break;
+    await popup.waitForTimeout(500);
+  }
+  report(
+    'attach status shows green "Intercepting requests"',
+    statusText === 'Intercepting requests',
+    statusText || '(empty)'
+  );
+  await popup.screenshot({ path: path.join(WORK_DIR, '1-attach-status.png') });
+
+  // ---- 2. fetch is captured and listed in the popup
+  const real = await site.evaluate(u => fetch(u).then(r => r.text()), `http://127.0.0.1:${PORT}/api/users`);
+  report('unoverridden fetch returns the real body', real === '{"real":true}', real);
+  await popup.click('#refresh-apis');
+  await popup.waitForTimeout(1500);
+  const apiItem = popup.locator('li.api-item', { hasText: '/api/users' }).first();
+  const captured = (await apiItem.count()) > 0;
+  report('request appears in the captured APIs list', captured);
+  await popup.screenshot({ path: path.join(WORK_DIR, '2-captured.png') });
+
+  // ---- 3. create an override rule through the modal, verify the response is mocked
+  if (captured) {
+    await apiItem.click();
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-body', '{"mocked":true}');
+    await popup.click('#save-override');
+    await popup.waitForTimeout(1000);
+    const mocked = await site.evaluate(u => fetch(u).then(r => r.text()), `http://127.0.0.1:${PORT}/api/users`);
+    report('override rule mocks the response body', mocked === '{"mocked":true}', mocked);
+    const header = await site.evaluate(
+      u => fetch(u).then(r => r.headers.get('x-network-overrides')),
+      `http://127.0.0.1:${PORT}/api/users`
+    );
+    report('mocked response carries x-network-overrides header', header === 'true', String(header));
+  }
+
+  // ---- 4. force-stop the service worker, wake it, confirm re-attach + rules survive
+  const swInternals = await context.newPage();
+  await swInternals.goto('chrome://serviceworker-internals/');
+  await swInternals.waitForTimeout(1000);
+  let stopped = false;
+  const stopBtn = swInternals
+    .locator(`xpath=//*[contains(text(), '${extId}')]/ancestor::*[.//button][1]//button[normalize-space()='Stop']`)
+    .first();
+  if ((await stopBtn.count()) > 0) {
+    await stopBtn.click();
+    stopped = true;
+  } else {
+    const anyStop = swInternals.getByRole('button', { name: 'Stop' });
+    if ((await anyStop.count()) === 1) {
+      await anyStop.click(); // only our extension is loaded, so the single worker is ours
+      stopped = true;
+    }
+  }
+  await swInternals.close();
+  if (!stopped) {
+    report('worker restart test', false, 'could not find Stop control on chrome://serviceworker-internals (skipped)');
+  } else {
+    await site.bringToFront();
+    await site.waitForTimeout(1500);
+    // wake the worker via a tab event (reload fires tabs.onUpdated) -> rehydrate + re-attach
+    await site.reload();
+    await site.waitForTimeout(2500);
+    const afterRestart = await site.evaluate(
+      u => fetch(u).then(r => r.text()),
+      `http://127.0.0.1:${PORT}/api/users`
+    );
+    report(
+      'after worker restart the override still applies (rehydrate + re-attach)',
+      afterRestart === '{"mocked":true}',
+      afterRestart
+    );
+  }
+
+  // ---- 5. cross-origin navigation: rules switch to the new origin, captures reset
+  await site.goto(`http://localhost:${PORT}/`); // different origin, same server
+  await site.waitForTimeout(1500);
+  const otherOrigin = await site.evaluate(
+    u => fetch(u).then(r => r.text()),
+    `http://localhost:${PORT}/api/users`
+  );
+  report(
+    'after navigating to a new origin the old rule no longer applies',
+    otherOrigin === '{"real":true}',
+    otherOrigin
+  );
+  await popup.click('#refresh-apis');
+  await popup.waitForTimeout(1500);
+  const staleItems = await popup.locator('li.api-item', { hasText: '127.0.0.1' }).count();
+  report('captured APIs from the old origin were cleared', staleItems === 0, `${staleItems} stale item(s)`);
+
+  // ---- 6. attach failure: enable on a chrome:// tab -> red status, toggle unchecks
+  await site.goto('chrome://version/');
+  await site.waitForTimeout(500);
+  await setEnable(false);
+  await popup.waitForTimeout(500);
+  await setEnable(true);
+  let failText = '';
+  for (let i = 0; i < 20; i++) {
+    failText = (await popup.textContent('#attach-status'))?.trim() ?? '';
+    if (failText.startsWith('Attach failed:')) break;
+    await popup.waitForTimeout(500);
+  }
+  const unchecked = !(await popup.isChecked('#enable'));
+  report('attach failure shows red status line', failText.startsWith('Attach failed:'), failText || '(empty)');
+  report('attach failure unchecks the enable toggle', unchecked);
+  await popup.screenshot({ path: path.join(WORK_DIR, '3-attach-failed.png') });
+} finally {
+  await context.close();
+  server.close();
+}
+
+const failed = results.filter(result => !result.ok);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+process.exit(failed.length ? 1 : 0);

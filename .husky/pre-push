@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
+set -e
+
 # Lint all commits that are about to be pushed
 upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)
 if [ -z "$upstream" ]; then
   upstream="origin/main"
 fi
 npx commitlint --from "$upstream" --to HEAD --verbose
+
+# Only allow the push when the build and the full test suite pass
+npm test

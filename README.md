@@ -16,6 +16,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **Two override types:**
   - **Override body**: Replace the response body with custom text or raw base64 content.
   - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
+- **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
 - **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
@@ -90,6 +91,17 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 - Redirect: `https://new.com/api/*/product/*`
 - Request URL: `https://old.com/api/v2/item/5`
 - Redirected to: `https://new.com/api/v2/product/5`
+
+### Rule fields
+
+Optional fields on an override rule:
+
+| Field             | Type                       | Description                                                                                           |
+| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`      | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders` | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`         | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`      | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
 
 ## Usage
 

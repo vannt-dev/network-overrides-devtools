@@ -325,6 +325,19 @@
           buttons.
         </li>
         <li>
+          <strong>Fail request</strong>: The request never receives a response — it fails at the
+          network layer with the chosen reason (<code>Failed</code>, <code>TimedOut</code>,
+          <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
+          <code>InternetDisconnected</code>). Use it to test offline and timeout handling.
+        </li>
+        <li>
+          <strong>Advanced row</strong> (body rules): force a <strong>Status</strong> (100–599), add
+          <strong>Extra headers</strong> (one <code>Header-Name: value</code> per line, same names
+          overwrite the original), and set a <strong>Delay</strong> in milliseconds (also available
+          for fail rules — combine <code>TimedOut</code> with a long delay to simulate a real
+          timeout).
+        </li>
+        <li>
           <strong>Response body</strong>: Custom response content (for body override), with mode
           selector (Text / Raw base64).
         </li>

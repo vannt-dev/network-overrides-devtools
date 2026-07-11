@@ -111,6 +111,49 @@ try {
       `http://127.0.0.1:${PORT}/api/users`
     );
     report('mocked response carries x-network-overrides header', header === 'true', String(header));
+
+    // ---- 3b. status override: edit the same rule to force status 500
+    // Saving the override in step 3 moved /api/users from the "Captured APIs"
+    // tab into the "Overridden" tab, so switch tabs before re-locating it.
+    await popup.click('button.tab-btn[data-tab="overridden"]');
+    await apiItem.click();
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-status', '500');
+    // Reopening the modal pretty-prints the JSON body for display; refill it
+    // compact so the later worker-restart check's exact body match still holds.
+    await popup.fill('#modal-body', '{"mocked":true}');
+    await popup.click('#save-override');
+    await popup.waitForTimeout(1000);
+    const mockedStatus = await site.evaluate(
+      u => fetch(u).then(r => r.status),
+      `http://127.0.0.1:${PORT}/api/users`
+    );
+    report(
+      'status override makes fetch observe the mocked status',
+      mockedStatus === 500,
+      String(mockedStatus)
+    );
+
+    // ---- 3c. fail rule: a fresh rule makes fetch reject at the network layer
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', 'api/fail');
+    await popup.check('input[name="modal-override-type"][value="fail"]');
+    await popup.click('#save-override');
+    await popup.waitForTimeout(1000);
+    const failOutcome = await site.evaluate(
+      u =>
+        fetch(u).then(
+          () => 'resolved',
+          () => 'rejected'
+        ),
+      `http://127.0.0.1:${PORT}/api/fail`
+    );
+    report(
+      'fail rule makes fetch reject at the network layer',
+      failOutcome === 'rejected',
+      failOutcome
+    );
   }
 
   // ---- 4. force-stop the service worker, wake it, confirm re-attach + rules survive

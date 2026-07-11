@@ -322,6 +322,17 @@ namespace NetworkOverridesUi {
           override.method && override.method !== 'ANY'
             ? `<span class="override-method-badge">${escapeHtml(override.method)}</span> `
             : '';
+        const statusBadge =
+          typeof override.statusCode === 'number'
+            ? `<span class="override-status-badge">${override.statusCode}</span> `
+            : '';
+        const delayBadge =
+          typeof override.delayMs === 'number' && override.delayMs > 0
+            ? `<span class="override-delay-badge">⏱ ${override.delayMs}ms</span> `
+            : '';
+        const failBadge = override.failReason
+          ? `<span class="override-fail-badge" title="${escapeHtml(override.failReason)}">FAIL</span> `
+          : '';
         li.innerHTML = `
           <div class="override-item-main">
             <input
@@ -334,7 +345,7 @@ namespace NetworkOverridesUi {
             <div class="override-item-info">
               <b class="override-pattern">${escapeHtml(override.pattern)}</b>
               ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
-              <div class="override-meta">${methodBadge}${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
+              <div class="override-meta">${methodBadge}${failBadge}${statusBadge}${delayBadge}${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
             </div>
             <div class="override-item-actions">
               <button data-index="${index}" class="edit-btn" title="Edit">✎</button>

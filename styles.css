@@ -750,3 +750,25 @@ input[type='search'] {
 #modal-advanced-fields #modal-headers-field {
   flex-basis: 100%;
 }
+
+.override-status-badge,
+.override-delay-badge,
+.override-fail-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+.override-status-badge {
+  background: #fff3e0;
+  color: #e65100;
+}
+.override-delay-badge {
+  background: #e3f2fd;
+  color: #0a4f9c;
+}
+.override-fail-badge {
+  background: #ffebee;
+  color: #c62828;
+  font-weight: 600;
+}

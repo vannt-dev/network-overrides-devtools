@@ -1089,3 +1089,28 @@ test('Editing a fail rule pre-fills the fail type, reason, and delay', async () 
   assert.equal(harness.document.getElementById('modal-delay').value, '500');
   assert.equal(harness.document.getElementById('modal-fail-fields').style.display, '');
 });
+
+test('Rules list shows status, delay, and FAIL badges', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      overrides: [
+        { pattern: 'a', body: '{}', mode: 'text', statusCode: 500, delayMs: 3000 },
+        { pattern: 'b', body: '', mode: 'text', failReason: 'TimedOut' },
+      ],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const items = harness.document.querySelectorAll('#list .override-item');
+  assert.equal(items[0].querySelector('.override-status-badge').textContent, '500');
+  assert.equal(items[0].querySelector('.override-delay-badge').textContent, '⏱ 3000ms');
+  const failBadge = items[1].querySelector('.override-fail-badge');
+  assert.equal(failBadge.textContent, 'FAIL');
+  assert.equal(failBadge.title, 'TimedOut');
+});

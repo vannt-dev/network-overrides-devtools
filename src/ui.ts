@@ -1038,6 +1038,11 @@ namespace NetworkOverridesUi {
         return;
       }
 
+      const isValidImportHeader = (header: any): boolean =>
+        !!header &&
+        typeof header.name === 'string' &&
+        header.name.trim() !== '' &&
+        typeof header.value === 'string';
       const isValidRule = (rule: any): boolean =>
         !!rule &&
         typeof rule.pattern === 'string' &&
@@ -1048,10 +1053,23 @@ namespace NetworkOverridesUi {
           typeof rule.body === 'string' ||
           (typeof rule.body === 'object' && rule.body !== null)) &&
         (rule.redirectUrl === undefined || typeof rule.redirectUrl === 'string') &&
+        (rule.statusCode === undefined ||
+          (Number.isInteger(rule.statusCode) &&
+            rule.statusCode >= 100 &&
+            rule.statusCode <= 599)) &&
+        (rule.delayMs === undefined ||
+          (typeof rule.delayMs === 'number' && rule.delayMs >= 0 && rule.delayMs <= 120000)) &&
+        (rule.responseHeaders === undefined ||
+          (Array.isArray(rule.responseHeaders) &&
+            rule.responseHeaders.every(isValidImportHeader))) &&
+        (rule.failReason === undefined ||
+          (typeof rule.failReason === 'string' &&
+            FAIL_REASONS.includes(rule.failReason) &&
+            rule.redirectUrl === undefined)) &&
         (rule.enabled === undefined || typeof rule.enabled === 'boolean');
       if (!parsed.overrides.every(isValidRule)) {
         alert(
-          'Invalid file: a rule has a missing/invalid "pattern", "mode", "method", or field type.'
+          'Invalid file: a rule has a missing/invalid "pattern", "mode", "method", mock field, or field type.'
         );
         return;
       }
@@ -1076,6 +1094,15 @@ namespace NetworkOverridesUi {
         if (rule.redirectUrl !== undefined) clean.redirectUrl = rule.redirectUrl;
         if (rule.enabled !== undefined) clean.enabled = rule.enabled;
         if (rule.method !== undefined) clean.method = rule.method.toUpperCase();
+        if (rule.statusCode !== undefined) clean.statusCode = rule.statusCode;
+        if (rule.delayMs !== undefined) clean.delayMs = rule.delayMs;
+        if (rule.responseHeaders !== undefined) {
+          clean.responseHeaders = rule.responseHeaders.map((header: any) => ({
+            name: header.name,
+            value: header.value,
+          }));
+        }
+        if (rule.failReason !== undefined) clean.failReason = rule.failReason;
         return clean;
       });
 

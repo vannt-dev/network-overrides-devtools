@@ -1114,3 +1114,75 @@ test('Rules list shows status, delay, and FAIL badges', async () => {
   assert.equal(failBadge.textContent, 'FAIL');
   assert.equal(failBadge.title, 'TimedOut');
 });
+
+test('Import rejects invalid mock-power fields', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  const attempts = [
+    { pattern: 'x', mode: 'text', body: '', statusCode: 99 },
+    { pattern: 'x', mode: 'text', body: '', statusCode: 'abc' },
+    { pattern: 'x', mode: 'text', body: '', delayMs: -1 },
+    { pattern: 'x', mode: 'text', body: '', delayMs: 999999 },
+    { pattern: 'x', mode: 'text', body: '', responseHeaders: [{ name: '', value: 'v' }] },
+    { pattern: 'x', mode: 'text', body: '', responseHeaders: 'not-an-array' },
+    { pattern: 'x', mode: 'text', body: '', failReason: 'Nope' },
+    { pattern: 'x', mode: 'text', body: '', failReason: 'Failed', redirectUrl: 'https://a.test/' },
+  ];
+  for (const rule of attempts) {
+    selectImportFile(
+      harness,
+      JSON.stringify({ version: 1, domain: TEST_DOMAIN, overrides: [rule] })
+    );
+    await flushUi(harness.window);
+  }
+  assert.equal(harness.alerts.length, attempts.length);
+  assert.equal(
+    harness.storageSets.find(set => `overrides_${TEST_DOMAIN}` in set),
+    undefined
+  );
+});
+
+test('Import keeps valid mock-power fields on the cleaned rule', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [
+        {
+          pattern: 'users',
+          mode: 'text',
+          body: '{}',
+          statusCode: 503,
+          delayMs: 1500,
+          responseHeaders: [{ name: 'X-Custom', value: 'yes' }],
+        },
+        { pattern: 'fail', mode: 'text', body: '', failReason: 'TimedOut' },
+      ],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.equal(harness.alerts.length, 0);
+  const rules = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
+    `overrides_${TEST_DOMAIN}`
+  ];
+  assert.deepEqual(rules[0], {
+    pattern: 'users',
+    mode: 'text',
+    body: '{}',
+    statusCode: 503,
+    delayMs: 1500,
+    responseHeaders: [{ name: 'X-Custom', value: 'yes' }],
+  });
+  assert.deepEqual(rules[1], {
+    pattern: 'fail',
+    mode: 'text',
+    body: '',
+    failReason: 'TimedOut',
+  });
+});

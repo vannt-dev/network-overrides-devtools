@@ -61,6 +61,29 @@ namespace NetworkOverridesUi {
 
   const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
+  const FAIL_REASONS = [
+    'Failed',
+    'TimedOut',
+    'ConnectionRefused',
+    'NameNotResolved',
+    'InternetDisconnected',
+  ];
+
+  type ModalOverrideType = 'body' | 'redirect' | 'fail';
+
+  // Parses "Header-Name: value" lines; returns null when any non-empty line is malformed.
+  function parseHeaderLines(text: string): NetworkOverridesShared.FetchHeader[] | null {
+    const headers: NetworkOverridesShared.FetchHeader[] = [];
+    for (const rawLine of text.split('\n')) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const colon = line.indexOf(':');
+      if (colon <= 0) return null;
+      headers.push({ name: line.slice(0, colon).trim(), value: line.slice(colon + 1).trim() });
+    }
+    return headers;
+  }
+
   function resolveModalMethodValue(method: string | undefined): string {
     return method && KNOWN_METHODS.includes(method) ? method : 'ANY';
   }
@@ -120,6 +143,14 @@ namespace NetworkOverridesUi {
     modalRedirectUrl: HTMLInputElement;
     modalBodyFields: HTMLDivElement;
     modalRedirectFields: HTMLDivElement;
+    modalStatus: HTMLInputElement;
+    modalDelay: HTMLInputElement;
+    modalHeaders: HTMLTextAreaElement;
+    modalFailFields: HTMLDivElement;
+    modalFailReason: HTMLSelectElement;
+    modalAdvancedFields: HTMLDivElement;
+    modalStatusField: HTMLElement;
+    modalHeadersField: HTMLElement;
     saveOverrideBtn: HTMLButtonElement;
     formatJsonBtn: HTMLButtonElement;
     bodyTypeBadge: HTMLElement;
@@ -316,18 +347,34 @@ namespace NetworkOverridesUi {
       updateTabLabels();
     }
 
-    function setModalOverrideType(type: 'body' | 'redirect'): void {
-      const bodyRadio = document.querySelector(
-        'input[name="modal-override-type"][value="body"]'
-      ) as HTMLInputElement;
-      const redirectRadio = document.querySelector(
-        'input[name="modal-override-type"][value="redirect"]'
-      ) as HTMLInputElement;
-      bodyRadio.checked = type === 'body';
-      redirectRadio.checked = type === 'redirect';
+    function setModalOverrideType(type: ModalOverrideType): void {
+      document
+        .querySelectorAll<HTMLInputElement>('input[name="modal-override-type"]')
+        .forEach(radio => {
+          radio.checked = radio.value === type;
+        });
       elements.modalBodyFields.style.display = type === 'body' ? '' : 'none';
       elements.modalRedirectFields.style.display = type === 'redirect' ? '' : 'none';
+      elements.modalFailFields.style.display = type === 'fail' ? '' : 'none';
+      // Advanced row: delay applies to body and fail; status/headers to body only.
+      elements.modalAdvancedFields.style.display = type === 'redirect' ? 'none' : '';
+      elements.modalStatusField.style.display = type === 'body' ? '' : 'none';
+      elements.modalHeadersField.style.display = type === 'body' ? '' : 'none';
       elements.modalPattern.disabled = type === 'body';
+    }
+
+    function prefillAdvancedFields(existing: OverrideRule | null): void {
+      elements.modalStatus.value =
+        existing && typeof existing.statusCode === 'number' ? String(existing.statusCode) : '';
+      elements.modalDelay.value =
+        existing && typeof existing.delayMs === 'number' ? String(existing.delayMs) : '';
+      elements.modalHeaders.value = (existing?.responseHeaders || [])
+        .map(header => `${header.name}: ${header.value}`)
+        .join('\n');
+      elements.modalFailReason.value =
+        existing?.failReason && FAIL_REASONS.includes(existing.failReason)
+          ? existing.failReason
+          : 'Failed';
     }
 
     function updateBodyTypeBadge(): void {
@@ -363,7 +410,10 @@ namespace NetworkOverridesUi {
       elements.modalMode.value = existing.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(existing.body || '');
       elements.modalRedirectUrl.value = existing.redirectUrl || '';
-      setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
+      prefillAdvancedFields(existing);
+      setModalOverrideType(
+        existing.failReason ? 'fail' : existing.redirectUrl ? 'redirect' : 'body'
+      );
       elements.modal.style.display = 'block';
       updateBodyTypeBadge();
       elements.modalBody.focus();
@@ -393,11 +443,15 @@ namespace NetworkOverridesUi {
         elements.modalMode.value = existing.mode || 'text';
         elements.modalMethod.value = resolveModalMethodValue(existing.method);
         elements.modalRedirectUrl.value = existing.redirectUrl || '';
-        setModalOverrideType(existing.redirectUrl ? 'redirect' : 'body');
+        prefillAdvancedFields(existing);
+        setModalOverrideType(
+          existing.failReason ? 'fail' : existing.redirectUrl ? 'redirect' : 'body'
+        );
       } else {
         elements.modalTitleText.textContent = 'New override';
         elements.modalMode.value = 'text';
         elements.modalRedirectUrl.value = '';
+        prefillAdvancedFields(null);
         setModalOverrideType('body');
 
         const capturedMethod = apiByUrl.get(url)?.method?.toUpperCase();
@@ -768,16 +822,51 @@ namespace NetworkOverridesUi {
         return;
       }
 
-      const isRedirect =
-        (document.querySelector('input[name="modal-override-type"]:checked') as HTMLInputElement)
-          ?.value === 'redirect';
+      const overrideType =
+        ((document.querySelector('input[name="modal-override-type"]:checked') as HTMLInputElement)
+          ?.value as ModalOverrideType) || 'body';
 
-      const mode = isRedirect ? 'text' : (elements.modalMode.value as OverrideMode);
-      const body = isRedirect ? '' : elements.modalBody.value || '';
-      const redirectUrl = isRedirect
-        ? elements.modalRedirectUrl.value.trim() || undefined
-        : undefined;
+      const mode = overrideType === 'body' ? (elements.modalMode.value as OverrideMode) : 'text';
+      const body = overrideType === 'body' ? elements.modalBody.value || '' : '';
+      const redirectUrl =
+        overrideType === 'redirect'
+          ? elements.modalRedirectUrl.value.trim() || undefined
+          : undefined;
       const method = elements.modalMethod.value;
+
+      let statusCode: number | undefined;
+      let delayMs: number | undefined;
+      let responseHeaders: NetworkOverridesShared.FetchHeader[] | undefined;
+      if (overrideType !== 'redirect') {
+        const delayRaw = elements.modalDelay.value.trim();
+        if (delayRaw) {
+          const parsedDelay = Number(delayRaw);
+          if (!Number.isFinite(parsedDelay) || parsedDelay < 0 || parsedDelay > 120000) {
+            alert('Delay must be a number between 0 and 120000 ms');
+            return;
+          }
+          delayMs = parsedDelay;
+        }
+      }
+      if (overrideType === 'body') {
+        const statusRaw = elements.modalStatus.value.trim();
+        if (statusRaw) {
+          const parsedStatus = Number(statusRaw);
+          if (!Number.isInteger(parsedStatus) || parsedStatus < 100 || parsedStatus > 599) {
+            alert('Status must be an integer between 100 and 599');
+            return;
+          }
+          statusCode = parsedStatus;
+        }
+        if (elements.modalHeaders.value.trim()) {
+          const parsedHeaders = parseHeaderLines(elements.modalHeaders.value);
+          if (!parsedHeaders) {
+            alert('Extra headers must be one "Header-Name: value" per line');
+            return;
+          }
+          if (parsedHeaders.length > 0) responseHeaders = parsedHeaders;
+        }
+      }
 
       const oldOverride =
         state.currentEditIndex !== null && state.overrides[state.currentEditIndex]
@@ -794,6 +883,14 @@ namespace NetworkOverridesUi {
       if (oldOverride?.enabled === false) {
         override.enabled = false;
       }
+      if (overrideType === 'fail') {
+        override.failReason = FAIL_REASONS.includes(elements.modalFailReason.value)
+          ? elements.modalFailReason.value
+          : 'Failed';
+      }
+      if (statusCode !== undefined) override.statusCode = statusCode;
+      if (delayMs !== undefined) override.delayMs = delayMs;
+      if (responseHeaders !== undefined) override.responseHeaders = responseHeaders;
 
       if (state.currentEditIndex !== null && state.overrides[state.currentEditIndex]) {
         state.overrides[state.currentEditIndex] = override;
@@ -828,7 +925,7 @@ namespace NetworkOverridesUi {
 
     document.querySelectorAll('input[name="modal-override-type"]').forEach(radio => {
       radio.addEventListener('change', () => {
-        setModalOverrideType((radio as HTMLInputElement).value as 'body' | 'redirect');
+        setModalOverrideType((radio as HTMLInputElement).value as ModalOverrideType);
       });
     });
 
@@ -858,6 +955,7 @@ namespace NetworkOverridesUi {
       elements.modalMode.value = 'text';
       elements.modalBody.value = '';
       elements.modalRedirectUrl.value = '';
+      prefillAdvancedFields(null);
       setModalOverrideType('body');
       elements.modalPattern.disabled = false;
       elements.modal.style.display = 'block';
@@ -1124,6 +1222,14 @@ namespace NetworkOverridesUi {
       modalRedirectUrl: document.getElementById('modal-redirect-url') as HTMLInputElement,
       modalBodyFields: document.getElementById('modal-body-fields') as HTMLDivElement,
       modalRedirectFields: document.getElementById('modal-redirect-fields') as HTMLDivElement,
+      modalStatus: document.getElementById('modal-status') as HTMLInputElement,
+      modalDelay: document.getElementById('modal-delay') as HTMLInputElement,
+      modalHeaders: document.getElementById('modal-headers') as HTMLTextAreaElement,
+      modalFailFields: document.getElementById('modal-fail-fields') as HTMLDivElement,
+      modalFailReason: document.getElementById('modal-fail-reason') as HTMLSelectElement,
+      modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDivElement,
+      modalStatusField: document.getElementById('modal-status-field') as HTMLElement,
+      modalHeadersField: document.getElementById('modal-headers-field') as HTMLElement,
       saveOverrideBtn: document.getElementById('save-override') as HTMLButtonElement,
       formatJsonBtn: document.getElementById('format-json-btn') as HTMLButtonElement,
       bodyTypeBadge: document.getElementById('body-type-badge') as HTMLElement,

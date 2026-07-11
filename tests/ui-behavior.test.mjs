@@ -947,3 +947,145 @@ test('Import normalizes method casing to uppercase', async () => {
   const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
   assert.equal(saved[`overrides_${TEST_DOMAIN}`][0].method, 'GET');
 });
+
+test('Saving a body override persists status, delay, and extra headers', async () => {
+  const harness = createUiHarness({
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch', method: 'GET' }],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('#apis-list li.api-item')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document.getElementById('modal-body').value = '{"mock":1}';
+  harness.document.getElementById('modal-status').value = '503';
+  harness.document.getElementById('modal-delay').value = '1500';
+  harness.document.getElementById('modal-headers').value =
+    'X-Custom: yes\nContent-Type: text/plain';
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
+    `overrides_${TEST_DOMAIN}`
+  ][0];
+  assert.equal(saved.statusCode, 503);
+  assert.equal(saved.delayMs, 1500);
+  assert.deepEqual(saved.responseHeaders, [
+    { name: 'X-Custom', value: 'yes' },
+    { name: 'Content-Type', value: 'text/plain' },
+  ]);
+});
+
+test('Saving a fail rule persists failReason and delay with an empty body', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('add-api-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document.getElementById('modal-pattern').value = 'api/fail';
+  const failRadio = harness.document.querySelector(
+    'input[name="modal-override-type"][value="fail"]'
+  );
+  failRadio.checked = true;
+  failRadio.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  harness.document.getElementById('modal-fail-reason').value = 'TimedOut';
+  harness.document.getElementById('modal-delay').value = '2000';
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
+    `overrides_${TEST_DOMAIN}`
+  ][0];
+  assert.equal(saved.failReason, 'TimedOut');
+  assert.equal(saved.delayMs, 2000);
+  assert.equal(saved.body, '');
+  assert.equal(saved.redirectUrl, undefined);
+  assert.equal(saved.statusCode, undefined);
+});
+
+test('Modal save rejects out-of-range status and delay and malformed header lines', async () => {
+  const harness = createUiHarness({
+    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch' }],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('#apis-list li.api-item')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const save = () =>
+    harness.document
+      .getElementById('save-override')
+      .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+
+  harness.document.getElementById('modal-status').value = '99';
+  save();
+  await flushUi(harness.window);
+  assert.equal(harness.alerts.length, 1);
+  assert.match(harness.alerts[0], /status/i);
+
+  harness.document.getElementById('modal-status').value = '';
+  harness.document.getElementById('modal-delay').value = '-5';
+  save();
+  await flushUi(harness.window);
+  assert.equal(harness.alerts.length, 2);
+  assert.match(harness.alerts[1], /delay/i);
+
+  harness.document.getElementById('modal-delay').value = '';
+  harness.document.getElementById('modal-headers').value = 'no colon here';
+  save();
+  await flushUi(harness.window);
+  assert.equal(harness.alerts.length, 3);
+  assert.match(harness.alerts[2], /header/i);
+
+  const saved = harness.storageSets.find(set => `overrides_${TEST_DOMAIN}` in set);
+  assert.equal(saved, undefined); // nothing was persisted
+});
+
+test('Editing a fail rule pre-fills the fail type, reason, and delay', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      overrides: [
+        {
+          pattern: 'api/fail',
+          body: '',
+          mode: 'text',
+          failReason: 'ConnectionRefused',
+          delayMs: 500,
+        },
+      ],
+    },
+    apis: [],
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('.edit-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(
+    harness.document.querySelector('input[name="modal-override-type"][value="fail"]').checked,
+    true
+  );
+  assert.equal(harness.document.getElementById('modal-fail-reason').value, 'ConnectionRefused');
+  assert.equal(harness.document.getElementById('modal-delay').value, '500');
+  assert.equal(harness.document.getElementById('modal-fail-fields').style.display, '');
+});

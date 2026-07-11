@@ -60,6 +60,10 @@
             <input type="radio" name="modal-override-type" value="redirect" />
             <span>Redirect to URL</span>
           </label>
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="fail" />
+            <span>Fail request</span>
+          </label>
         </div>
         <div id="modal-body-fields">
           <label class="modal-field">
@@ -85,6 +89,32 @@
               type="text"
               placeholder="e.g. https://new-api.example.com/api/* (uses * for captured wildcards)"
             />
+          </label>
+        </div>
+        <div id="modal-fail-fields" style="display: none">
+          <label class="modal-field">
+            <span>Fail reason</span>
+            <select id="modal-fail-reason">
+              <option value="Failed">Failed</option>
+              <option value="TimedOut">TimedOut</option>
+              <option value="ConnectionRefused">ConnectionRefused</option>
+              <option value="NameNotResolved">NameNotResolved</option>
+              <option value="InternetDisconnected">InternetDisconnected</option>
+            </select>
+          </label>
+        </div>
+        <div id="modal-advanced-fields">
+          <label class="modal-field" id="modal-status-field">
+            <span>Status (blank = keep original)</span>
+            <input id="modal-status" type="number" min="100" max="599" placeholder="e.g. 500" />
+          </label>
+          <label class="modal-field">
+            <span>Delay (ms)</span>
+            <input id="modal-delay" type="number" min="0" max="120000" placeholder="0" />
+          </label>
+          <label class="modal-field" id="modal-headers-field">
+            <span>Extra headers (one "Header-Name: value" per line)</span>
+            <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
           </label>
         </div>
         <button id="save-override">Save Override</button>

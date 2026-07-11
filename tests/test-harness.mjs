@@ -143,6 +143,10 @@ function buildUiHtml() {
             <input type="radio" name="modal-override-type" value="redirect" />
             <span>Redirect to URL</span>
           </label>
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="fail" />
+            <span>Fail request</span>
+          </label>
         </div>
         <div id="modal-body-fields">
           <select id="modal-mode">
@@ -157,6 +161,20 @@ function buildUiHtml() {
         </div>
         <div id="modal-redirect-fields" style="display: none">
           <input id="modal-redirect-url" type="text">
+        </div>
+        <div id="modal-fail-fields" style="display:none">
+          <select id="modal-fail-reason">
+            <option value="Failed">Failed</option>
+            <option value="TimedOut">TimedOut</option>
+            <option value="ConnectionRefused">ConnectionRefused</option>
+            <option value="NameNotResolved">NameNotResolved</option>
+            <option value="InternetDisconnected">InternetDisconnected</option>
+          </select>
+        </div>
+        <div id="modal-advanced-fields">
+          <label id="modal-status-field"><input id="modal-status" type="number" /></label>
+          <label><input id="modal-delay" type="number" /></label>
+          <label id="modal-headers-field"><textarea id="modal-headers"></textarea></label>
         </div>
         <button id="save-override" type="button">Save</button>
       </div>

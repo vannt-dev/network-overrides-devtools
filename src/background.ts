@@ -513,6 +513,28 @@ namespace NetworkOverridesBackground {
 
       try {
         const match = findOverride(url, params.request?.method, state.overrides);
+        if (match && match.override.failReason) {
+          const errorReason = match.override.failReason;
+          const fail = () => {
+            chrome.debugger.sendCommand(
+              { tabId },
+              'Fetch.failRequest',
+              { requestId: params.requestId, errorReason },
+              () => {
+                if (chrome.runtime.lastError) {
+                  // The request may already be gone; nothing to recover.
+                }
+              }
+            );
+          };
+          const delayMs = typeof match.override.delayMs === 'number' ? match.override.delayMs : 0;
+          if (delayMs > 0) {
+            setTimeout(fail, delayMs);
+          } else {
+            fail();
+          }
+          return;
+        }
         if (match && match.override.redirectUrl) {
           const newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
           if (newUrl.includes('*')) {
@@ -567,10 +589,11 @@ namespace NetworkOverridesBackground {
         return;
       }
 
-      // If the override has a redirectUrl, skip body fulfillment at response stage.
+      // If the override has a failReason or redirectUrl, skip body fulfillment at response stage.
       // The redirect was already handled at request stage; the server's response
       // for the redirected URL should pass through without alteration.
-      if (match.override.redirectUrl) {
+      // Fail rules are consumed at the request stage; seeing one here means a stale pause.
+      if (match.override.failReason || match.override.redirectUrl) {
         proceed();
         return;
       }

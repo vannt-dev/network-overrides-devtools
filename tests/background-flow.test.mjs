@@ -803,3 +803,67 @@ test('Concurrent update messages attach the debugger exactly once', async () => 
 
   assert.equal(harness.attachedTabs.length, 1);
 });
+
+test('Background fails matching requests with the configured error reason', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: '', mode: 'text', failReason: 'ConnectionRefused' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-fail',
+    request: { url: TEST_API_URL, method: 'GET' },
+    resourceType: 'Fetch',
+  });
+
+  const failCmd = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.failRequest' && params.requestId === 'req-fail'
+  );
+  assert.ok(failCmd);
+  assert.equal(failCmd.params.errorReason, 'ConnectionRefused');
+  assert.equal(
+    harness.commandLog.some(
+      ({ method, params }) =>
+        (method === 'Fetch.continueRequest' || method === 'Fetch.fulfillRequest') &&
+        params.requestId === 'req-fail'
+    ),
+    false
+  );
+});
+
+test('Background delays a fail rule before failing the request', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      { pattern: '/users$/', body: '', mode: 'text', failReason: 'TimedOut', delayMs: 30 },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-fail-delayed',
+    request: { url: TEST_API_URL },
+    resourceType: 'Fetch',
+  });
+
+  const findFail = () =>
+    harness.commandLog.find(
+      ({ method, params }) =>
+        method === 'Fetch.failRequest' && params.requestId === 'req-fail-delayed'
+    );
+  assert.equal(findFail(), undefined); // not yet — the delay is pending
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.ok(findFail());
+  assert.equal(findFail().params.errorReason, 'TimedOut');
+});

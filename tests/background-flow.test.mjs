@@ -942,6 +942,66 @@ test('Background merges rule responseHeaders over the originals and keeps the ma
   );
 });
 
+test('Background skips rule headers that conflict with marker headers', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: '/users$/',
+        body: '{"m":1}',
+        mode: 'text',
+        responseHeaders: [
+          { name: 'X-Network-Overrides', value: 'false' },
+          { name: 'X-Network-Overrides-Pattern', value: 'should-be-skipped' },
+          { name: 'X-Custom', value: 'yes' },
+        ],
+      },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-marker-conflict',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-marker-conflict'
+  );
+  assert.ok(fulfill);
+  const headers = fulfill.params.responseHeaders;
+
+  // Count x-network-overrides headers (case-insensitive)
+  const markerHeaders = headers.filter(h => h.name.toLowerCase() === 'x-network-overrides');
+  assert.equal(markerHeaders.length, 1, 'Must have exactly one x-network-overrides header');
+  assert.equal(markerHeaders[0].value, 'true', 'Marker header must have value "true"');
+
+  // Pattern marker should also be unique
+  const patternMarkers = headers.filter(
+    h => h.name.toLowerCase() === 'x-network-overrides-pattern'
+  );
+  assert.equal(
+    patternMarkers.length,
+    1,
+    'Must have exactly one x-network-overrides-pattern header'
+  );
+  assert.equal(patternMarkers[0].value, '/users$/', 'Pattern marker must have the rule pattern');
+
+  // Custom header should pass through
+  assert.equal(
+    headers.some(header => header.name === 'X-Custom' && header.value === 'yes'),
+    true
+  );
+});
+
 test('Background delays fulfillment when the rule has delayMs', async () => {
   const harness = createBackgroundHarness();
 

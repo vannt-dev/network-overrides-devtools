@@ -623,6 +623,14 @@ namespace NetworkOverridesBackground {
       if (Array.isArray(ov.responseHeaders)) {
         for (const extra of ov.responseHeaders) {
           if (!extra || typeof extra.name !== 'string' || !extra.name.trim()) continue;
+          // Skip rule headers that conflict with marker headers; markers always win.
+          const trimmedLowerName = extra.name.toLowerCase().trim();
+          if (
+            trimmedLowerName === 'x-network-overrides' ||
+            trimmedLowerName === 'x-network-overrides-pattern'
+          ) {
+            continue;
+          }
           const existingIndex = headers.findIndex(
             header => header.name.toLowerCase() === extra.name.toLowerCase()
           );

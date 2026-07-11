@@ -200,7 +200,7 @@ GitHub Actions (`.github/workflows/ci.yml`) installs dependencies, checks format
 npm run package:store
 ```
 
-Produces a ZIP in `release/` containing only the runtime files: `manifest.json`, `*.html`, `styles.css`, `dist/`, `icons/`.
+Produces a ZIP in `release/` containing only the runtime files (`manifest.json`, `*.html`, `styles.css`, `dist/`, `icons/`) plus `privacy_policy.md`. `dist/` is cleaned and rebuilt first so stale compiled files never ship.
 
 ## Permissions
 

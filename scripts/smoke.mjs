@@ -82,7 +82,10 @@ try {
   await popup.screenshot({ path: path.join(WORK_DIR, '1-attach-status.png') });
 
   // ---- 2. fetch is captured and listed in the popup
-  const real = await site.evaluate(u => fetch(u).then(r => r.text()), `http://127.0.0.1:${PORT}/api/users`);
+  const real = await site.evaluate(
+    u => fetch(u).then(r => r.text()),
+    `http://127.0.0.1:${PORT}/api/users`
+  );
   report('unoverridden fetch returns the real body', real === '{"real":true}', real);
   await popup.click('#refresh-apis');
   await popup.waitForTimeout(1500);
@@ -98,7 +101,10 @@ try {
     await popup.fill('#modal-body', '{"mocked":true}');
     await popup.click('#save-override');
     await popup.waitForTimeout(1000);
-    const mocked = await site.evaluate(u => fetch(u).then(r => r.text()), `http://127.0.0.1:${PORT}/api/users`);
+    const mocked = await site.evaluate(
+      u => fetch(u).then(r => r.text()),
+      `http://127.0.0.1:${PORT}/api/users`
+    );
     report('override rule mocks the response body', mocked === '{"mocked":true}', mocked);
     const header = await site.evaluate(
       u => fetch(u).then(r => r.headers.get('x-network-overrides')),
@@ -113,7 +119,9 @@ try {
   await swInternals.waitForTimeout(1000);
   let stopped = false;
   const stopBtn = swInternals
-    .locator(`xpath=//*[contains(text(), '${extId}')]/ancestor::*[.//button][1]//button[normalize-space()='Stop']`)
+    .locator(
+      `xpath=//*[contains(text(), '${extId}')]/ancestor::*[.//button][1]//button[normalize-space()='Stop']`
+    )
     .first();
   if ((await stopBtn.count()) > 0) {
     await stopBtn.click();
@@ -127,7 +135,11 @@ try {
   }
   await swInternals.close();
   if (!stopped) {
-    report('worker restart test', false, 'could not find Stop control on chrome://serviceworker-internals (skipped)');
+    report(
+      'worker restart test',
+      false,
+      'could not find Stop control on chrome://serviceworker-internals (skipped)'
+    );
   } else {
     await site.bringToFront();
     await site.waitForTimeout(1500);
@@ -160,7 +172,11 @@ try {
   await popup.click('#refresh-apis');
   await popup.waitForTimeout(1500);
   const staleItems = await popup.locator('li.api-item', { hasText: '127.0.0.1' }).count();
-  report('captured APIs from the old origin were cleared', staleItems === 0, `${staleItems} stale item(s)`);
+  report(
+    'captured APIs from the old origin were cleared',
+    staleItems === 0,
+    `${staleItems} stale item(s)`
+  );
 
   // ---- 6. attach failure: enable on a chrome:// tab -> red status, toggle unchecks
   await site.goto('chrome://version/');
@@ -179,7 +195,11 @@ try {
     if (unchecked && failText.startsWith('Attach failed:')) break;
     await popup.waitForTimeout(500);
   }
-  report('attach failure shows red status line', failText.startsWith('Attach failed:'), failText || '(empty)');
+  report(
+    'attach failure shows red status line',
+    failText.startsWith('Attach failed:'),
+    failText || '(empty)'
+  );
   report('attach failure unchecks the enable toggle', unchecked);
   await popup.screenshot({ path: path.join(WORK_DIR, '3-attach-failed.png') });
 } finally {

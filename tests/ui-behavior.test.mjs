@@ -461,7 +461,11 @@ test('Export compacts pretty-printed JSON bodies and leaves non-JSON bodies unto
     storageState: {
       enabled: true,
       overrides: [
-        { pattern: 'users', body: '{\n  "ok": true,\n  "items": [\n    1,\n    2\n  ]\n}', mode: 'text' },
+        {
+          pattern: 'users',
+          body: '{\n  "ok": true,\n  "items": [\n    1,\n    2\n  ]\n}',
+          mode: 'text',
+        },
         { pattern: 'plain', body: 'not json\nwith a newline', mode: 'text' },
       ],
     },

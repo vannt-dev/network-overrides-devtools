@@ -249,7 +249,12 @@ test('Background passes the request through when the redirect URL has unsubstitu
     enabled: true,
     overrides: [
       // pattern has no wildcard, so there is no capture to substitute into the redirect
-      { pattern: `${TEST_DOMAIN}/api/users`, body: '', mode: 'text', redirectUrl: 'https://new.test/*' },
+      {
+        pattern: `${TEST_DOMAIN}/api/users`,
+        body: '',
+        mode: 'text',
+        redirectUrl: 'https://new.test/*',
+      },
     ],
   });
   await new Promise(resolve => setTimeout(resolve, 0));

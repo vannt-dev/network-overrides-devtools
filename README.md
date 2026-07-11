@@ -13,9 +13,10 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
-- **Two override types:**
+- **Three override types:**
   - **Override body**: Replace the response body with custom text or raw base64 content.
   - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
+  - **Fail request**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
@@ -31,6 +32,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 ```
 src/
 ├── shared.ts          # Shared type definitions (OverrideRule, ApiEntry, FetchHeader, etc.)
+├── tab-state.ts       # TabStateStore: owns all per-tab state, mirrors it to chrome.storage.session, rehydrates on worker restart
 ├── background.ts      # Service worker: debugger lifecycle, request interception, override fulfillment
 ├── devtools.ts        # Registers the "Overrides" tab in Chrome DevTools
 ├── panel.ts           # DevTools panel UI initialization + HAR log & real-time network listener
@@ -53,25 +55,25 @@ manifest.json          # Manifest V3 configuration
 2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, then enables `Network` and `Fetch` domains (both Request and Response stages). Detachment happens on disable, tab close, or debugger disconnect.
 
 3. **Request interception** (`Fetch.requestPaused`):
-   - **Request stage**: Checks override rules for a `redirectUrl`. If found and pattern matches, the request is redirected via `Fetch.continueRequest` with a modified URL. Wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
-   - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with original headers + `x-network-overrides: true` marker. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
+   - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
+   - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with the original status and headers — unless the rule overrides them via `statusCode`/`responseHeaders` (same-name headers overwritten case-insensitively) — plus the `x-network-overrides: true` and `x-network-overrides-pattern` markers, delayed by `delayMs` if set. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
 
 4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
 
-5. **UI state**: `enabled`, `overrides[]`, and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts.
+5. **UI state**: `enabled`, per-domain rules (`overrides_{origin}`), and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts.
 
 ## Storage
 
 Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runtime state is stored in `chrome.storage.session` (cleared when the browser exits):
 
-| Key                | Type                                                                      | Persistence                                                                                             |
-| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `enabled`          | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
-| `overrides`        | `OverrideRule[]`                                                          | Permanent — survives browser restart                                                                    |
-| `apiSearchTerm`    | `string`                                                                  | Permanent — survives browser restart                                                                    |
-| `tabState_{tabId}` | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
+| Key                  | Type                                                                      | Persistence                                                                                             |
+| -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
+| `overrides_{origin}` | `OverrideRule[]` (rules for one domain, e.g. `overrides_https://a.test`)  | Permanent — survives browser restart                                                                    |
+| `apiSearchTerm`      | `string`                                                                  | Permanent — survives browser restart                                                                    |
+| `tabState_{tabId}`   | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
 
-**Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys from older extension versions are automatically removed from `chrome.storage.local` on worker startup.
+**Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy keys from older extension versions are migrated automatically: a flat `overrides` list is moved to the current domain's `overrides_{origin}` key on UI load, and `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys are removed from `chrome.storage.local` on worker startup.
 
 ## Pattern Reference
 
@@ -128,6 +130,9 @@ In the modal, choose:
 
 - **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content. The body type badge auto-detects JSON. Use the "Format JSON" button to prettify.
 - **Redirect to URL**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
+- **Fail request**: Pick a fail reason (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`) — the request fails at the network layer instead of receiving a response.
+
+The **Advanced** row applies extras to the rule: force a **Status** (100–599) and add **Extra headers** (one `Header-Name: value` per line — body rules only), and set a **Delay** in milliseconds (body and fail rules; combine `TimedOut` with a long delay to simulate a real timeout).
 
 ### 5. Manage rules
 
@@ -159,6 +164,7 @@ The `manifest.json` points to files in `dist/`, so re-run `npm run build` after 
 
 ```bash
 npm run build          # Compile TypeScript → dist/
+npm run lint           # ESLint over src/
 npm test               # Build + run test suite
 npm run coverage       # Build + run tests with coverage report
 npm run ci:test        # CI pipeline (same as coverage)
@@ -179,13 +185,14 @@ Tests live in `tests/` and cover:
 - Pattern matching logic (`helpers.test.mjs`)
 - UI behavior with DOM mocks (`ui-behavior.test.mjs`)
 - Background debugger event handling (`background-flow.test.mjs`)
+- Per-tab state store: session mirror, caps, dispose, rehydrate (`tab-state.test.mjs`)
 - Entrypoint bootstrapping (`entrypoints.test.mjs`)
 
-`npm run smoke` (`scripts/smoke.mjs`) additionally drives the real unpacked extension in Chromium via Playwright — attach status, interception, worker-restart recovery, cross-origin navigation, and attach failures. Run it before releases; it needs a display (headed browser) and downloads Chromium on first use.
+`npm run smoke` (`scripts/smoke.mjs`) additionally drives the real unpacked extension in Chromium via Playwright — attach status, interception, status override, network-layer fail, worker-restart recovery, cross-origin navigation, and attach failures. Run it before releases; it needs a display (headed browser) and downloads Chromium on first use.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) installs dependencies, runs tests with coverage, and uploads the coverage report as an artifact.
+GitHub Actions (`.github/workflows/ci.yml`) installs dependencies, checks formatting with Prettier, lints commit messages with commitlint, runs tests with coverage, and uploads the coverage report as an artifact.
 
 ## Store Packaging
 

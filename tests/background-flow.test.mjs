@@ -867,3 +867,106 @@ test('Background delays a fail rule before failing the request', async () => {
   assert.ok(findFail());
   assert.equal(findFail().params.errorReason, 'TimedOut');
 });
+
+test('Background fulfills with the rule statusCode instead of the original status', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: '{"m":1}', mode: 'text', statusCode: 503 }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-status',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-status'
+  );
+  assert.ok(fulfill);
+  assert.equal(fulfill.params.responseCode, 503);
+});
+
+test('Background merges rule responseHeaders over the originals and keeps the markers', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: '/users$/',
+        body: '{"m":1}',
+        mode: 'text',
+        responseHeaders: [
+          { name: 'content-type', value: 'text/plain' }, // overwrites, case-insensitive
+          { name: 'X-Custom', value: 'yes' }, // appends
+        ],
+      },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-headers',
+    request: { url: TEST_API_URL },
+    responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-headers'
+  );
+  assert.ok(fulfill);
+  const headers = fulfill.params.responseHeaders;
+  const contentTypes = headers.filter(header => header.name.toLowerCase() === 'content-type');
+  assert.equal(contentTypes.length, 1); // overwritten, not duplicated
+  assert.equal(contentTypes[0].value, 'text/plain');
+  assert.equal(
+    headers.some(header => header.name === 'X-Custom' && header.value === 'yes'),
+    true
+  );
+  assert.equal(
+    headers.some(header => header.name === 'x-network-overrides' && header.value === 'true'),
+    true
+  );
+});
+
+test('Background delays fulfillment when the rule has delayMs', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: '{"m":1}', mode: 'text', delayMs: 30 }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-delayed',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const findFulfill = () =>
+    harness.commandLog.find(
+      ({ method, params }) =>
+        method === 'Fetch.fulfillRequest' && params.requestId === 'req-delayed'
+    );
+  assert.equal(findFulfill(), undefined); // still waiting
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.ok(findFulfill());
+});

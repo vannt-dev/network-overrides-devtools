@@ -3,215 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Network Overrides — User Guide</title>
-    <style>
-      :root {
-        --accent: #0a84ff;
-        --accent-dark: #0066d6;
-        --text: #1b2b3a;
-        --text-secondary: #55708a;
-        --border: #c9d7e6;
-        --bg: #f8fbff;
-        --card: #fff;
-        --code-bg: #f4f6f8;
-        --radius: 8px;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-        line-height: 1.6;
-        color: var(--text);
-        background: var(--bg);
-        margin: 0;
-        padding: 0;
-      }
-      .container {
-        max-width: 880px;
-        margin: 0 auto;
-        padding: 32px 24px 80px;
-      }
-      h1 {
-        font-size: 2rem;
-        margin-bottom: 0.25em;
-        color: var(--accent-dark);
-      }
-      h1 small {
-        font-size: 1rem;
-        font-weight: 400;
-        color: var(--text-secondary);
-        display: block;
-        margin-top: 4px;
-      }
-      h2 {
-        font-size: 1.4rem;
-        margin: 2em 0 0.5em;
-        padding-bottom: 6px;
-        border-bottom: 2px solid var(--accent);
-        color: var(--text);
-      }
-      h3 {
-        font-size: 1.1rem;
-        margin: 1.5em 0 0.5em;
-        color: var(--accent-dark);
-      }
-      p,
-      li {
-        color: var(--text);
-      }
-      a {
-        color: var(--accent);
-      }
-      .toc {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px 24px;
-        margin: 24px 0;
-      }
-      .toc h3 {
-        margin: 0 0 12px;
-        border: none;
-      }
-      .toc ol {
-        margin: 0;
-        padding-left: 20px;
-      }
-      .toc a {
-        text-decoration: none;
-      }
-      .toc a:hover {
-        text-decoration: underline;
-      }
-      code,
-      pre {
-        font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 0.9em;
-        background: var(--code-bg);
-        border-radius: 4px;
-      }
-      code {
-        padding: 2px 6px;
-      }
-      pre {
-        padding: 12px 16px;
-        overflow-x: auto;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        line-height: 1.5;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 16px 0;
-        font-size: 0.95em;
-      }
-      th,
-      td {
-        text-align: left;
-        padding: 8px 12px;
-        border: 1px solid var(--border);
-      }
-      th {
-        background: var(--accent);
-        color: #fff;
-        font-weight: 600;
-      }
-      tr:nth-child(even) {
-        background: #fff;
-      }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px 20px;
-        margin: 16px 0;
-      }
-      .card-title {
-        font-weight: 700;
-        font-size: 1rem;
-        margin-bottom: 8px;
-        color: var(--accent-dark);
-      }
-      .tag {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-      .tag-blue {
-        background: #e8f3ff;
-        color: #0a4f9c;
-      }
-      .tag-green {
-        background: #e3f9e5;
-        color: #1a7d36;
-      }
-      .tag-orange {
-        background: #fff3e0;
-        color: #b85c00;
-      }
-      blockquote {
-        border-left: 4px solid var(--accent);
-        margin: 16px 0;
-        padding: 8px 16px;
-        background: #f0f7ff;
-        border-radius: 0 var(--radius) var(--radius) 0;
-      }
-      blockquote p {
-        margin: 4px 0;
-      }
-      hr {
-        border: none;
-        border-top: 1px solid var(--border);
-        margin: 32px 0;
-      }
-      .faq-q {
-        font-weight: 700;
-        color: var(--accent-dark);
-        margin: 20px 0 4px;
-      }
-      .faq-a {
-        margin: 0 0 8px;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --text: #e8ecf0;
-          --text-secondary: #9aabbe;
-          --border: #3a4a5a;
-          --bg: #1a2330;
-          --card: #222d3d;
-          --code-bg: #1e2835;
-        }
-        a {
-          color: #5cb8ff;
-        }
-        th {
-          color: #fff;
-        }
-        tr:nth-child(even) {
-          background: #1e2835;
-        }
-        blockquote {
-          background: #1a2740;
-        }
-        .tag-blue {
-          background: #1a3050;
-          color: #8cc8ff;
-        }
-        .tag-green {
-          background: #1a3a25;
-          color: #6fda7a;
-        }
-        .tag-orange {
-          background: #3a2a10;
-          color: #ffb74d;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="styles/guide.css" />
   </head>
   <body>
     <div class="container">
@@ -280,7 +72,8 @@
       <p>Click the extension icon on the toolbar. Contains:</p>
       <ul>
         <li>
-          <strong>Header</strong>: "Network Overrides API" with Refresh (↻) and Info (ⓘ) buttons.
+          <strong>Header</strong>: "Network Overrides API" with two compact actions:
+          <strong>Refresh captured requests</strong> and <strong>Open user guide</strong>.
         </li>
         <li><strong>Enable Overrides toggle</strong>: Turn override functionality on/off.</li>
         <li>
@@ -728,18 +521,25 @@ Pattern: all</pre
 
       <h3>9.3. Refresh API list</h3>
       <p>
-        Click the <strong>Refresh</strong> button (↻). The extension retries up to 5 times (each
-        250ms apart) to load APIs.
+        Click <strong>Refresh captured requests</strong> in the header or the refresh action beside
+        the captured-request filters. The icon spins and is temporarily disabled while the current
+        API snapshot is loaded. If the list is empty, the extension retries automatically.
       </p>
 
-      <h3>9.4. Type grouping</h3>
+      <h3>9.4. Open the user guide</h3>
+      <p>
+        Click <strong>Open user guide</strong> in the header. The complete guide opens in a separate
+        browser tab, so the popup or DevTools panel remains available.
+      </p>
+
+      <h3>9.5. Type grouping</h3>
       <p>
         APIs are grouped by resource type: XHR, Fetch, JS, CSS, Img, Media, Font, Doc, WS, Manifest,
         EventSource, TextTrack, Other.
       </p>
       <p>Click a group header to collapse/expand. Collapse state is persisted in storage.</p>
 
-      <h3>9.5. Marker headers</h3>
+      <h3>9.6. Marker headers</h3>
       <p>When a request is overridden, the extension adds these response headers:</p>
       <ul>
         <li><code>x-network-overrides: true</code></li>
@@ -792,6 +592,28 @@ Pattern: all</pre
         <li><code>&lt;all_urls&gt;</code> — to attach the debugger to any tab.</li>
       </ul>
 
+      <h3>10.7. Save and apply notifications</h3>
+      <p>Rule operations now report their result in a notification at the top-right:</p>
+      <ul>
+        <li><strong>Green</strong>: the change was saved and applied to the active tab.</li>
+        <li>
+          <strong>Yellow</strong>: the change was saved, but interception could not be updated. This
+          commonly means another debugger or DevTools session owns the tab. Use
+          <strong>Retry</strong> in the notification after resolving the conflict; the rule does not
+          need to be saved again.
+        </li>
+        <li>
+          <strong>Red</strong>: the operation failed and was not saved. The message includes the
+          storage, import, profile, or background error when available.
+        </li>
+      </ul>
+      <p>
+        Validation errors inside the Override editor appear directly above
+        <strong>Save Override</strong>. The editor stays open and focuses the field that needs to be
+        corrected. While persistence is running, the button displays <strong>Saving…</strong> and
+        cannot be pressed twice.
+      </p>
+
       <!-- ============ 11 ============ -->
       <h2 id="faq">11. FAQ</h2>
 
@@ -804,6 +626,14 @@ Pattern: all</pre
           <li>Is the current tab the one being debugged? Try refreshing the extension.</li>
           <li>Open DevTools → extension's Console to check for errors.</li>
         </ol>
+      </div>
+
+      <div class="faq-q">Q: I clicked Save Override, but nothing appeared to happen?</div>
+      <div class="faq-a">
+        Check the message above the Save button and the notification in the top-right corner. A red
+        message means the rule was not stored. A yellow notification means the rule was stored but
+        could not be applied to the active tab; close any competing DevTools/debugger session and
+        click <strong>Retry</strong> in that notification.
       </div>
 
       <div class="faq-q">Q: Turned off overrides but requests are still being modified?</div>
@@ -837,8 +667,8 @@ Pattern: all</pre
 
       <div class="faq-q">Q: APIs are not showing up in Captured APIs?</div>
       <div class="faq-a">
-        Click the <strong>Refresh</strong> button (↻). The extension retries 5 times over 1.25
-        seconds. If still empty:
+        Click <strong>Refresh captured requests</strong>. The extension retries automatically for a
+        short period. If the list is still empty:
         <ol>
           <li>Verify the toggle is ON.</li>
           <li>Check the Network tab to confirm requests are being sent.</li>
@@ -862,8 +692,9 @@ Pattern: all</pre
       <div class="faq-a">
         Yes. Import always writes into the domain that's currently active in the panel, regardless
         of which domain the file's <code>domain</code> field says it was exported from — but if that
-        field doesn't match the current domain, a confirm dialog warns you first, so the mismatch
-        isn't silent.
+        field doesn't match the current domain, an import dialog warns you first, so the mismatch
+        isn't silent. If rules already exist, the next dialog provides explicit
+        <strong>Append rules</strong> and <strong>Replace rules</strong> choices.
       </div>
 
       <hr />

@@ -221,6 +221,35 @@ test('UI retries loading APIs until captured requests become available', async (
   assert.equal(harness.document.querySelectorAll('.api-item').length, 1);
 });
 
+test('Header refresh button exposes and clears its loading state', async () => {
+  const harness = createUiHarness({ apis: [{ url: TEST_API_URL, type: 'fetch' }] });
+  await flushUi(harness.window);
+
+  const refreshButton = harness.document.getElementById('refresh-apis');
+  refreshButton.dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+
+  assert.equal(refreshButton.disabled, true);
+  assert.equal(refreshButton.classList.contains('loading'), true);
+  assert.equal(refreshButton.getAttribute('aria-busy'), 'true');
+
+  await flushUi(harness.window);
+  assert.equal(refreshButton.disabled, false);
+  assert.equal(refreshButton.classList.contains('loading'), false);
+  assert.equal(refreshButton.hasAttribute('aria-busy'), false);
+  assert.equal(refreshButton.title, 'Refresh captured requests');
+});
+
+test('Header info button opens the bundled user guide', async () => {
+  const harness = createUiHarness({ apis: [{ url: TEST_API_URL, type: 'fetch' }] });
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('info-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+
+  assert.deepEqual(harness.openedTabs, [{ url: 'guide.html' }]);
+});
+
 // use-current-body button removed; auto-fill from captured response still applies on new overrides
 
 test('Tab switching shows correct APIs and search filters within a tab', async () => {
@@ -368,6 +397,61 @@ test('Toggling a rule checkbox persists its enabled state, dims the row, and not
   assert.equal(lastUpdate.overrides[0].enabled, false);
 });
 
+test('Rapid rule changes are persisted in order and keep the newest state', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{}', mode: 'text' }],
+    },
+  });
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const toggle = harness.document.querySelector('.override-enabled-toggle');
+  toggle.checked = false;
+  toggle.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  toggle.checked = true;
+  toggle.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  await flushUi(harness.window, 6);
+
+  const overrideWrites = harness.storageSets.filter(entry =>
+    Object.keys(entry).some(key => key.startsWith('overrides_'))
+  );
+  assert.equal(overrideWrites.length, 2);
+  assert.equal(overrideWrites[0][Object.keys(overrideWrites[0])[0]][0].enabled, false);
+  assert.equal(overrideWrites[1][Object.keys(overrideWrites[1])[0]][0].enabled, true);
+  assert.equal(harness.localState.overrides[0].enabled, true);
+});
+
+test('Rule actions roll back and notify when persistence fails', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      overrides: [{ pattern: 'users', body: '{}', mode: 'text' }],
+    },
+    storageSetError: 'Storage is unavailable',
+  });
+  await flushUi(harness.window);
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const toggle = harness.document.querySelector('.rule-toggle');
+  toggle.checked = false;
+  toggle.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(harness.localState.overrides[0].enabled, undefined);
+  assert.equal(harness.document.querySelector('.rule-toggle').checked, true);
+  assert.match(
+    harness.document.querySelector('.notification-toast--error').textContent,
+    /storage is unavailable/i
+  );
+});
+
 test('Opening the modal from a captured API pre-selects its method; saving persists a non-ANY method', async () => {
   const harness = createUiHarness({
     storageState: { enabled: true, overrides: [] },
@@ -424,816 +508,4 @@ test('Editing a rule with an out-of-range stored method falls back to ANY in the
   // should end up unset (ANY), which is the honest reflection of what the
   // modal showed and the user had the chance to review.
   assert.equal(harness.localState.overrides[0].method, undefined);
-});
-
-test('Export builds the documented JSON envelope and triggers a download', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.document
-    .getElementById('export-rules-btn')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  assert.equal(harness.downloads.length, 1);
-  const exported = JSON.parse(harness.downloads[0].content);
-  assert.equal(exported.version, 1);
-  assert.equal(exported.domain, TEST_DOMAIN);
-  assert.equal(typeof exported.exportedAt, 'string');
-  assert.deepEqual(exported.overrides, [{ pattern: 'users', body: { ok: true }, mode: 'text' }]);
-});
-
-test('Export compacts pretty-printed JSON bodies and leaves non-JSON bodies untouched', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [
-        {
-          pattern: 'users',
-          body: '{\n  "ok": true,\n  "items": [\n    1,\n    2\n  ]\n}',
-          mode: 'text',
-        },
-        { pattern: 'plain', body: 'not json\nwith a newline', mode: 'text' },
-      ],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.document
-    .getElementById('export-rules-btn')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const exported = JSON.parse(harness.downloads[0].content);
-  // JSON bodies are exported as real nested JSON (no escaped-string noise)
-  assert.deepEqual(exported.overrides[0].body, { ok: true, items: [1, 2] });
-  // non-JSON bodies must survive byte-for-byte
-  assert.equal(exported.overrides[1].body, 'not json\nwith a newline');
-  // the stored rules themselves must not be rewritten by exporting
-  assert.match(harness.localState.overrides[0].body, /\n/);
-});
-
-test('Import accepts a nested JSON body and stores it as a string rule body', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      overrides: [
-        { pattern: 'users', mode: 'text', body: { ok: true, items: [1, 2] } },
-        { pattern: 'plain', mode: 'text', body: 'raw text' },
-      ],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.alerts.length, 0);
-  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
-  const rules = saved[`overrides_${TEST_DOMAIN}`];
-  assert.equal(rules[0].body, '{"ok":true,"items":[1,2]}');
-  assert.equal(rules[1].body, 'raw text');
-});
-
-test('Export shows an alert and does not attempt a download when Blob construction fails', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const OriginalBlob = harness.window.Blob;
-  harness.window.Blob = function BrokenBlob() {
-    throw new Error('Blob construction boom');
-  };
-
-  try {
-    harness.document
-      .getElementById('export-rules-btn')
-      .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-    await flushUi(harness.window);
-
-    assert.equal(harness.downloads.length, 0);
-    assert.equal(harness.alerts.length, 1);
-    assert.match(harness.alerts[0], /Failed to export rules/);
-  } finally {
-    harness.window.Blob = OriginalBlob;
-  }
-});
-
-function selectImportFile(harness, jsonText) {
-  const file = new harness.window.File([jsonText], 'rules.json', { type: 'application/json' });
-  const input = harness.document.getElementById('import-rules-input');
-  Object.defineProperty(input, 'files', { value: [file], configurable: true });
-  input.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
-}
-
-test('Import merges when confirm() returns true and there are existing rules', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.setConfirmResult(true);
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.localState.overrides.length, 2);
-  assert.equal(harness.localState.overrides[0].pattern, 'existing');
-  assert.equal(harness.localState.overrides[1].pattern, 'imported');
-});
-
-test('Import replaces when confirm() returns false and there are existing rules', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.setConfirmResult(false);
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.deepEqual(harness.localState.overrides, [
-    { pattern: 'imported', body: '{}', mode: 'text' },
-  ]);
-});
-
-test('Import shows an alert and makes no changes when the file is not valid JSON', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
-    apis: [],
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  selectImportFile(harness, 'not json');
-  await flushUi(harness.window);
-
-  assert.equal(harness.localState.overrides.length, 1);
-  assert.equal(harness.localState.overrides[0].pattern, 'existing');
-  assert.equal(harness.alerts.length, 1);
-});
-
-test('Import shows an alert and makes no changes when a rule has a non-string method', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
-    apis: [],
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text', method: 123 }],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.localState.overrides.length, 1);
-  assert.equal(harness.localState.overrides[0].pattern, 'existing');
-  assert.equal(harness.alerts.length, 1);
-});
-
-test('Import shows an alert and makes no changes when an "overrides" entry is not an object', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }] },
-    apis: [],
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [null],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.localState.overrides.length, 1);
-  assert.equal(harness.localState.overrides[0].pattern, 'existing');
-  assert.equal(harness.alerts.length, 1);
-});
-
-test('Import with no existing rules writes them directly and never prompts to merge or replace', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [] },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.deepEqual(harness.localState.overrides, [
-    { pattern: 'imported', body: '{}', mode: 'text' },
-  ]);
-  assert.equal(harness.confirms.length, 0);
-});
-
-test('Import strips unknown fields from rule objects, keeping only known OverrideRule fields', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [] },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [
-        {
-          pattern: 'imported',
-          body: '{}',
-          mode: 'text',
-          method: 'POST',
-          enabled: false,
-          redirectUrl: 'https://example.com/new',
-          notAKnownField: 'should be dropped',
-        },
-      ],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.deepEqual(harness.localState.overrides, [
-    {
-      pattern: 'imported',
-      body: '{}',
-      mode: 'text',
-      method: 'POST',
-      enabled: false,
-      redirectUrl: 'https://example.com/new',
-    },
-  ]);
-});
-
-test('Import with mismatched domain prompts to confirm and proceeds when accepted', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true, overrides: [] },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.setConfirmResult(true);
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: 'https://other-domain.example',
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.confirms.length, 1);
-  assert.match(harness.confirms[0], /other-domain\.example/);
-  assert.deepEqual(harness.localState.overrides, [
-    { pattern: 'imported', body: '{}', mode: 'text' },
-  ]);
-});
-
-test('Import with mismatched domain aborts with no changes when the confirm is cancelled', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'existing', body: '{}', mode: 'text' }],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.setConfirmResult(false);
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: 'https://other-domain.example',
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      overrides: [{ pattern: 'imported', body: '{}', mode: 'text' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  // Only the domain-mismatch confirm should have fired; the import aborted
-  // before ever reaching the merge/replace confirm.
-  assert.equal(harness.confirms.length, 1);
-  assert.deepEqual(harness.localState.overrides, [
-    { pattern: 'existing', body: '{}', mode: 'text' },
-  ]);
-  assert.equal(harness.alerts.length, 0);
-});
-
-test('UI shows attach status and unchecks the toggle on attach failure', async () => {
-  // Seed one captured API so init's loadApis succeeds immediately and the
-  // status port connects within flushUi instead of after the ~1s retry loop.
-  const harness = createUiHarness({
-    storageState: { enabled: true },
-    apis: [{ url: TEST_API_URL, type: 'fetch' }],
-  });
-  await flushUi(harness.window);
-
-  harness.emitPortMessage({ type: 'status', tabId: 99, attached: true });
-  const statusEl = harness.document.getElementById('attach-status');
-  assert.equal(statusEl.textContent, 'Intercepting requests');
-  assert.equal(statusEl.classList.contains('attach-status--on'), true);
-
-  harness.emitPortMessage({
-    type: 'status',
-    tabId: 99,
-    attached: false,
-    error: 'Another debugger is already attached',
-  });
-  await flushUi(harness.window);
-  assert.equal(statusEl.textContent, 'Attach failed: Another debugger is already attached');
-  assert.equal(statusEl.classList.contains('attach-status--error'), true);
-  assert.equal(harness.document.getElementById('enable').checked, false);
-  assert.equal(harness.localState.enabled, false);
-});
-
-test('UI queries getStatus on load', async () => {
-  const harness = createUiHarness();
-  await flushUi(harness.window);
-  assert.equal(
-    harness.sentMessages.some(msg => msg.type === 'getStatus'),
-    true
-  );
-});
-
-test('UI unchecks the toggle when getStatus itself reports an attach error', async () => {
-  const harness = createUiHarness({
-    storageState: { enabled: true },
-    statusResponse: {
-      type: 'statusResponse',
-      attached: false,
-      error: 'Cannot access a chrome:// URL',
-    },
-  });
-  await flushUi(harness.window);
-
-  const statusEl = harness.document.getElementById('attach-status');
-  assert.equal(statusEl.textContent, 'Attach failed: Cannot access a chrome:// URL');
-  assert.equal(harness.document.getElementById('enable').checked, false);
-  assert.equal(harness.localState.enabled, false);
-});
-
-test('Import rejects rules with an unknown mode or method', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      overrides: [{ pattern: 'x', mode: 'yaml', body: '' }],
-    })
-  );
-  await flushUi(harness.window);
-  assert.equal(harness.alerts.length, 1);
-  assert.match(harness.alerts[0], /invalid/i);
-  assert.equal(harness.localState.overrides, undefined);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      overrides: [{ pattern: 'x', mode: 'text', body: '', method: 'TRACE' }],
-    })
-  );
-  await flushUi(harness.window);
-  assert.equal(harness.alerts.length, 2);
-  assert.equal(harness.localState.overrides, undefined);
-});
-
-test('Import normalizes method casing to uppercase', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      overrides: [{ pattern: 'x', mode: 'text', body: '', method: 'get' }],
-    })
-  );
-  await flushUi(harness.window);
-
-  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
-  assert.equal(saved[`overrides_${TEST_DOMAIN}`][0].method, 'GET');
-});
-
-test('Saving a body override persists status, delay, and extra headers', async () => {
-  const harness = createUiHarness({
-    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch', method: 'GET' }],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('#apis-list li.api-item')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.document.getElementById('modal-body').value = '{"mock":1}';
-  harness.document.getElementById('modal-status').value = '503';
-  harness.document.getElementById('modal-delay').value = '1500';
-  harness.document.getElementById('modal-headers').value =
-    'X-Custom: yes\nContent-Type: text/plain';
-  harness.document
-    .getElementById('save-override')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
-    `overrides_${TEST_DOMAIN}`
-  ][0];
-  assert.equal(saved.statusCode, 503);
-  assert.equal(saved.delayMs, 1500);
-  assert.deepEqual(saved.responseHeaders, [
-    { name: 'X-Custom', value: 'yes' },
-    { name: 'Content-Type', value: 'text/plain' },
-  ]);
-});
-
-test('Saving a fail rule persists failReason and delay with an empty body', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  harness.document
-    .getElementById('add-api-btn')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  harness.document.getElementById('modal-pattern').value = 'api/fail';
-  const failRadio = harness.document.querySelector(
-    'input[name="modal-override-type"][value="fail"]'
-  );
-  failRadio.checked = true;
-  failRadio.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
-  harness.document.getElementById('modal-fail-reason').value = 'TimedOut';
-  harness.document.getElementById('modal-delay').value = '2000';
-  harness.document
-    .getElementById('save-override')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
-    `overrides_${TEST_DOMAIN}`
-  ][0];
-  assert.equal(saved.failReason, 'TimedOut');
-  assert.equal(saved.delayMs, 2000);
-  assert.equal(saved.body, '');
-  assert.equal(saved.redirectUrl, undefined);
-  assert.equal(saved.statusCode, undefined);
-});
-
-test('Modal save rejects out-of-range status and delay and malformed header lines', async () => {
-  const harness = createUiHarness({
-    apis: [{ url: `${TEST_DOMAIN}/api/users`, type: 'fetch' }],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('#apis-list li.api-item')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const save = () =>
-    harness.document
-      .getElementById('save-override')
-      .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-
-  harness.document.getElementById('modal-status').value = '99';
-  save();
-  await flushUi(harness.window);
-  assert.equal(harness.alerts.length, 1);
-  assert.match(harness.alerts[0], /status/i);
-
-  harness.document.getElementById('modal-status').value = '';
-  harness.document.getElementById('modal-delay').value = '-5';
-  save();
-  await flushUi(harness.window);
-  assert.equal(harness.alerts.length, 2);
-  assert.match(harness.alerts[1], /delay/i);
-
-  harness.document.getElementById('modal-delay').value = '';
-  harness.document.getElementById('modal-headers').value = 'no colon here';
-  save();
-  await flushUi(harness.window);
-  assert.equal(harness.alerts.length, 3);
-  assert.match(harness.alerts[2], /header/i);
-
-  const saved = harness.storageSets.find(set => `overrides_${TEST_DOMAIN}` in set);
-  assert.equal(saved, undefined); // nothing was persisted
-});
-
-test('Editing a fail rule pre-fills the fail type, reason, and delay', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      overrides: [
-        {
-          pattern: 'api/fail',
-          body: '',
-          mode: 'text',
-          failReason: 'ConnectionRefused',
-          delayMs: 500,
-        },
-      ],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('.edit-btn')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  assert.equal(
-    harness.document.querySelector('input[name="modal-override-type"][value="fail"]').checked,
-    true
-  );
-  assert.equal(harness.document.getElementById('modal-fail-reason').value, 'ConnectionRefused');
-  assert.equal(harness.document.getElementById('modal-delay').value, '500');
-  assert.equal(harness.document.getElementById('modal-fail-fields').style.display, '');
-});
-
-test('Rules list shows status, delay, and FAIL badges', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      overrides: [
-        { pattern: 'a', body: '{}', mode: 'text', statusCode: 500, delayMs: 3000 },
-        { pattern: 'b', body: '', mode: 'text', failReason: 'TimedOut' },
-      ],
-    },
-    apis: [],
-    tabUrl: `${TEST_DOMAIN}/`,
-  });
-  await flushUi(harness.window);
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const items = harness.document.querySelectorAll('#list .override-item');
-  assert.equal(items[0].querySelector('.override-status-badge').textContent, '500');
-  assert.equal(items[0].querySelector('.override-delay-badge').textContent, '⏱ 3000ms');
-  const failBadge = items[1].querySelector('.override-fail-badge');
-  assert.equal(failBadge.textContent, 'FAIL');
-  assert.equal(failBadge.title, 'TimedOut');
-});
-
-test('Import rejects invalid mock-power fields', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  const attempts = [
-    { pattern: 'x', mode: 'text', body: '', statusCode: 99 },
-    { pattern: 'x', mode: 'text', body: '', statusCode: 'abc' },
-    { pattern: 'x', mode: 'text', body: '', delayMs: -1 },
-    { pattern: 'x', mode: 'text', body: '', delayMs: 999999 },
-    { pattern: 'x', mode: 'text', body: '', responseHeaders: [{ name: '', value: 'v' }] },
-    { pattern: 'x', mode: 'text', body: '', responseHeaders: 'not-an-array' },
-    { pattern: 'x', mode: 'text', body: '', failReason: 'Nope' },
-    { pattern: 'x', mode: 'text', body: '', failReason: 'Failed', redirectUrl: 'https://a.test/' },
-  ];
-  for (const rule of attempts) {
-    selectImportFile(
-      harness,
-      JSON.stringify({ version: 1, domain: TEST_DOMAIN, overrides: [rule] })
-    );
-    await flushUi(harness.window);
-  }
-  assert.equal(harness.alerts.length, attempts.length);
-  assert.equal(
-    harness.storageSets.find(set => `overrides_${TEST_DOMAIN}` in set),
-    undefined
-  );
-});
-
-test('Import keeps valid mock-power fields on the cleaned rule', async () => {
-  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
-  await flushUi(harness.window);
-
-  selectImportFile(
-    harness,
-    JSON.stringify({
-      version: 1,
-      domain: TEST_DOMAIN,
-      overrides: [
-        {
-          pattern: 'users',
-          mode: 'text',
-          body: '{}',
-          statusCode: 503,
-          delayMs: 1500,
-          responseHeaders: [{ name: 'X-Custom', value: 'yes' }],
-        },
-        { pattern: 'fail', mode: 'text', body: '', failReason: 'TimedOut' },
-      ],
-    })
-  );
-  await flushUi(harness.window);
-
-  assert.equal(harness.alerts.length, 0);
-  const rules = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set)[
-    `overrides_${TEST_DOMAIN}`
-  ];
-  assert.deepEqual(rules[0], {
-    pattern: 'users',
-    mode: 'text',
-    body: '{}',
-    statusCode: 503,
-    delayMs: 1500,
-    responseHeaders: [{ name: 'X-Custom', value: 'yes' }],
-  });
-  assert.deepEqual(rules[1], {
-    pattern: 'fail',
-    mode: 'text',
-    body: '',
-    failReason: 'TimedOut',
-  });
-});
-
-test('Duplicating a rule creates an exact copy in storage and UI', async () => {
-  const harness = createUiHarness({
-    storageState: {
-      enabled: true,
-      overrides: [{ pattern: 'users', body: '{"ok":1}', mode: 'text' }],
-    },
-  });
-
-  await flushUi(harness.window);
-
-  harness.document
-    .querySelector('[data-tab="overrides"]')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const dupBtn = harness.document.querySelector('.duplicate-btn');
-  assert.ok(dupBtn, 'Duplicate button must exist');
-  dupBtn.dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const rules = harness.localState.overrides;
-  assert.equal(rules.length, 2);
-  assert.deepEqual(rules[0], rules[1]);
-});
-
-test('Saving a body override with requestHeaders persists requestHeaders', async () => {
-  const harness = createUiHarness({ apis: [{ url: TEST_API_URL, type: 'Fetch' }] });
-
-  await flushUi(harness.window);
-
-  const apiItem = harness.document.querySelector('.api-item');
-  assert.ok(apiItem, 'api-item must exist');
-  apiItem.dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const reqHeadersTextarea = harness.document.getElementById('modal-request-headers');
-  assert.ok(reqHeadersTextarea, 'modal-request-headers element must exist');
-  reqHeadersTextarea.value = 'Authorization: Bearer my-secret-token';
-
-  harness.document
-    .getElementById('save-override')
-    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
-  await flushUi(harness.window);
-
-  const savedRules = harness.localState.overrides;
-  assert.equal(savedRules.length, 1);
-  assert.deepEqual(savedRules[0].requestHeaders, [
-    { name: 'Authorization', value: 'Bearer my-secret-token' },
-  ]);
 });

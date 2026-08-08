@@ -1,0 +1,263 @@
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #dce4ec;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #fff;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #55708a;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.tab-btn:hover {
+  color: #1b2b3a;
+}
+.tab-btn.active {
+  color: #0a4f9c;
+  border-bottom-color: #0a4f9c;
+  font-weight: 600;
+}
+
+.attach-status {
+  font-size: 11px;
+  margin-left: 8px;
+}
+.attach-status--on {
+  color: #2e7d32;
+}
+.attach-status--error {
+  color: #c62828;
+}
+
+#modal-advanced-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+#modal-advanced-fields .modal-field {
+  min-width: 0;
+}
+#modal-advanced-fields #modal-request-headers-field,
+#modal-advanced-fields #modal-headers-field {
+  grid-column: 1 / -1;
+}
+
+.override-status-badge,
+.override-delay-badge,
+.override-fail-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+.override-status-badge {
+  background: #fff3e0;
+  color: #e65100;
+}
+.override-delay-badge {
+  background: #e3f2fd;
+  color: #0a4f9c;
+}
+.override-fail-badge {
+  background: #ffebee;
+  color: #c62828;
+  font-weight: 600;
+}
+
+.profiles-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.profiles-select {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #c9d7e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+.profile-btn {
+  background: #f0f4f8;
+  border: 1px solid #c9d7e6;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #334e68;
+}
+.profile-btn:hover {
+  background: #e2e8f0;
+}
+
+.captured-types-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #486581;
+  padding: 4px 0;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.captured-types-label {
+  font-weight: 600;
+}
+.type-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.duplicate-btn {
+  background: none;
+  border: 1px solid #dce4ec;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  color: #486581;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.duplicate-btn:hover {
+  background: #e2e8f0;
+  color: #102a43;
+}
+
+.modal-preview-container {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f8fafc;
+  max-height: 150px;
+  overflow: auto;
+  text-align: center;
+}
+.modal-preview-container img {
+  max-width: 100%;
+  max-height: 130px;
+  object-fit: contain;
+}
+
+.graphql-badge {
+  background-color: #e5c07b;
+  color: #1e1e1e;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
+/* Visual Header Table Editor */
+.modal-headers-table {
+  margin-top: 6px;
+}
+
+.headers-table-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.headers-editor-mode {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px;
+  border: 1px solid #3e4451;
+  border-radius: 5px;
+  background: #21252b;
+}
+
+.headers-editor-mode button {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #9da5b4;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.headers-editor-mode button.active {
+  background: #3b4048;
+  color: #61afef;
+}
+
+.headers-table-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.header-table-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.header-row-key,
+.header-row-value {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border: 1px solid #3e4451;
+  border-radius: 4px;
+  background-color: #21252b;
+  color: #abb2bf;
+}
+
+.header-row-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  transition: opacity 0.2s;
+}
+
+.header-row-delete:hover {
+  opacity: 0.8;
+}
+
+.add-header-row-btn {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  background-color: #2c313a;
+  color: #61afef;
+  border: 1px dashed #61afef;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-header-row-btn:hover {
+  background-color: #3b4048;
+}
+
+/* cURL / Swagger Modal Styling */
+.curl-swagger-file-row {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #abb2bf;
+}

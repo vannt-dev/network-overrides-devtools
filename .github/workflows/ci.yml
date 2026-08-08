@@ -8,6 +8,10 @@ on:
       - develop
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -30,6 +34,9 @@ jobs:
       - name: Check code formatting
         run: npx prettier --check .
 
+      - name: Lint TypeScript code
+        run: npm run lint
+
       - name: Lint commit messages
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -44,7 +51,14 @@ jobs:
       - name: Run tests with coverage
         run: npm run ci:test
 
-      - name: Install Playwright Chromium
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium dependencies
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright smoke test

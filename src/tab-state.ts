@@ -90,10 +90,18 @@ namespace NetworkOverridesTabState {
 
   export function setRecentApi(tabId: number, entry: ApiEntry): void {
     const state = ensure(tabId);
+    const existing = state.recentApis.get(entry.url);
+    const merged: ApiEntry = existing
+      ? {
+          ...existing,
+          ...entry,
+          postData: entry.postData !== undefined ? entry.postData : existing.postData,
+        }
+      : entry;
     if (state.recentApis.has(entry.url)) {
       state.recentApis.delete(entry.url);
     }
-    state.recentApis.set(entry.url, entry);
+    state.recentApis.set(entry.url, merged);
     trimToLimit(state.recentApis, RECENT_APIS_LIMIT);
     schedulePersist(tabId);
   }

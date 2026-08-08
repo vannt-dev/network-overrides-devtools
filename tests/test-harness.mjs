@@ -133,6 +133,7 @@ function buildUiHtml() {
           <option value="PATCH">PATCH</option>
           <option value="DELETE">DELETE</option>
         </select>
+        <input id="modal-graphql-op" type="text">
         <div class="override-type-selector">
           <label class="type-radio">
             <input type="radio" name="modal-override-type" value="body" checked />

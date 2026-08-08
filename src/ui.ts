@@ -165,6 +165,7 @@ namespace NetworkOverridesUi {
     importRulesInput: HTMLInputElement;
     modalRequestHeaders?: HTMLTextAreaElement;
     modalRequestHeadersField?: HTMLElement;
+    modalGraphqlOp?: HTMLInputElement;
     modalPreviewContainer?: HTMLDivElement;
     profilesSelect?: HTMLSelectElement;
     saveProfileBtn?: HTMLButtonElement;
@@ -328,6 +329,9 @@ namespace NetworkOverridesUi {
           override.method && override.method !== 'ANY'
             ? `<span class="override-method-badge">${escapeHtml(override.method)}</span> `
             : '';
+        const gqlBadge = override.graphqlOperation
+          ? `<span class="graphql-badge">GQL: ${escapeHtml(override.graphqlOperation)}</span> `
+          : '';
         const statusBadge =
           typeof override.statusCode === 'number'
             ? `<span class="override-status-badge">${override.statusCode}</span> `
@@ -351,7 +355,7 @@ namespace NetworkOverridesUi {
             <div class="override-item-info">
               <b class="override-pattern">${escapeHtml(override.pattern)}</b>
               ${override.redirectUrl ? `<div class="override-redirect">→ ${escapeHtml(override.redirectUrl)}</div>` : ''}
-              <div class="override-meta">${methodBadge}${failBadge}${statusBadge}${delayBadge}${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
+              <div class="override-meta">${methodBadge}${gqlBadge}${failBadge}${statusBadge}${delayBadge}${escapeHtml(override.mode)}${override.body ? ` · ${escapeHtml(override.body.substring(0, 80))}${override.body.length > 80 ? '…' : ''}` : ''}</div>
             </div>
             <div class="override-item-actions">
               <button data-index="${index}" class="edit-btn" title="Edit">✎</button>
@@ -408,6 +412,9 @@ namespace NetworkOverridesUi {
     }
 
     function prefillAdvancedFields(existing: OverrideRule | null): void {
+      if (elements.modalGraphqlOp) {
+        elements.modalGraphqlOp.value = existing?.graphqlOperation || '';
+      }
       elements.modalStatus.value =
         existing && typeof existing.statusCode === 'number' ? String(existing.statusCode) : '';
       elements.modalDelay.value =
@@ -952,6 +959,9 @@ namespace NetworkOverridesUi {
       if (method && method !== 'ANY') {
         override.method = method;
       }
+      if (elements.modalGraphqlOp && elements.modalGraphqlOp.value.trim()) {
+        override.graphqlOperation = elements.modalGraphqlOp.value.trim();
+      }
       if (oldOverride?.enabled === false) {
         override.enabled = false;
       }
@@ -1129,6 +1139,8 @@ namespace NetworkOverridesUi {
             rule.responseHeaders.every(isValidImportHeader))) &&
         (rule.requestHeaders === undefined ||
           (Array.isArray(rule.requestHeaders) && rule.requestHeaders.every(isValidImportHeader))) &&
+        (rule.graphqlOperation === undefined || typeof rule.graphqlOperation === 'string') &&
+        (rule.processTemplates === undefined || typeof rule.processTemplates === 'boolean') &&
         (rule.failReason === undefined ||
           (typeof rule.failReason === 'string' &&
             FAIL_REASONS.includes(rule.failReason) &&
@@ -1161,6 +1173,8 @@ namespace NetworkOverridesUi {
         if (rule.redirectUrl !== undefined) clean.redirectUrl = rule.redirectUrl;
         if (rule.enabled !== undefined) clean.enabled = rule.enabled;
         if (rule.method !== undefined) clean.method = rule.method.toUpperCase();
+        if (rule.graphqlOperation !== undefined) clean.graphqlOperation = rule.graphqlOperation;
+        if (rule.processTemplates !== undefined) clean.processTemplates = rule.processTemplates;
         if (rule.statusCode !== undefined) clean.statusCode = rule.statusCode;
         if (rule.delayMs !== undefined) clean.delayMs = rule.delayMs;
         if (rule.responseHeaders !== undefined) {
@@ -1465,6 +1479,7 @@ namespace NetworkOverridesUi {
       modalRequestHeadersField: document.getElementById(
         'modal-request-headers-field'
       ) as HTMLElement,
+      modalGraphqlOp: document.getElementById('modal-graphql-op') as HTMLInputElement,
       modalPreviewContainer: document.getElementById('modal-preview-container') as HTMLDivElement,
       profilesSelect: document.getElementById('profiles-select') as HTMLSelectElement,
       saveProfileBtn: document.getElementById('save-profile-btn') as HTMLButtonElement,

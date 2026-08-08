@@ -849,3 +849,13 @@ input[type='search'] {
   max-height: 130px;
   object-fit: contain;
 }
+
+.graphql-badge {
+  background-color: #e5c07b;
+  color: #1e1e1e;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+}

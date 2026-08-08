@@ -41,6 +41,23 @@ export function createUiContext() {
   vm.createContext(context);
   runDistFile('utils.js', context);
   runDistFile('shared.js', context);
+  runDistFile('ui/types.js', context);
+  runDistFile('ui/view-utils.js', context);
+  runDistFile('ui/primitives.js', context);
+  runDistFile('ui/notifications.js', context);
+  runDistFile('ui/dialogs.js', context);
+  runDistFile('ui/persistence.js', context);
+  runDistFile('ui/attach-status.js', context);
+  runDistFile('ui/curl.js', context);
+  runDistFile('ui/swagger.js', context);
+  runDistFile('ui/headers-editor.js', context);
+  runDistFile('ui/modal.js', context);
+  runDistFile('ui/rules-list.js', context);
+  runDistFile('ui/api-list.js', context);
+  runDistFile('ui/profiles.js', context);
+  runDistFile('ui/modal-controller.js', context);
+  runDistFile('ui/rules-io-controller.js', context);
+  runDistFile('ui/toolbar-controller.js', context);
   runDistFile('ui.js', context);
   return context;
 }
@@ -54,8 +71,6 @@ export function createBackgroundContext() {
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
     escape,
     unescape,
-    // utils.js is already loaded into this context below; real service workers
-    // use importScripts to do the same thing at runtime.
     importScripts: noop,
     chrome: {
       runtime: {
@@ -97,6 +112,11 @@ export function createBackgroundContext() {
   runDistFile('utils.js', context);
   runDistFile('shared.js', context);
   runDistFile('tab-state.js', context);
+  runDistFile('background/encoding.js', context);
+  runDistFile('background/api-capture.js', context);
+  runDistFile('background/interceptor.js', context);
+  runDistFile('background/debugger-controller.js', context);
+  runDistFile('background/message-router.js', context);
   runDistFile('background.js', context);
   return context;
 }
@@ -107,8 +127,20 @@ function buildUiHtml() {
     <body>
       <input id="enable" type="checkbox">
       <span id="attach-status" style="display:none"></span>
-      <button id="refresh-apis" type="button">↻</button>
-      <button id="info-btn" type="button">ⓘ</button>
+      <div class="header-actions">
+        <button
+          id="refresh-apis"
+          type="button"
+          title="Refresh captured requests"
+          aria-label="Refresh captured requests"
+        ><svg aria-hidden="true"></svg></button>
+        <button
+          id="info-btn"
+          type="button"
+          title="Open user guide"
+          aria-label="Open user guide"
+        ><svg aria-hidden="true"></svg></button>
+      </div>
       <div class="tabs">
         <button class="tab-btn active" data-tab="overridden">Overridden APIs</button>
         <button class="tab-btn" data-tab="other">Other APIs</button>
@@ -119,11 +151,15 @@ function buildUiHtml() {
       <button id="add-api-btn" type="button">+</button>
       <div id="apis-list"></div>
       <div id="override-modal" style="display:none;">
-        <span class="close">x</span>
-        <h4 class="modal-title">
-          <span id="modal-title-text"></span>
-          <span id="modal-url"></span>
-        </h4>
+        <div class="modal-content modal-content--override">
+          <header class="modal-header">
+            <h4 class="modal-title">
+              <span id="modal-title-text"></span>
+              <span id="modal-url"></span>
+            </h4>
+            <button class="close modal-close" type="button">x</button>
+          </header>
+          <div class="modal-scroll-body">
         <input id="modal-pattern" type="text">
         <select id="modal-method">
           <option value="ANY">Any</option>
@@ -155,8 +191,7 @@ function buildUiHtml() {
           </select>
           <textarea id="modal-body"></textarea>
           <div class="modal-body-footer">
-            <span id="body-type-badge" class="body-type-badge">text</span>
-            <button id="format-json-btn" type="button">Format JSON</button>
+            <button id="format-json-btn" type="button" style="display:none">Format JSON</button>
           </div>
           <div id="modal-preview-container" style="display:none"></div>
         </div>
@@ -173,12 +208,29 @@ function buildUiHtml() {
           </select>
         </div>
         <div id="modal-advanced-fields">
-          <label id="modal-request-headers-field"><textarea id="modal-request-headers"></textarea></label>
+          <label id="modal-request-headers-field" class="modal-field">
+            <textarea id="modal-request-headers"></textarea>
+            <div id="modal-request-headers-table"></div>
+          </label>
           <label id="modal-status-field"><input id="modal-status" type="number" /></label>
           <label><input id="modal-delay" type="number" /></label>
-          <label id="modal-headers-field"><textarea id="modal-headers"></textarea></label>
+          <label id="modal-headers-field" class="modal-field">
+            <textarea id="modal-headers"></textarea>
+            <div id="modal-response-headers-table"></div>
+          </label>
         </div>
-        <button id="save-override" type="button">Save</button>
+          </div>
+          <footer class="modal-footer">
+            <div id="modal-feedback" role="status" aria-live="polite"></div>
+            <button id="save-override" type="button">Save</button>
+          </footer>
+        </div>
+      </div>
+      <div id="curl-swagger-modal" style="display:none">
+        <span id="curl-swagger-close">x</span>
+        <textarea id="curl-swagger-textarea"></textarea>
+        <input id="curl-swagger-file-input" type="file" />
+        <button id="curl-swagger-import-btn" type="button">Import</button>
       </div>
       <div id="new-row" style="display:none;"></div>
       <input id="pattern" type="text">
@@ -192,6 +244,7 @@ function buildUiHtml() {
       <div id="overrides-section" style="display:none;">
         <button id="export-rules-btn" type="button">Export</button>
         <button id="import-rules-btn" type="button">Import</button>
+        <button id="import-curl-swagger-btn" type="button">cURL / Swagger</button>
         <input id="import-rules-input" type="file">
         <select id="profiles-select"></select>
         <button id="save-profile-btn" type="button">Save Profile</button>
@@ -211,6 +264,9 @@ export function createUiHarness({
   tabUrl = 'https://example.test/',
   options = { autoFillOnOpen: true, showManualEditor: false },
   statusResponse = { type: 'statusResponse', attached: false },
+  storageSetError = null,
+  backgroundUpdateResponse = { success: true },
+  promptResult = null,
 } = {}) {
   const dom = new JSDOM(buildUiHtml(), {
     url: tabUrl,
@@ -240,8 +296,10 @@ export function createUiHarness({
   const storageSets = [];
   const alerts = [];
   const downloads = [];
+  const openedTabs = [];
   let confirmResult = true;
   const confirms = [];
+  const prompts = [];
   let getApisCallCount = 0;
   const uiPorts = [];
 
@@ -275,6 +333,11 @@ export function createUiHarness({
           return { ...localState };
         },
         async set(value) {
+          if (storageSetError) {
+            throw storageSetError instanceof Error
+              ? storageSetError
+              : new Error(String(storageSetError));
+          }
           storageSets.push(structuredClone(value));
           Object.assign(localState, structuredClone(value));
           if (tabDomain) {
@@ -291,6 +354,9 @@ export function createUiHarness({
     tabs: {
       query(queryInfo, callback) {
         callback([{ id: tabId, url: tabUrl }]);
+      },
+      create(options) {
+        openedTabs.push(structuredClone(options));
       },
     },
     runtime: {
@@ -341,6 +407,10 @@ export function createUiHarness({
           callback?.(structuredClone(statusResponse));
           return;
         }
+        if (message.type === 'update') {
+          callback?.(structuredClone(backgroundUpdateResponse));
+          return;
+        }
         callback?.({ success: true });
       },
     },
@@ -352,6 +422,10 @@ export function createUiHarness({
     confirm: message => {
       confirms.push(String(message));
       return confirmResult;
+    },
+    prompt: message => {
+      prompts.push(String(message));
+      return promptResult;
     },
   });
   window.URL.createObjectURL = blob => {
@@ -378,6 +452,23 @@ export function createUiHarness({
   const context = dom.getInternalVMContext();
   runDistFile('utils.js', context);
   runDistFile('shared.js', context);
+  runDistFile('ui/types.js', context);
+  runDistFile('ui/view-utils.js', context);
+  runDistFile('ui/primitives.js', context);
+  runDistFile('ui/notifications.js', context);
+  runDistFile('ui/dialogs.js', context);
+  runDistFile('ui/persistence.js', context);
+  runDistFile('ui/attach-status.js', context);
+  runDistFile('ui/curl.js', context);
+  runDistFile('ui/swagger.js', context);
+  runDistFile('ui/headers-editor.js', context);
+  runDistFile('ui/modal.js', context);
+  runDistFile('ui/rules-list.js', context);
+  runDistFile('ui/api-list.js', context);
+  runDistFile('ui/profiles.js', context);
+  runDistFile('ui/modal-controller.js', context);
+  runDistFile('ui/rules-io-controller.js', context);
+  runDistFile('ui/toolbar-controller.js', context);
   runDistFile('ui.js', context);
   window.NetworkOverridesUi.init(options);
 
@@ -390,7 +481,9 @@ export function createUiHarness({
     storageSets,
     alerts,
     downloads,
+    openedTabs,
     confirms,
+    prompts,
     setConfirmResult: value => {
       confirmResult = value;
     },
@@ -406,239 +499,4 @@ export async function flushUi(window, ticks = 3) {
   for (let index = 0; index < ticks; index += 1) {
     await new Promise(resolve => window.setTimeout(resolve, 0));
   }
-}
-
-export function createBackgroundHarness({
-  sessionState: initialSessionState = {},
-  storageState: initialStorageState = {},
-  existingTabIds = [7],
-  preAttachedTabIds = [],
-} = {}) {
-  const listeners = {
-    onMessage: null,
-    onConnect: null,
-    onRemoved: null,
-    onEvent: null,
-    onDetach: null,
-    onUpdated: null,
-  };
-  const storageState = structuredClone(initialStorageState);
-  const sessionState = structuredClone(initialSessionState);
-  const existingTabs = new Set(existingTabIds);
-  const storageSets = [];
-  const commandLog = [];
-  const attachedTabs = [];
-  const detachedTabs = [];
-  const responseBodies = new Map();
-  const errors = [];
-  let attachError = null;
-  // Browser-side attachment state: chrome.debugger sessions belong to the
-  // extension, not the worker instance, so they survive worker restarts.
-  const attachedTargets = new Set(preAttachedTabIds);
-
-  const chrome = {
-    runtime: {
-      lastError: null,
-      onMessage: {
-        addListener(listener) {
-          listeners.onMessage = listener;
-        },
-      },
-      onConnect: {
-        addListener(listener) {
-          listeners.onConnect = listener;
-        },
-      },
-    },
-    tabs: {
-      onRemoved: {
-        addListener(listener) {
-          listeners.onRemoved = listener;
-        },
-      },
-      onUpdated: {
-        addListener(listener) {
-          listeners.onUpdated = listener;
-        },
-      },
-      async get(tabId) {
-        if (!existingTabs.has(tabId)) throw new Error(`No tab with id: ${tabId}`);
-        return { id: tabId };
-      },
-    },
-    debugger: {
-      onEvent: {
-        addListener(listener) {
-          listeners.onEvent = listener;
-        },
-      },
-      onDetach: {
-        addListener(listener) {
-          listeners.onDetach = listener;
-        },
-      },
-      attach(target, version, callback) {
-        attachedTabs.push({ target, version });
-        // Async like the real API so double-attach races are reproducible.
-        setTimeout(() => {
-          if (attachError) {
-            chrome.runtime.lastError = { message: attachError };
-            callback?.();
-            chrome.runtime.lastError = null;
-            return;
-          }
-          if (attachedTargets.has(target.tabId)) {
-            chrome.runtime.lastError = {
-              message: `Another debugger is already attached to the tab with id: ${target.tabId}.`,
-            };
-            callback?.();
-            chrome.runtime.lastError = null;
-            return;
-          }
-          attachedTargets.add(target.tabId);
-          callback?.();
-        }, 0);
-      },
-      detach(target, callback) {
-        detachedTabs.push(target);
-        attachedTargets.delete(target.tabId);
-        callback?.();
-      },
-      sendCommand(target, method, params, callback) {
-        commandLog.push({ target, method, params });
-        // Real Chrome scopes runtime.lastError per callback; this mock runs
-        // callbacks synchronously, so isolate it from any enclosing callback.
-        const priorLastError = chrome.runtime.lastError;
-        chrome.runtime.lastError = null;
-        if (!attachedTargets.has(target.tabId)) {
-          chrome.runtime.lastError = {
-            message: `Debugger is not attached to the tab with id: ${target.tabId}.`,
-          };
-          callback?.();
-        } else if (method === 'Fetch.getResponseBody') {
-          callback?.(responseBodies.get(params.requestId) || {});
-        } else {
-          callback?.();
-        }
-        chrome.runtime.lastError = priorLastError;
-      },
-    },
-    storage: {
-      local: {
-        get(keys, callback) {
-          const result = Array.isArray(keys)
-            ? Object.fromEntries(keys.map(key => [key, storageState[key]]))
-            : typeof keys === 'string'
-              ? { [keys]: storageState[keys] }
-              : { ...storageState };
-          if (callback) {
-            callback(result);
-            return;
-          }
-          return Promise.resolve(result);
-        },
-        set(value) {
-          storageSets.push(structuredClone(value));
-          Object.assign(storageState, structuredClone(value));
-        },
-        async remove(keys) {
-          for (const key of Array.isArray(keys) ? keys : [keys]) {
-            delete storageState[key];
-          }
-        },
-      },
-      session: {
-        async get(keys) {
-          if (keys === null || keys === undefined) return { ...sessionState };
-          if (Array.isArray(keys)) {
-            return Object.fromEntries(keys.map(key => [key, sessionState[key]]));
-          }
-          return { [keys]: sessionState[keys] };
-        },
-        async set(value) {
-          Object.assign(sessionState, structuredClone(value));
-        },
-        async remove(keys) {
-          for (const key of Array.isArray(keys) ? keys : [keys]) {
-            delete sessionState[key];
-          }
-        },
-      },
-    },
-  };
-
-  const context = {
-    console: {
-      ...console,
-      error: (...args) => {
-        errors.push(args);
-      },
-    },
-    setTimeout,
-    clearTimeout,
-    Buffer,
-    TextEncoder,
-    TextDecoder,
-    URL,
-    // Strict like the browser: Buffer.from silently ignores invalid characters,
-    // which would make the invalid-base64 fallback branch unreachable in tests.
-    atob: value => {
-      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
-        throw new Error('Invalid character in base64 string');
-      }
-      return Buffer.from(value, 'base64').toString('binary');
-    },
-    btoa: value => Buffer.from(value, 'binary').toString('base64'),
-    escape,
-    unescape,
-    // utils.js is already loaded into this context below; real service workers
-    // use importScripts to do the same thing at runtime.
-    importScripts: () => {},
-    chrome,
-  };
-  vm.createContext(context);
-  runDistFile('utils.js', context);
-  runDistFile('shared.js', context);
-  runDistFile('tab-state.js', context);
-  runDistFile('background.js', context);
-
-  return {
-    context,
-    chrome,
-    listeners,
-    storageState,
-    sessionState,
-    existingTabs,
-    storageSets,
-    commandLog,
-    attachedTabs,
-    detachedTabs,
-    responseBodies,
-    errors,
-    callMessage(message) {
-      let response;
-      const keepAlive = listeners.onMessage?.(message, {}, value => {
-        response = value;
-      });
-      return { keepAlive, response };
-    },
-    emitDebuggerEvent(method, params, tabId = 7) {
-      listeners.onEvent?.({ tabId }, method, params);
-    },
-    removeTab(tabId = 7) {
-      listeners.onRemoved?.(tabId);
-    },
-    emitDetach(tabId = 7, reason = 'canceled_by_user') {
-      // An external detach (infobar Cancel, DevTools takeover) has already
-      // released the browser-side session before the event reaches us.
-      attachedTargets.delete(tabId);
-      listeners.onDetach?.({ tabId }, reason);
-    },
-    navigateTab(tabId, url) {
-      listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
-    },
-    setAttachError(message) {
-      attachError = message;
-    },
-  };
 }

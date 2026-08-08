@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBackgroundHarness, normalize } from './test-harness.mjs';
+import { normalize } from './test-harness.mjs';
+import { createBackgroundHarness } from './background-test-harness.mjs';
 
 test('TabStateStore mirrors state to storage.session on flushPersist', async () => {
   const harness = createBackgroundHarness();

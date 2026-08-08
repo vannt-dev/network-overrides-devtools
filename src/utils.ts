@@ -2,7 +2,10 @@
 
 namespace NetworkOverridesUtils {
   export function isRegexPattern(pattern: string): boolean {
-    return pattern.startsWith('/') && pattern.lastIndexOf('/') > 0;
+    if (!pattern.startsWith('/')) return false;
+    const lastSlash = pattern.lastIndexOf('/');
+    if (lastSlash <= 0) return false;
+    return /^[dgimsuvy]*$/.test(pattern.slice(lastSlash + 1));
   }
 
   export function escapeRegex(str: string): string {

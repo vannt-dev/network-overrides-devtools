@@ -53,6 +53,9 @@ try {
   const site = context.pages()[0] ?? (await context.newPage());
   await site.goto(`http://127.0.0.1:${PORT}/`);
   const popup = await context.newPage();
+  // Approximate Chrome's action-popup viewport instead of testing the popup
+  // with the much larger regular-tab viewport from the browser context.
+  await popup.setViewportSize({ width: 400, height: 480 });
   await popup.goto(`chrome-extension://${extId}/popup.html`);
   await site.bringToFront(); // popup's getActiveTab() must resolve to the site tab
   // The popup subscribed its API-stream port while it was itself the active tab;
@@ -98,8 +101,38 @@ try {
   if (captured) {
     await apiItem.click();
     await popup.waitForSelector('#override-modal', { state: 'visible' });
+    const modalLayout = await popup.evaluate(() => {
+      const content = document.querySelector('#override-modal .modal-content--override');
+      const body = document.querySelector('#override-modal .modal-scroll-body');
+      const footer = document.querySelector('#override-modal .modal-footer');
+      const contentRect = content.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
+      return {
+        withinViewport: contentRect.top >= 0 && contentRect.bottom <= window.innerHeight,
+        footerVisible: footerRect.top >= contentRect.top && footerRect.bottom <= contentRect.bottom,
+        bodyOverflow: getComputedStyle(body).overflowY,
+      };
+    });
+    report(
+      'override modal stays within the popup viewport',
+      modalLayout.withinViewport,
+      JSON.stringify(modalLayout)
+    );
+    report(
+      'override modal keeps the Save footer outside the scroll body',
+      modalLayout.footerVisible && modalLayout.bodyOverflow === 'auto',
+      JSON.stringify(modalLayout)
+    );
     await popup.fill('#modal-body', '{"mocked":true}');
     await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    const saveNotice =
+      (await popup.locator('.notification-toast--success').last().textContent())?.trim() || '';
+    report(
+      'successful Save confirms storage and background application',
+      /saved and applied to the active tab/i.test(saveNotice),
+      saveNotice
+    );
     await popup.waitForTimeout(1000);
     const mocked = await site.evaluate(
       u => fetch(u).then(r => r.text()),
@@ -123,6 +156,7 @@ try {
     // compact so the later worker-restart check's exact body match still holds.
     await popup.fill('#modal-body', '{"mocked":true}');
     await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
     await popup.waitForTimeout(1000);
     const mockedStatus = await site.evaluate(
       u => fetch(u).then(r => r.status),
@@ -135,11 +169,16 @@ try {
     );
 
     // ---- 3c. fail rule: a fresh rule makes fetch reject at the network layer
+    if (await popup.locator('#override-modal').isVisible()) {
+      await popup.click('#override-modal .modal-close');
+      await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    }
     await popup.click('#add-api-btn');
     await popup.waitForSelector('#override-modal', { state: 'visible' });
     await popup.fill('#modal-pattern', 'api/fail');
     await popup.check('input[name="modal-override-type"][value="fail"]');
     await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
     await popup.waitForTimeout(1000);
     const failOutcome = await site.evaluate(
       u =>
@@ -212,6 +251,10 @@ try {
     otherOrigin === '{"real":true}',
     otherOrigin
   );
+  if (await popup.locator('#override-modal').isVisible()) {
+    await popup.click('#override-modal .modal-close');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+  }
   await popup.click('#refresh-apis');
   await popup.waitForTimeout(1500);
   const staleItems = await popup.locator('li.api-item', { hasText: '127.0.0.1' }).count();

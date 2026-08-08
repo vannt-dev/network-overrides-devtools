@@ -1083,3 +1083,98 @@ test('Background handles updateCapturedBodyTypes message', async () => {
   );
   assert.equal(responded, true);
 });
+
+test('Background processes response template tokens {{uuid}} and {{timestamp}}', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: '{"id":"{{uuid}}"}', mode: 'text' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-template-1',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  await new Promise(resolve => setTimeout(resolve, 20));
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-template-1'
+  );
+  assert.ok(fulfill, 'Must fulfill request');
+  const decoded = Buffer.from(fulfill.params.body, 'base64').toString('utf8');
+  assert.equal(decoded.includes('{{uuid}}'), false, 'Template token must be replaced');
+  assert.ok(/"id":"[a-f0-9-]{36}"/.test(decoded), 'UUID regex must match generated UUID');
+});
+
+test('Background filters GraphQL requests by operationName', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: '/graphql',
+        body: '{"data":{"user":{"name":"Mocked User"}}}',
+        mode: 'text',
+        graphqlOperation: 'GetUserProfile',
+      },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  // Request 1: Different operation -> should NOT match
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-gql-1',
+    request: {
+      url: `${TEST_DOMAIN}/graphql`,
+      method: 'POST',
+      postData: '{"operationName":"GetOrders"}',
+    },
+    resourceType: 'Fetch',
+  });
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.continueRequest' && params.requestId === 'req-gql-1'
+  );
+  assert.ok(continueCmd, 'Different operation must pass through');
+
+  // Request 2: Matching operation -> MUST match
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-gql-2',
+    request: {
+      url: `${TEST_DOMAIN}/graphql`,
+      method: 'POST',
+      postData: '{"operationName":"GetUserProfile"}',
+    },
+    resourceType: 'Fetch',
+  });
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-gql-2',
+    request: {
+      url: `${TEST_DOMAIN}/graphql`,
+      method: 'POST',
+      postData: '{"operationName":"GetUserProfile"}',
+    },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+  await new Promise(resolve => setTimeout(resolve, 20));
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) => method === 'Fetch.fulfillRequest' && params.requestId === 'req-gql-2'
+  );
+  assert.ok(fulfill, 'Matching GraphQL operation must fulfill request');
+});

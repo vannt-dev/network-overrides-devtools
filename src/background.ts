@@ -481,11 +481,13 @@ namespace NetworkOverridesBackground {
   function findOverride(
     url: string,
     method: string | undefined,
-    overrides: OverrideRule[]
+    overrides: OverrideRule[],
+    postData?: string
   ): { override: OverrideRule; captures: string[] } | null {
     for (const test of overrides) {
       if (test.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
+      if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;
       const captures = matchPattern(test.pattern, url);
       if (captures !== null) {
         return { override: test, captures };
@@ -518,18 +520,17 @@ namespace NetworkOverridesBackground {
     }
 
     if (isRequestStage) {
-      if (!state.recentApis.has(url)) {
-        recordApi(tabId, {
-          url,
-          type: params.resourceType || 'other',
-          method: params.request?.method,
-          headers: toFetchHeaders(params.request?.headers),
-          postData: params.request?.postData,
-        });
-      }
+      recordApi(tabId, {
+        url,
+        type: params.resourceType || 'other',
+        method: params.request?.method,
+        headers: toFetchHeaders(params.request?.headers),
+        postData: params.request?.postData,
+      });
 
       try {
-        const match = findOverride(url, params.request?.method, state.overrides);
+        const postData = params.request?.postData || state.recentApis.get(url)?.postData;
+        const match = findOverride(url, params.request?.method, state.overrides, postData);
         if (match && match.override.failReason) {
           const errorReason = match.override.failReason;
           const fail = () => {
@@ -634,7 +635,8 @@ namespace NetworkOverridesBackground {
           typeof params.responseStatusCode === 'number' ? params.responseStatusCode : undefined,
       });
 
-      const match = findOverride(url, params.request?.method, state.overrides);
+      const postData = params.request?.postData || state.recentApis.get(url)?.postData;
+      const match = findOverride(url, params.request?.method, state.overrides, postData);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (capturedBodyTypes.includes(resourceType)) {
@@ -657,9 +659,15 @@ namespace NetworkOverridesBackground {
       console.log('[NetworkOverrides] Fulfill body:', match.override.pattern, '→', url);
 
       const ov = match.override;
+      const captures = match.captures;
 
       function bodyToValidBase64(): string {
-        if (ov.mode !== 'file') return stringToBase64Local(ov.body || '');
+        const rawBody = ov.body || '';
+        const processedBody =
+          ov.mode !== 'file'
+            ? NetworkOverridesUtils.processResponseTemplate(rawBody, captures)
+            : rawBody;
+        if (ov.mode !== 'file') return stringToBase64Local(processedBody);
         try {
           atob(ov.body);
           return ov.body;
@@ -669,7 +677,7 @@ namespace NetworkOverridesBackground {
             ov.pattern,
             '— encoding as text instead'
           );
-          return stringToBase64Local(ov.body || '');
+          return stringToBase64Local(processedBody);
         }
       }
 

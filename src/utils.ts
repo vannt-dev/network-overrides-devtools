@@ -68,4 +68,47 @@ namespace NetworkOverridesUtils {
     if (!requestMethod) return false;
     return ruleMethod.toUpperCase() === requestMethod.toUpperCase();
   }
+
+  export function matchesGraphQLOperation(ruleOp?: string, postData?: string): boolean {
+    if (!ruleOp || !ruleOp.trim()) return true;
+    if (!postData || !postData.trim()) return false;
+    const target = ruleOp.trim().toLowerCase();
+    try {
+      const parsed = JSON.parse(postData);
+      if (
+        typeof parsed.operationName === 'string' &&
+        parsed.operationName.toLowerCase() === target
+      ) {
+        return true;
+      }
+      if (typeof parsed.query === 'string' && parsed.query.toLowerCase().includes(target)) {
+        return true;
+      }
+    } catch {}
+    return postData.toLowerCase().includes(target);
+  }
+
+  export function processResponseTemplate(body: string, captures: string[] = []): string {
+    if (!body || !body.includes('{{')) return body;
+    let result = body;
+    result = result.replace(/\{\{(timestamp|now)\}\}/gi, () => new Date().toISOString());
+    result = result.replace(/\{\{epoch\}\}/gi, () => String(Date.now()));
+    result = result.replace(/\{\{uuid\}\}/gi, () => {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    });
+    result = result.replace(/\{\{randomInt:(\d+):(\d+)\}\}/gi, (_, minStr, maxStr) => {
+      const min = parseInt(minStr, 10);
+      const max = parseInt(maxStr, 10);
+      return String(Math.floor(Math.random() * (max - min + 1)) + min);
+    });
+    result = result.replace(/\{\{param:(\d+)\}\}/gi, (_, indexStr) => {
+      const idx = parseInt(indexStr, 10) - 1;
+      return idx >= 0 && idx < captures.length ? captures[idx] : '';
+    });
+    return result;
+  }
 }

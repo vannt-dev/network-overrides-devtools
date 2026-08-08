@@ -114,7 +114,6 @@ function buildUiHtml() {
         <button class="tab-btn" data-tab="other">Other APIs</button>
         <button class="tab-btn" data-tab="overrides">Overrides</button>
       </div>
-      <div id="overrides-section" style="display:none;"></div>
       <div id="apis-section" style="display:none;"></div>
       <input id="api-search" type="search">
       <button id="add-api-btn" type="button">+</button>
@@ -158,6 +157,7 @@ function buildUiHtml() {
             <span id="body-type-badge" class="body-type-badge">text</span>
             <button id="format-json-btn" type="button">Format JSON</button>
           </div>
+          <div id="modal-preview-container" style="display:none"></div>
         </div>
         <div id="modal-redirect-fields" style="display: none">
           <input id="modal-redirect-url" type="text">
@@ -172,6 +172,7 @@ function buildUiHtml() {
           </select>
         </div>
         <div id="modal-advanced-fields">
+          <label id="modal-request-headers-field"><textarea id="modal-request-headers"></textarea></label>
           <label id="modal-status-field"><input id="modal-status" type="number" /></label>
           <label><input id="modal-delay" type="number" /></label>
           <label id="modal-headers-field"><textarea id="modal-headers"></textarea></label>
@@ -187,10 +188,15 @@ function buildUiHtml() {
         <option value="text">Text</option>
         <option value="file">Raw base64</option>
       </select>
-      <button id="export-rules-btn" type="button">Export</button>
-      <button id="import-rules-btn" type="button">Import</button>
-      <input id="import-rules-input" type="file">
-      <ul id="list"></ul>
+      <div id="overrides-section" style="display:none;">
+        <button id="export-rules-btn" type="button">Export</button>
+        <button id="import-rules-btn" type="button">Import</button>
+        <input id="import-rules-input" type="file">
+        <select id="profiles-select"></select>
+        <button id="save-profile-btn" type="button">Save Profile</button>
+        <button id="delete-profile-btn" type="button">Delete Profile</button>
+        <ul id="list"></ul>
+      </div>
     </body>
   </html>`;
 }

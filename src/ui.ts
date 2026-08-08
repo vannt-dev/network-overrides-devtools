@@ -163,6 +163,12 @@ namespace NetworkOverridesUi {
     exportRulesBtn: HTMLButtonElement;
     importRulesBtn: HTMLButtonElement;
     importRulesInput: HTMLInputElement;
+    modalRequestHeaders?: HTMLTextAreaElement;
+    modalRequestHeadersField?: HTMLElement;
+    modalPreviewContainer?: HTMLDivElement;
+    profilesSelect?: HTMLSelectElement;
+    saveProfileBtn?: HTMLButtonElement;
+    deleteProfileBtn?: HTMLButtonElement;
   }
 
   export interface AppOptions {
@@ -349,6 +355,7 @@ namespace NetworkOverridesUi {
             </div>
             <div class="override-item-actions">
               <button data-index="${index}" class="edit-btn" title="Edit">✎</button>
+              <button data-index="${index}" class="duplicate-btn" title="Duplicate rule">📋</button>
               <button data-index="${index}" class="del-btn" title="Delete">✕</button>
             </div>
           </div>
@@ -371,7 +378,33 @@ namespace NetworkOverridesUi {
       elements.modalAdvancedFields.style.display = type === 'redirect' ? 'none' : '';
       elements.modalStatusField.style.display = type === 'body' ? '' : 'none';
       elements.modalHeadersField.style.display = type === 'body' ? '' : 'none';
+      if (elements.modalRequestHeadersField) {
+        elements.modalRequestHeadersField.style.display = type === 'fail' ? 'none' : '';
+      }
       elements.modalPattern.disabled = type === 'body';
+    }
+
+    function updateImagePreview(body: string): void {
+      if (!elements.modalPreviewContainer) return;
+      const trimmed = body.trim();
+      if (!trimmed) {
+        elements.modalPreviewContainer.style.display = 'none';
+        elements.modalPreviewContainer.innerHTML = '';
+        return;
+      }
+      if (
+        trimmed.startsWith('data:image/') ||
+        (trimmed.startsWith('<svg') && trimmed.endsWith('</svg>'))
+      ) {
+        elements.modalPreviewContainer.style.display = 'block';
+        elements.modalPreviewContainer.innerHTML = `<img src="${escapeHtml(trimmed)}" alt="Preview" />`;
+      } else if (elements.modalMode && elements.modalMode.value === 'file') {
+        elements.modalPreviewContainer.style.display = 'block';
+        elements.modalPreviewContainer.innerHTML = `<img src="data:image/png;base64,${escapeHtml(trimmed)}" alt="Image Preview" onerror="this.parentElement.style.display='none'" />`;
+      } else {
+        elements.modalPreviewContainer.style.display = 'none';
+        elements.modalPreviewContainer.innerHTML = '';
+      }
     }
 
     function prefillAdvancedFields(existing: OverrideRule | null): void {
@@ -382,6 +415,11 @@ namespace NetworkOverridesUi {
       elements.modalHeaders.value = (existing?.responseHeaders || [])
         .map(header => `${header.name}: ${header.value}`)
         .join('\n');
+      if (elements.modalRequestHeaders) {
+        elements.modalRequestHeaders.value = (existing?.requestHeaders || [])
+          .map(header => `${header.name}: ${header.value}`)
+          .join('\n');
+      }
       elements.modalFailReason.value =
         existing?.failReason && FAIL_REASONS.includes(existing.failReason)
           ? existing.failReason
@@ -427,6 +465,7 @@ namespace NetworkOverridesUi {
       );
       elements.modal.style.display = 'block';
       updateBodyTypeBadge();
+      updateImagePreview(elements.modalBody.value);
       elements.modalBody.focus();
     }
 
@@ -482,6 +521,7 @@ namespace NetworkOverridesUi {
 
       elements.modal.style.display = 'block';
       updateBodyTypeBadge();
+      updateImagePreview(elements.modalBody.value);
       elements.modalBody.focus();
     }
 
@@ -791,6 +831,16 @@ namespace NetworkOverridesUi {
         return;
       }
 
+      if (target.classList.contains('duplicate-btn')) {
+        if (state.overrides[index]) {
+          const original = state.overrides[index];
+          const clone: OverrideRule = JSON.parse(JSON.stringify(original));
+          state.overrides.splice(index + 1, 0, clone);
+          await persistOverrides();
+        }
+        return;
+      }
+
       if (!target.classList.contains('del-btn')) {
         return;
       }
@@ -848,6 +898,17 @@ namespace NetworkOverridesUi {
       let statusCode: number | undefined;
       let delayMs: number | undefined;
       let responseHeaders: NetworkOverridesShared.FetchHeader[] | undefined;
+      let requestHeaders: NetworkOverridesShared.FetchHeader[] | undefined;
+
+      if (elements.modalRequestHeaders && elements.modalRequestHeaders.value.trim()) {
+        const parsedReq = parseHeaderLines(elements.modalRequestHeaders.value);
+        if (!parsedReq) {
+          alert('Request headers must be one "Header-Name: value" per line');
+          return;
+        }
+        if (parsedReq.length > 0) requestHeaders = parsedReq;
+      }
+
       if (overrideType !== 'redirect') {
         const delayRaw = elements.modalDelay.value.trim();
         if (delayRaw) {
@@ -902,6 +963,7 @@ namespace NetworkOverridesUi {
       if (statusCode !== undefined) override.statusCode = statusCode;
       if (delayMs !== undefined) override.delayMs = delayMs;
       if (responseHeaders !== undefined) override.responseHeaders = responseHeaders;
+      if (requestHeaders !== undefined) override.requestHeaders = requestHeaders;
 
       if (state.currentEditIndex !== null && state.overrides[state.currentEditIndex]) {
         state.overrides[state.currentEditIndex] = override;
@@ -932,7 +994,10 @@ namespace NetworkOverridesUi {
       }
     });
 
-    elements.modalBody.addEventListener('input', updateBodyTypeBadge);
+    elements.modalBody.addEventListener('input', () => {
+      updateBodyTypeBadge();
+      updateImagePreview(elements.modalBody.value);
+    });
 
     document.querySelectorAll('input[name="modal-override-type"]').forEach(radio => {
       radio.addEventListener('change', () => {
@@ -1062,6 +1127,8 @@ namespace NetworkOverridesUi {
         (rule.responseHeaders === undefined ||
           (Array.isArray(rule.responseHeaders) &&
             rule.responseHeaders.every(isValidImportHeader))) &&
+        (rule.requestHeaders === undefined ||
+          (Array.isArray(rule.requestHeaders) && rule.requestHeaders.every(isValidImportHeader))) &&
         (rule.failReason === undefined ||
           (typeof rule.failReason === 'string' &&
             FAIL_REASONS.includes(rule.failReason) &&
@@ -1102,6 +1169,12 @@ namespace NetworkOverridesUi {
             value: header.value,
           }));
         }
+        if (rule.requestHeaders !== undefined) {
+          clean.requestHeaders = rule.requestHeaders.map((header: any) => ({
+            name: header.name,
+            value: header.value,
+          }));
+        }
         if (rule.failReason !== undefined) clean.failReason = rule.failReason;
         return clean;
       });
@@ -1130,6 +1203,111 @@ namespace NetworkOverridesUi {
       void persistApiUiState();
       renderApis();
     });
+
+    function loadProfiles(): void {
+      if (!elements.profilesSelect) return;
+      const key = domainKey('profiles');
+      chrome.storage.local.get([key], (data: any) => {
+        const list: NetworkOverridesShared.RuleProfile[] = Array.isArray(data?.[key])
+          ? data[key]
+          : [];
+        elements.profilesSelect!.innerHTML = '<option value="">-- Rule Profiles --</option>';
+        list.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} (${p.rules.length} rules)`;
+          elements.profilesSelect!.appendChild(opt);
+        });
+      });
+    }
+
+    if (elements.saveProfileBtn) {
+      elements.saveProfileBtn.addEventListener('click', async () => {
+        if (state.overrides.length === 0) {
+          alert('No rules to save into a profile.');
+          return;
+        }
+        const name = prompt('Enter a name for this Rule Profile:');
+        if (!name || !name.trim()) return;
+        const key = domainKey('profiles');
+        const data = await chrome.storage.local.get([key]);
+        const list: NetworkOverridesShared.RuleProfile[] = Array.isArray(data?.[key])
+          ? data[key]
+          : [];
+        const newProfile: NetworkOverridesShared.RuleProfile = {
+          id: 'profile_' + Date.now(),
+          name: name.trim(),
+          createdAt: Date.now(),
+          rules: JSON.parse(JSON.stringify(state.overrides)),
+        };
+        list.push(newProfile);
+        await chrome.storage.local.set({ [key]: list });
+        loadProfiles();
+        alert(`Saved profile "${newProfile.name}"!`);
+      });
+    }
+
+    if (elements.profilesSelect) {
+      elements.profilesSelect.addEventListener('change', async () => {
+        const id = elements.profilesSelect!.value;
+        if (!id) return;
+        const key = domainKey('profiles');
+        const data = await chrome.storage.local.get([key]);
+        const list: NetworkOverridesShared.RuleProfile[] = Array.isArray(data?.[key])
+          ? data[key]
+          : [];
+        const selected = list.find(p => p.id === id);
+        if (!selected) return;
+        const replace = confirm(
+          `Apply profile "${selected.name}"?\n\nOK = Replace existing rules\nCancel = Merge with existing rules`
+        );
+        if (replace) {
+          state.overrides = JSON.parse(JSON.stringify(selected.rules));
+        } else {
+          state.overrides = [...state.overrides, ...JSON.parse(JSON.stringify(selected.rules))];
+        }
+        await persistOverrides();
+        elements.profilesSelect!.value = '';
+      });
+    }
+
+    if (elements.deleteProfileBtn) {
+      elements.deleteProfileBtn.addEventListener('click', async () => {
+        const id = elements.profilesSelect?.value;
+        if (!id) {
+          alert('Please select a profile to delete.');
+          return;
+        }
+        const key = domainKey('profiles');
+        const data = await chrome.storage.local.get([key]);
+        let list: NetworkOverridesShared.RuleProfile[] = Array.isArray(data?.[key])
+          ? data[key]
+          : [];
+        list = list.filter(p => p.id !== id);
+        await chrome.storage.local.set({ [key]: list });
+        loadProfiles();
+      });
+    }
+
+    function initCapturedTypes(): void {
+      const cbs = document.querySelectorAll<HTMLInputElement>('.capture-type-cb');
+      if (cbs.length === 0) return;
+      chrome.storage.local.get(['capturedBodyTypes'], (data: any) => {
+        const saved: string[] = Array.isArray(data?.capturedBodyTypes)
+          ? data.capturedBodyTypes
+          : ['xhr', 'fetch'];
+        cbs.forEach(cb => {
+          cb.checked = saved.includes(cb.value);
+          cb.addEventListener('change', () => {
+            const types = Array.from(cbs)
+              .filter(c => c.checked)
+              .map(c => c.value);
+            void chrome.storage.local.set({ capturedBodyTypes: types });
+            chrome.runtime.sendMessage({ type: 'updateCapturedBodyTypes', types });
+          });
+        });
+      });
+    }
 
     void (async () => {
       const tab = await getActiveTab();
@@ -1166,6 +1344,9 @@ namespace NetworkOverridesUi {
 
       state.apiSearchTerm = typeof data.apiSearchTerm === 'string' ? data.apiSearchTerm : '';
       elements.apiSearchInput.value = state.apiSearchTerm;
+
+      loadProfiles();
+      initCapturedTypes();
 
       await notifyBackground();
       await refreshAttachStatus();
@@ -1280,6 +1461,14 @@ namespace NetworkOverridesUi {
       exportRulesBtn: document.getElementById('export-rules-btn') as HTMLButtonElement,
       importRulesBtn: document.getElementById('import-rules-btn') as HTMLButtonElement,
       importRulesInput: document.getElementById('import-rules-input') as HTMLInputElement,
+      modalRequestHeaders: document.getElementById('modal-request-headers') as HTMLTextAreaElement,
+      modalRequestHeadersField: document.getElementById(
+        'modal-request-headers-field'
+      ) as HTMLElement,
+      modalPreviewContainer: document.getElementById('modal-preview-container') as HTMLDivElement,
+      profilesSelect: document.getElementById('profiles-select') as HTMLSelectElement,
+      saveProfileBtn: document.getElementById('save-profile-btn') as HTMLButtonElement,
+      deleteProfileBtn: document.getElementById('delete-profile-btn') as HTMLButtonElement,
     };
   }
 

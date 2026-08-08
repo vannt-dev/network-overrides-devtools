@@ -1030,3 +1030,56 @@ test('Background delays fulfillment when the rule has delayMs', async () => {
   await new Promise(resolve => setTimeout(resolve, 60));
   assert.ok(findFulfill());
 });
+
+test('Background overrides request headers at request stage when requestHeaders rule is present', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      {
+        pattern: '/users$/',
+        body: '',
+        mode: 'text',
+        requestHeaders: [{ name: 'Authorization', value: 'Bearer test-token' }],
+      },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-headers-1',
+    request: { url: TEST_API_URL, method: 'GET', headers: { 'User-Agent': 'TestBrowser' } },
+    resourceType: 'Fetch',
+  });
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-headers-1'
+  );
+  assert.ok(continueCmd, 'Must execute Fetch.continueRequest');
+  assert.ok(Array.isArray(continueCmd.params.headers), 'Headers parameter must be an array');
+  assert.equal(
+    continueCmd.params.headers.some(
+      h => h.name === 'authorization' && h.value === 'Bearer test-token'
+    ),
+    true,
+    'Authorization header must be injected'
+  );
+});
+
+test('Background handles updateCapturedBodyTypes message', async () => {
+  const harness = createBackgroundHarness();
+  let responded = false;
+  harness.listeners.onMessage(
+    { type: 'updateCapturedBodyTypes', types: ['document', 'script'] },
+    {},
+    () => {
+      responded = true;
+    }
+  );
+  assert.equal(responded, true);
+});

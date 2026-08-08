@@ -10,9 +10,16 @@ declare namespace NetworkOverridesShared {
     enabled?: boolean; // undefined/true = enabled, false = disabled
     method?: string; // undefined/'ANY' = any method, or 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
     statusCode?: number; // integer 100–599; body rules only
-    responseHeaders?: FetchHeader[]; // extra/override headers; body rules only
+    responseHeaders?: FetchHeader[]; // extra/override response headers; body rules only
+    requestHeaders?: FetchHeader[]; // extra/override request headers; applied at request stage
     delayMs?: number; // 0–120000 ms; body and fail rules
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
+  }
+  interface RuleProfile {
+    id: string;
+    name: string;
+    createdAt: number;
+    rules: OverrideRule[];
   }
   interface OverrideState {
     enabled: boolean;

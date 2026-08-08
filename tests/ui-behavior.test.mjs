@@ -1186,3 +1186,54 @@ test('Import keeps valid mock-power fields on the cleaned rule', async () => {
     failReason: 'TimedOut',
   });
 });
+
+test('Duplicating a rule creates an exact copy in storage and UI', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      enabled: true,
+      overrides: [{ pattern: 'users', body: '{"ok":1}', mode: 'text' }],
+    },
+  });
+
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const dupBtn = harness.document.querySelector('.duplicate-btn');
+  assert.ok(dupBtn, 'Duplicate button must exist');
+  dupBtn.dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const rules = harness.localState.overrides;
+  assert.equal(rules.length, 2);
+  assert.deepEqual(rules[0], rules[1]);
+});
+
+test('Saving a body override with requestHeaders persists requestHeaders', async () => {
+  const harness = createUiHarness({ apis: [{ url: TEST_API_URL, type: 'Fetch' }] });
+
+  await flushUi(harness.window);
+
+  const apiItem = harness.document.querySelector('.api-item');
+  assert.ok(apiItem, 'api-item must exist');
+  apiItem.dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const reqHeadersTextarea = harness.document.getElementById('modal-request-headers');
+  assert.ok(reqHeadersTextarea, 'modal-request-headers element must exist');
+  reqHeadersTextarea.value = 'Authorization: Bearer my-secret-token';
+
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const savedRules = harness.localState.overrides;
+  assert.equal(savedRules.length, 1);
+  assert.deepEqual(savedRules[0].requestHeaders, [
+    { name: 'Authorization', value: 'Bearer my-secret-token' },
+  ]);
+});

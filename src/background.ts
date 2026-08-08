@@ -51,7 +51,14 @@ namespace NetworkOverridesBackground {
     return Object.entries(headers).map(([name, value]) => ({ name, value: String(value) }));
   }
 
-  const CAPTURED_BODY_TYPES = ['xhr', 'fetch'];
+  let capturedBodyTypes: string[] = ['xhr', 'fetch'];
+  try {
+    chrome.storage.local.get(['capturedBodyTypes'], (data: any) => {
+      if (Array.isArray(data?.capturedBodyTypes) && data.capturedBodyTypes.length > 0) {
+        capturedBodyTypes = data.capturedBodyTypes.map((t: any) => String(t).toLowerCase());
+      }
+    });
+  } catch {}
 
   export function matchPattern(pattern: string, url: string): string[] | null {
     return NetworkOverridesUtils.matchPattern(pattern, url);
@@ -124,7 +131,8 @@ namespace NetworkOverridesBackground {
     | { type: 'getApis'; tabId: number }
     | { type: 'getApiData'; tabId: number; url?: string }
     | { type: 'clearApis'; tabId: number }
-    | { type: 'getStatus'; tabId: number };
+    | { type: 'getStatus'; tabId: number }
+    | { type: 'updateCapturedBodyTypes'; types: string[] };
 
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
@@ -237,6 +245,15 @@ namespace NetworkOverridesBackground {
           }
         );
         return true;
+      }
+      case 'updateCapturedBodyTypes': {
+        if (Array.isArray((msg as any).types)) {
+          capturedBodyTypes = (msg as any).types.map((t: any) => String(t).toLowerCase());
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true });
+        }
+        return;
       }
       default:
         if (typeof sendResponse === 'function') {
@@ -556,6 +573,45 @@ namespace NetworkOverridesBackground {
           );
           return;
         }
+        if (
+          match &&
+          Array.isArray(match.override.requestHeaders) &&
+          match.override.requestHeaders.length > 0
+        ) {
+          const originalHeaders = toFetchHeaders(params.request?.headers);
+          const reqHeaderMap = new Map<string, string>();
+          for (const h of originalHeaders) {
+            reqHeaderMap.set(h.name.toLowerCase(), h.value);
+          }
+          for (const h of match.override.requestHeaders) {
+            if (h.name && h.name.trim()) {
+              reqHeaderMap.set(h.name.trim().toLowerCase(), h.value);
+            }
+          }
+          const updatedHeaders = Array.from(reqHeaderMap.entries()).map(([name, value]) => ({
+            name,
+            value,
+          }));
+          const doContinue = () => {
+            chrome.debugger.sendCommand(
+              { tabId },
+              'Fetch.continueRequest',
+              { requestId: params.requestId, headers: updatedHeaders },
+              () => {
+                if (chrome.runtime.lastError) {
+                  proceed();
+                }
+              }
+            );
+          };
+          const delayMs = typeof match.override.delayMs === 'number' ? match.override.delayMs : 0;
+          if (delayMs > 0) {
+            setTimeout(doContinue, delayMs);
+          } else {
+            doContinue();
+          }
+          return;
+        }
       } catch (error) {
         console.error(error);
       }
@@ -581,7 +637,7 @@ namespace NetworkOverridesBackground {
       const match = findOverride(url, params.request?.method, state.overrides);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
-        if (CAPTURED_BODY_TYPES.includes(resourceType)) {
+        if (capturedBodyTypes.includes(resourceType)) {
           storeResponseBody(tabId, url, params.requestId, proceed);
         } else {
           proceed();

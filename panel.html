@@ -79,6 +79,11 @@
                 Format JSON
               </button>
             </div>
+            <div
+              id="modal-preview-container"
+              class="modal-preview-container"
+              style="display: none"
+            ></div>
           </label>
         </div>
         <div id="modal-redirect-fields" style="display: none">
@@ -104,6 +109,14 @@
           </label>
         </div>
         <div id="modal-advanced-fields">
+          <label class="modal-field" id="modal-request-headers-field">
+            <span>Override Request Headers (one "Header-Name: value" per line)</span>
+            <textarea
+              id="modal-request-headers"
+              rows="2"
+              placeholder="Authorization: Bearer mock-token"
+            ></textarea>
+          </label>
           <label class="modal-field" id="modal-status-field">
             <span>Status (blank = keep original)</span>
             <input id="modal-status" type="number" min="100" max="599" placeholder="e.g. 500" />
@@ -113,7 +126,7 @@
             <input id="modal-delay" type="number" min="0" max="120000" placeholder="0" />
           </label>
           <label class="modal-field" id="modal-headers-field">
-            <span>Extra headers (one "Header-Name: value" per line)</span>
+            <span>Extra Response Headers (one "Header-Name: value" per line)</span>
             <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
           </label>
         </div>
@@ -150,6 +163,24 @@
             +
           </button>
         </div>
+        <div class="captured-types-bar">
+          <span class="captured-types-label">Capture Body:</span>
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="xhr" checked /> XHR</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="fetch" checked /> Fetch</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="document" /> Doc</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="script" /> JS</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="stylesheet" /> CSS</label
+          >
+        </div>
       </div>
       <div id="apis-list"></div>
     </div>
@@ -164,6 +195,27 @@
           accept="application/json"
           style="display: none"
         />
+      </div>
+      <div class="profiles-row">
+        <select id="profiles-select" class="profiles-select">
+          <option value="">-- Rule Profiles --</option>
+        </select>
+        <button
+          id="save-profile-btn"
+          type="button"
+          class="profile-btn"
+          title="Save current rules as Profile"
+        >
+          Save Profile
+        </button>
+        <button
+          id="delete-profile-btn"
+          type="button"
+          class="profile-btn"
+          title="Delete selected Profile"
+        >
+          Delete
+        </button>
       </div>
       <ul id="list"></ul>
     </div>

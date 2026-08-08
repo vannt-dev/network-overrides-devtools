@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -68,11 +72,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload & Publish to Chrome Web Store
-        if: steps.check_tag.outputs.EXISTS != 'true' && secrets.CWS_CLIENT_ID != ''
+        if: >-
+          steps.check_tag.outputs.EXISTS != 'true' &&
+          env.CWS_CLIENT_ID != '' &&
+          env.CWS_CLIENT_SECRET != '' &&
+          env.CWS_REFRESH_TOKEN != ''
         uses: chrome-stats/chrome-extension-upload-action@v2
         with:
           extension-id: 'holdjgmcnpelgclhopiejilhhkfcmpba'
           file-path: release/network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip
-          client-id: ${{ secrets.CWS_CLIENT_ID }}
-          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+          client-id: ${{ env.CWS_CLIENT_ID }}
+          client-secret: ${{ env.CWS_CLIENT_SECRET }}
+          refresh-token: ${{ env.CWS_REFRESH_TOKEN }}

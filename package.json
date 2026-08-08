@@ -13,6 +13,7 @@
     "check": "npm run lint && npm test",
     "test": "npm run build && node --test --test-isolation=none tests/*.test.mjs",
     "smoke": "npm run build && node scripts/smoke.mjs",
+    "store:screenshots": "npm run build && node scripts/capture-store-screenshots.mjs",
     "coverage": "npm run build && c8 --reporter=text --reporter=lcov --reporter=html --report-dir coverage node --test --test-isolation=none tests/*.test.mjs",
     "ci:test": "npm run coverage",
     "package:store": "npm run clean && npm run build && node scripts/package-store.mjs",

@@ -20,11 +20,16 @@
 
 **Network Overrides DevTools** is a Chrome/Edge extension for developers that **intercepts and overrides** API response data directly in the browser, without modifying backend code.
 
+🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+
 **Common use cases:**
 
 - Mock API responses to test the frontend when the backend isn't ready.
+- Inject or override Request Headers (e.g. `Authorization: Bearer token`).
 - Debug by altering responses to simulate different states (errors, empty data, edge cases, etc.).
 - Redirect requests from an old API to a new one without changing frontend code.
+- 1-click Duplicate Rules and manage Rule Profiles / Presets per domain.
+- Real-time Image and SVG visual preview inside the modal editor.
 - Quickly inspect captured API requests and copy them as cURL commands.
 
 ---
@@ -34,7 +39,7 @@
 ### Requirements
 
 - Chrome or Microsoft Edge (latest version).
-- Extension loaded as unpacked from source.
+- Install from [Chrome Web Store](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba) or load as unpacked from source.
 
 ### Steps
 

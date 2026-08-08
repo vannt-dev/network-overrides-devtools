@@ -2,12 +2,19 @@
 
 A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
 
+🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+
 ## Features
 
 - **Enable/disable** overrides per active tab via a toggle switch.
 - **Per-rule enable/disable toggle**: disable an individual rule without deleting it; it stays visible (dimmed) and is skipped by the background worker until re-enabled.
 - **HTTP method matching**: scope a rule to `GET`/`POST`/`PUT`/`PATCH`/`DELETE`, or leave it at `Any` to match every method (default, pre-filled from the captured request when available).
 - **Import/export rules as JSON**: back up or share the current domain's rules as a downloadable file, and load them back in with a merge-or-replace choice.
+- **Rule Profiles & Presets**: save and load named rule presets per domain to switch quickly between different testing scenarios.
+- **Duplicate Rules**: 1-click clone any override rule directly in the rules list.
+- **Request Headers & Response Headers Overriding**: inject or modify request headers (e.g. `Authorization: Bearer token`) during the request stage or extra response headers during the response stage.
+- **Response Image & Visual Preview**: instant image preview (Base64 PNG/JPG, SVG) directly inside the editor modal.
+- **Dynamic Captured Resource Filters**: toggle body capture for XHR, Fetch, Document, Script, or Stylesheet resources.
 - **Three pattern matching modes** for override rules:
   - URL substring match (e.g. `/api/users`)
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
@@ -25,7 +32,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **JSON formatting**: Auto-detect and format JSON bodies with a single button.
 - **Copy cURL**: Copy any API request as a cURL command.
 - **Manual rule editor** (DevTools panel only): Quickly add a rule without opening the modal.
-- **Persistent storage**: All rules and settings survive browser restarts via `chrome.storage.local`.
+- **Persistent storage**: All rules, profiles, and settings survive browser restarts via `chrome.storage.local`.
 
 ## Architecture
 

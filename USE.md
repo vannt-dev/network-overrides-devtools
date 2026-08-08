@@ -20,11 +20,16 @@
 
 **Network Overrides DevTools** là extension cho Chrome/Edge dành cho developer, cho phép **chặn và ghi đè** response của các API request ngay trong trình duyệt mà không cần sửa code backend.
 
+🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+
 **Công dụng chính:**
 
 - Mock API response để test frontend khi backend chưa sẵn sàng.
+- Can thiệp / Ghi đè Request Headers (ví dụ: `Authorization: Bearer token`).
 - Debug bằng cách thay đổi response để kiểm tra các trạng thái khác nhau (lỗi, timeout, dữ liệu rỗng,...).
 - Redirect request từ API cũ sang API mới mà không cần sửa code.
+- Nhân bản quy tắc (Duplicate Rule) và quản lý Rule Profiles / Presets linh hoạt.
+- Xem trước trực tiếp phản hồi hình ảnh (Base64 PNG/JPG, SVG).
 - Xem nhanh các API request đã gửi và copy cURL để dùng lại.
 
 ---
@@ -34,7 +39,7 @@
 ### Yêu cầu
 
 - Trình duyệt Chrome hoặc Microsoft Edge (bản mới nhất).
-- Extension ở dạng "unpacked" (tải từ source).
+- Tải từ [Chrome Web Store](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba) hoặc cài extension dạng "unpacked" (tải từ source).
 
 ### Các bước cài đặt
 

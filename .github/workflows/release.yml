@@ -77,10 +77,10 @@ jobs:
           env.CWS_CLIENT_ID != '' &&
           env.CWS_CLIENT_SECRET != '' &&
           env.CWS_REFRESH_TOKEN != ''
-        uses: chrome-stats/chrome-extension-upload-action@v2
+        uses: browser-actions/release-chrome-extension@bde2f9ad09b20a52d4e71eca4a9daf99d412a8d9 # v0.2.1
         with:
           extension-id: 'holdjgmcnpelgclhopiejilhhkfcmpba'
-          file-path: release/network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip
-          client-id: ${{ env.CWS_CLIENT_ID }}
-          client-secret: ${{ env.CWS_CLIENT_SECRET }}
-          refresh-token: ${{ env.CWS_REFRESH_TOKEN }}
+          extension-path: release/network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip
+          oauth-client-id: ${{ env.CWS_CLIENT_ID }}
+          oauth-client-secret: ${{ env.CWS_CLIENT_SECRET }}
+          oauth-refresh-token: ${{ env.CWS_REFRESH_TOKEN }}

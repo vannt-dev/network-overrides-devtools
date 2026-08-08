@@ -74,8 +74,17 @@ async function copyRequiredFiles() {
 }
 
 function createZip(stagingDir, zipPath) {
-  const command = `Compress-Archive -Path * -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force`;
-  execFileSync('powershell', ['-NoProfile', '-Command', command], {
+  const executable = process.platform === 'win32' ? 'powershell' : 'zip';
+  const args =
+    process.platform === 'win32'
+      ? [
+          '-NoProfile',
+          '-Command',
+          `Compress-Archive -Path * -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force`,
+        ]
+      : ['-r', zipPath, '.'];
+
+  execFileSync(executable, args, {
     cwd: stagingDir,
     stdio: 'inherit',
   });

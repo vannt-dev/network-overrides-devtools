@@ -1,2 +1,15 @@
 #!/usr/bin/env sh
-npx commitlint --edit "$1"
+if ! npx commitlint --edit "$1" > /dev/null 2>&1; then
+  echo ""
+  echo "======================================================="
+  echo "❌ ERROR: Invalid commit message format!"
+  echo "Please use the standard format (Conventional Commits):"
+  echo "👉 <type>[optional scope]: <description>"
+  echo ""
+  echo "Valid examples:"
+  echo "  feat: add new feature"
+  echo "  fix: resolve bug"
+  echo "  chore: update config"
+  echo "======================================================="
+  exit 1
+fi

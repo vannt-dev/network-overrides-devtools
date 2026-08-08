@@ -1,0 +1,352 @@
+/* Shared UI primitives. Static markup is upgraded in ui/primitives.ts and
+   dynamically-created controls use the same factories. */
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  min-width: 0;
+}
+
+.ui-label {
+  display: block;
+  margin: 0;
+  color: var(--ui-color-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ui-control {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ui-control-height);
+  padding: 7px 10px;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius);
+  outline: none;
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+textarea.ui-control {
+  min-height: 76px;
+  resize: vertical;
+}
+
+select.ui-control {
+  cursor: pointer;
+}
+
+.ui-control::placeholder {
+  color: #8ca0b3;
+  opacity: 1;
+}
+
+.ui-control:hover:not(:disabled) {
+  border-color: var(--ui-color-border-strong);
+}
+
+.ui-control:focus-visible {
+  border-color: var(--ui-color-primary);
+  box-shadow: var(--ui-focus-ring);
+}
+
+.ui-control:disabled,
+.ui-control[readonly] {
+  cursor: not-allowed;
+  background: #edf2f7;
+  color: var(--ui-color-muted);
+}
+
+.ui-control--file {
+  padding: 5px 8px;
+}
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: var(--ui-control-height);
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.ui-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-btn--small {
+  min-height: var(--ui-control-height-small);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+.ui-btn--primary {
+  border-color: var(--ui-color-primary);
+  background: var(--ui-color-primary);
+  color: #fff;
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  border-color: var(--ui-color-primary-hover);
+  background: var(--ui-color-primary-hover);
+}
+
+.ui-btn--secondary {
+  border-color: var(--ui-color-border);
+  background: var(--ui-color-surface-subtle);
+  color: var(--ui-color-text);
+}
+
+.ui-btn--secondary:hover:not(:disabled),
+.ui-btn--ghost:hover:not(:disabled) {
+  border-color: var(--ui-color-border-strong);
+  background: #eaf1f7;
+}
+
+.ui-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: #35506b;
+}
+
+.ui-btn--outline {
+  border-color: var(--ui-color-primary);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-primary);
+}
+
+.ui-btn--outline:hover:not(:disabled) {
+  background: var(--ui-color-primary-soft);
+}
+
+.ui-btn--danger {
+  border-color: #fecdd3;
+  background: var(--ui-color-danger-soft);
+  color: var(--ui-color-danger);
+}
+
+.ui-btn--danger:hover:not(:disabled) {
+  border-color: #fda4af;
+  background: #ffe4e6;
+}
+
+.ui-btn.header-btn {
+  min-width: var(--ui-control-height-small);
+  padding: 0;
+}
+
+.notification-region {
+  position: fixed;
+  z-index: 2000;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  width: min(360px, calc(100vw - 24px));
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.notification-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid #c9d7e6;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fff;
+  color: #263d52;
+  box-shadow: 0 10px 28px rgba(31, 55, 78, 0.18);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+.notification-toast--success {
+  border-left-color: #15803d;
+  background: #f0fdf4;
+}
+
+.notification-toast--warning {
+  border-left-color: #d97706;
+  background: #fffbeb;
+}
+
+.notification-toast--error {
+  border-left-color: #e11d48;
+  background: #fff1f2;
+}
+
+.notification-toast--info {
+  border-left-color: #0a66c2;
+  background: #eff6ff;
+}
+
+.notification-toast__message {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.notification-toast__action {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.notification-toast__action:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.notification-toast__close {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.notification-toast__close:hover {
+  background: rgba(51, 78, 104, 0.1);
+}
+
+.ui-dialog-backdrop {
+  position: fixed;
+  z-index: 2200;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 35, 55, 0.45);
+}
+
+.ui-dialog {
+  display: flex;
+  width: min(360px, 100%);
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--ui-color-border);
+  border-radius: 10px;
+  background: var(--ui-color-surface);
+  box-shadow: 0 18px 45px rgba(15, 35, 55, 0.28);
+}
+
+.ui-dialog__title,
+.ui-dialog__message {
+  margin: 0;
+}
+
+.ui-dialog__title {
+  color: var(--ui-color-text);
+  font-size: 1rem;
+}
+
+.ui-dialog__message {
+  color: var(--ui-color-muted);
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.ui-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ui-btn.tab-btn {
+  min-height: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 500;
+}
+
+.ui-btn.tab-btn.active {
+  border-bottom-color: var(--ui-color-primary);
+  background: transparent;
+  color: var(--ui-color-primary);
+  font-weight: 600;
+}
+
+.ui-btn.add-api-btn {
+  padding: 0;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--ui-color-primary);
+}
+
+.headers-editor-mode {
+  border-color: var(--ui-color-border);
+  background: var(--ui-color-surface-subtle);
+}
+
+.headers-editor-mode .ui-btn {
+  min-height: 24px;
+  color: var(--ui-color-muted);
+}
+
+.headers-editor-mode .ui-btn.active {
+  background: var(--ui-color-primary-soft);
+  color: var(--ui-color-primary);
+}
+
+.header-row-key,
+.header-row-value {
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
+}
+
+.curl-swagger-file-row {
+  color: var(--ui-color-muted);
+}

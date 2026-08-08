@@ -1,192 +1,240 @@
 # Network Overrides DevTools
 
-A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol to pause requests at the `Response` stage, then returns a mocked body based on the rules you configure.
+A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
+
+🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+
+## Screenshots
+
+| Live API capture                                                | Override editor                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ![Captured APIs](store-assets/screenshots/01-captured-apis.png) | ![Override editor](store-assets/screenshots/02-override-editor.png) |
+
+| Reusable override rules                                           | Save and apply feedback                                                    |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ![Override rules](store-assets/screenshots/03-override-rules.png) | ![Save and retry feedback](store-assets/screenshots/04-save-and-retry.png) |
 
 ## Features
 
-- Enable or disable overrides per active tab.
-- Create override rules using:
-  - a URL substring
-  - `*` or `all` to match everything
-  - a regex in `/pattern/flags` format
-- View recently captured API requests.
-- Click an API directly from the list to create or edit an override.
-- Auto-fill the editor with the current response body when available.
-- Manage overrides from both the popup and the DevTools panel.
-- Persist state with `chrome.storage.local`.
+- **Enable/disable** overrides per active tab via a toggle switch.
+- **Per-rule enable/disable toggle**: disable an individual rule without deleting it; it stays visible (dimmed) and is skipped by the background worker until re-enabled.
+- **HTTP method matching**: scope a rule to `GET`/`POST`/`PUT`/`PATCH`/`DELETE`, or leave it at `Any` to match every method (default, pre-filled from the captured request when available).
+- **Import/export rules as JSON**: back up or share the current domain's rules as a downloadable file, and load them back in with a merge-or-replace choice.
+- **Rule Profiles & Presets**: save and load named rule presets per domain to switch quickly between different testing scenarios.
+- **Duplicate Rules**: 1-click clone any override rule directly in the rules list.
+- **Request Headers & Response Headers Overriding**: inject or modify request headers (e.g. `Authorization: Bearer token`) during the request stage or extra response headers during the response stage.
+- **Response Image & Visual Preview**: instant image preview (Base64 PNG/JPG, SVG) directly inside the editor modal.
+- **Dynamic Captured Resource Filters**: toggle body capture for XHR, Fetch, Document, Script, or Stylesheet resources.
+- **Three pattern matching modes** for override rules:
+  - URL substring match (e.g. `/api/users`)
+  - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
+  - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
+  - `*` or `all` matches every request.
+- **Three override types:**
+  - **Override body**: Replace the response body with custom text or raw base64 content.
+  - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
+  - **Fail request**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
+- **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
+- **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
+- **Search APIs** by URL substring.
+- **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
+- **Auto-fill response body**: When creating a new override, the current response body is automatically fetched from the background worker and pre-filled into the editor.
+- **JSON formatting**: Auto-detect and format JSON bodies with a single button.
+- **Copy cURL**: Copy any API request as a cURL command.
+- **Manual rule editor** (DevTools panel only): Quickly add a rule without opening the modal.
+- **Persistent storage**: All rules, profiles, and settings survive browser restarts via `chrome.storage.local`.
 
-## Main Structure
+## Architecture
 
-- `src/background.ts`: manages the debugger, intercepts requests/responses, applies overrides, and stores recent APIs and response bodies.
-- `src/ui.ts`: shared UI logic for the popup and panel.
-- `src/popup.ts`: initializes the popup UI.
-- `src/panel.ts`: initializes the DevTools panel UI.
-- `src/devtools.ts`: registers the `Overrides` tab in DevTools.
-- `scripts/`: utility scripts, including store packaging.
-- `tests/`: unit and interaction tests, including shared test harness utilities.
-- `manifest.json`: Manifest V3 extension configuration.
-- `dist/`: compiled JavaScript output generated from TypeScript.
-- `old-backup/`: legacy JavaScript files kept only for reference and no longer used as the main entry points.
+```
+src/
+├── background.ts       # Service-worker bootstrap
+├── background/         # Debugger lifecycle, interception, encoding, capture, message routing
+├── ui.ts               # Shared UI state and controller orchestration
+├── ui/                  # Reusable modal, rules, headers, dialogs, notifications, profiles, import/export
+├── shared.ts            # Shared OverrideRule, ApiEntry, and header types
+├── tab-state.ts         # Per-tab state, session persistence, and worker rehydration
+├── panel.ts             # DevTools panel initialization and HAR streaming
+├── popup.ts             # Action popup initialization
+└── utils.ts             # Pattern matching, wildcard, and origin helpers
 
-## Setup and Build
-
-Requirements:
-
-- Node.js
-- Chrome or Microsoft Edge
-
-Steps:
-
-1. Install dependencies:
-
-```bash
-npm install
+styles.css               # CSS entrypoint
+styles/                  # Base, feature, modal/rules, primitive, and guide styles
+scripts/                  # Smoke, Store screenshot, and packaging automation
+store-assets/screenshots/ # Chrome Web Store-ready screenshots
+dist/                     # Compiled JavaScript (generated by TypeScript)
+panel.html                # DevTools panel shell
+popup.html                # Action popup shell
+manifest.json             # Manifest V3 configuration
 ```
 
-2. Build the TypeScript sources:
+### Key flows
 
-```bash
-npm run build
-```
+1. **Initialization**: `devtools.ts` creates a DevTools panel → `panel.ts` fires up UI + listens to `chrome.devtools.network` events (HAR + `onRequestFinished`). Popup uses `popup.ts` instead, without HAR or manual editor.
 
-3. Load the extension:
+2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, then enables `Network` and `Fetch` domains (both Request and Response stages). Detachment happens on disable, tab close, or debugger disconnect.
 
-- Open `chrome://extensions` or `edge://extensions`
-- Enable `Developer mode`
-- Click `Load unpacked`
-- Select the project root folder containing `manifest.json`
+3. **Request interception** (`Fetch.requestPaused`):
+   - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
+   - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with the original status and headers — unless the rule overrides them via `statusCode`/`responseHeaders` (same-name headers overwritten case-insensitively) — plus the `x-network-overrides: true` and `x-network-overrides-pattern` markers, delayed by `delayMs` if set. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
 
-Note:
+4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
 
-- `manifest.json` points to files inside `dist/`, so you need to build before loading the extension and after any TypeScript changes.
+5. **UI state**: `enabled`, per-domain rules (`overrides_{origin}`), and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts.
+
+## Storage
+
+Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runtime state is stored in `chrome.storage.session` (cleared when the browser exits):
+
+| Key                  | Type                                                                      | Persistence                                                                                             |
+| -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
+| `overrides_{origin}` | `OverrideRule[]` (rules for one domain, e.g. `overrides_https://a.test`)  | Permanent — survives browser restart                                                                    |
+| `apiSearchTerm`      | `string`                                                                  | Permanent — survives browser restart                                                                    |
+| `tabState_{tabId}`   | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
+
+**Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy keys from older extension versions are migrated automatically: a flat `overrides` list is moved to the current domain's `overrides_{origin}` key on UI load, and `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys are removed from `chrome.storage.local` on worker startup.
+
+## Pattern Reference
+
+Override rules are evaluated in order; the first matching rule for a URL is used.
+
+| Pattern                       | Matches                                                      |
+| ----------------------------- | ------------------------------------------------------------ |
+| `/api/users`                  | Any URL containing `/api/users`                              |
+| `*` or `all`                  | Every request                                                |
+| `https://site.com/api/*/list` | URLs matching the glob; `*` captures zero or more characters |
+| `/\/api\/v\d+\/users/`        | Regex match (literal `/` delimiters, no flags)               |
+| `/\/api\/user\/(\d+)/gi`      | Regex with flags `g` and `i`                                 |
+
+In redirect URLs, `*` substitutes captured wildcards in order. For example:
+
+- Pattern: `https://old.com/api/*/item/*`
+- Redirect: `https://new.com/api/*/product/*`
+- Request URL: `https://old.com/api/v2/item/5`
+- Redirected to: `https://new.com/api/v2/product/5`
+
+### Rule fields
+
+Optional fields on an override rule:
+
+| Field             | Type                       | Description                                                                                           |
+| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`      | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders` | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`         | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`      | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
 
 ## Usage
 
 ### 1. Open the extension UI
 
-You can use either of these entry points:
+Two entry points:
 
-- Click the extension icon to open the popup.
-- Open DevTools and switch to the `Overrides` tab.
+- **Popup**: Click the extension icon in the toolbar. Shows "Captured APIs", "Overridden", and "Rules" tabs.
+- **DevTools panel**: Open DevTools (F12) → "Overrides" tab. Same UI plus a manual rule editor row at the top of the "Rules" tab.
 
 ### 2. Enable overrides
 
-Check `Enable Overrides` to attach the debugger to the current tab and start intercepting responses.
+Toggle **Enable Overrides** on. The extension attaches the debugger to the current tab.
 
-### 3. Choose an API to override
+### 3. Capture APIs
 
-- In the `Recent APIs` section, the extension shows recently captured requests.
-- Click an API to open the create/edit override dialog.
-- If `Auto-fill from payload` is enabled, the current response body is prefilled when captured data is available.
+Browse your application as normal. Requests appear in the **Captured APIs** tab, grouped by resource type (XHR, Fetch, JS, CSS, etc.). Use the search bar to filter by URL.
 
-### 4. Define the pattern
+### 4. Create an override
 
-Examples:
+Click any API in the list to open the override modal. You can also add a rule manually (DevTools panel only) by filling in the pattern, body, and clicking "Add override".
 
-- `/api/users`
-- `all`
-- `*`
-- `/api\\/v1\\/users\\/\\d+/i`
+In the modal, choose:
 
-Rules are evaluated in the same order they appear in the `Overrides` list, and the first matching rule is used for a URL.
+- **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content. The **Format JSON** action appears when the body contains valid JSON.
+- **Redirect to URL**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
+- **Fail request**: Pick a fail reason (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`) — the request fails at the network layer instead of receiving a response.
 
-### 5. Choose the mode
+The advanced fields can override **Request Headers** and **Response Headers** in either Key–Value or Raw mode, force a **Status** (100–599), and set a **Delay** in milliseconds. Body and fail rules can use delay; combine `TimedOut` with a long delay to simulate a real timeout.
 
-- `Text`: the input content is encoded and returned as the response body.
-- `Raw base64`: use this when you already have the body in base64 format.
+### 5. Manage rules
 
-### 6. Save the override
+Switch to the **Rules** tab to edit, copy, delete, or enable/disable saved rules. A disabled rule stays visible but dimmed and is skipped by the background worker. Use **Export**/**Import** to share the current domain's rules; import provides explicit **Append rules** and **Replace rules** choices when rules already exist. The **Overridden** tab shows captured APIs currently matched by a rule.
 
-After saving:
+### 6. Copy cURL
 
-- The rule is stored in `chrome.storage.local`
-- The background script receives the updated configuration
-- Future matching requests will receive the overridden body
+Each API entry has a "cURL" button that copies the request as a cURL command (method, headers, and post data included).
 
-## How It Works
+## Setup & Build
 
-- The extension attaches to a tab with `chrome.debugger.attach`.
-- `Network.requestWillBeSent` is used to store the recent request list.
-- `Fetch.requestPaused` at the `Response` stage is used to:
-  - retrieve the original response body
-  - or replace the response body with `Fetch.fulfillRequest`
-- The extension also adds these headers:
-  - `x-network-overrides: true`
-  - `x-network-overrides-pattern: <pattern>`
+Requirements: Node.js 22+, Chrome or Edge.
 
-## Notes
+```bash
+npm install
+npm run build
+```
 
-- The extension requires `debugger`, `storage`, and `host_permissions: <all_urls>`.
-- Overrides only apply to the tab currently attached to the debugger.
-- Recent data is intentionally capped to avoid memory growth:
-  - up to 500 recent API URLs
-  - up to 100 recent response bodies
+Load the extension:
+
+1. Open `chrome://extensions` or `edge://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the project root (the folder containing `manifest.json`)
+
+The `manifest.json` points to files in `dist/`, so re-run `npm run build` after any TypeScript changes.
 
 ## Scripts
 
 ```bash
-npm run build
-npm test
-npm run coverage
-npm run ci:test
-npm run package:store
+npm run build          # Compile TypeScript → dist/
+npm run lint           # ESLint over src/
+npm test               # Build + run test suite
+npm run coverage       # Build + run tests with coverage report
+npm run ci:test        # CI pipeline (same as coverage)
+npm run smoke          # Real-browser smoke test (loads the unpacked extension into Chromium)
+npm run store:screenshots # Recreate the four 1280x800 Chrome Web Store screenshots
+npm run package:store  # Create a ZIP for Chrome Web Store / Edge Add-ons
 ```
+
+## Development Standards
+
+- **Formatting**: Prettier via lint-staged (pre-commit hook).
+- **Commit messages**: Conventional Commits enforced by commitlint + Husky hooks.
+- **Commit types**: `add`, `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `revert`, `build`.
 
 ## Testing
 
-- `npm test`: builds the project and runs the full test suite.
-- `npm run coverage`: builds the project, runs the tests, and generates coverage reports in `coverage/`.
-- `npm run ci:test`: the same pipeline used by GitHub Actions.
+Tests live in `tests/` and cover:
 
-Current test coverage includes:
+- Pattern matching logic (`helpers.test.mjs`)
+- UI behavior with DOM mocks (`ui-behavior.test.mjs`)
+- Background debugger event handling (`background-flow.test.mjs`)
+- Per-tab state store: session mirror, caps, dispose, rehydrate (`tab-state.test.mjs`)
+- Entrypoint bootstrapping (`entrypoints.test.mjs`)
 
-- helper logic
-- popup and panel UI behavior with DOM-based mocks
-- `chrome.runtime.sendMessage` flows
-- background debugger event handling
-- entrypoint bootstrapping for popup, panel, and DevTools
+`npm run smoke` (`scripts/smoke.mjs`) additionally drives the real unpacked extension in Chromium via Playwright — attach status, interception, status override, network-layer fail, worker-restart recovery, cross-origin navigation, and attach failures. Run it before releases; it needs a display (headed browser) and downloads Chromium on first use.
+
+`npm run store:screenshots` (`scripts/capture-store-screenshots.mjs`) loads the real extension with deterministic demo API data and recreates the four `1280x800` PNG files in `store-assets/screenshots/`. It also needs a headed Chromium session.
 
 ## CI
 
-GitHub Actions is configured in `.github/workflows/ci.yml` to:
-
-- install dependencies with `npm ci`
-- run the test and coverage pipeline
-- upload the generated `coverage/` report as a workflow artifact
+GitHub Actions (`.github/workflows/ci.yml`) installs dependencies, checks formatting with Prettier, lints commit messages with commitlint, runs tests with coverage, and uploads the coverage report as an artifact.
 
 ## Store Packaging
-
-To create an uploadable ZIP for the Chrome Web Store or Edge Add-ons store, run:
 
 ```bash
 npm run package:store
 ```
 
-This command will:
+Produces a ZIP in `release/` containing only the runtime files (`manifest.json`, `*.html`, `styles.css`, `dist/`, `icons/`) plus `privacy_policy.md`. `dist/` is cleaned and rebuilt first so stale compiled files never ship.
 
-- build the TypeScript output
-- collect only the files needed for the extension package
-- generate a ZIP file inside `release/`
-- exclude source map files (`.map`) from the store package
-- try to keep one ZIP per extension version while preserving ZIPs from older versions
-- clean old staging folders when they are not locked by another process
+## Permissions
 
-Packaging notes:
+- `debugger` — required to intercept and modify network requests via Chrome DevTools Protocol.
+- `storage` — required to persist override rules, settings, and recent API data.
+- `host_permissions: <all_urls>` — required to attach the debugger to any tab.
 
-- If the current version ZIP is not locked, it is replaced in place.
-- If Windows or another tool is locking the existing ZIP, the script falls back to a timestamped ZIP in `release/` so packaging still succeeds.
-- If old staging folders or ZIP files are locked by the OS, they may remain until those handles are released.
+## Limitations
 
-The ZIP includes the runtime assets only, such as:
-
-- `manifest.json`
-- `devtools.html`
-- `panel.html`
-- `popup.html`
-- `styles.css`
-- `dist/`
-- `icons/`
-
-## Legacy Version
-
-The `old-backup/` folder contains the older JavaScript version from before the TypeScript migration. It can still be useful for reference, but the active implementation now lives in `src/` and is compiled into `dist/`.
+- Overrides only apply to the tab currently attached to the debugger.
+- Recent API data is capped at 500 URLs and 100 response bodies per tab.
+- Recent API bodies are only stored for XHR and Fetch resource types by default. Configure `CAPTURED_BODY_TYPES` in `src/background.ts` to add more types.
+- Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
+- The extension is designed for developer debugging only, not for end-user production use.

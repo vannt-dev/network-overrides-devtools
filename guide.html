@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Network Overrides — User Guide</title>
+    <link rel="stylesheet" href="styles/guide.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Network Overrides DevTools <small>User Guide</small></h1>
+
+      <div class="toc">
+        <h3>Table of Contents</h3>
+        <ol>
+          <li><a href="#introduction">Introduction</a></li>
+          <li><a href="#installation">Installation</a></li>
+          <li><a href="#interface">Interface Overview</a></li>
+          <li><a href="#basic-usage">Basic Usage</a></li>
+          <li><a href="#patterns">URL Patterns</a></li>
+          <li><a href="#override-body">Override Body</a></li>
+          <li><a href="#redirect">Redirect URL</a></li>
+          <li><a href="#managing-rules">Managing Rules</a></li>
+          <li><a href="#features">Additional Features</a></li>
+          <li><a href="#notes">Important Notes</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ol>
+      </div>
+
+      <!-- ============ 1 ============ -->
+      <h2 id="introduction">1. Introduction</h2>
+      <p>
+        <strong>Network Overrides DevTools</strong> is a Chrome/Edge extension for developers that
+        <strong>intercepts and overrides</strong> API response data directly in the browser, without
+        modifying backend code.
+      </p>
+      <h3>Common use cases</h3>
+      <ul>
+        <li>Mock API responses to test the frontend when the backend isn't ready.</li>
+        <li>
+          Debug by altering responses to simulate different states (errors, empty data, edge cases).
+        </li>
+        <li>Redirect requests from an old API to a new one without changing frontend code.</li>
+        <li>Quickly inspect captured API requests and copy them as cURL commands.</li>
+      </ul>
+
+      <!-- ============ 2 ============ -->
+      <h2 id="installation">2. Installation</h2>
+      <h3>Requirements</h3>
+      <ul>
+        <li>Chrome or Microsoft Edge (latest version).</li>
+        <li>Extension loaded as unpacked from source.</li>
+      </ul>
+      <h3>Steps</h3>
+      <ol>
+        <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>).</li>
+        <li>Enable <strong>Developer mode</strong> (top right).</li>
+        <li>Click <strong>Load unpacked</strong>.</li>
+        <li>
+          Select the project root directory (the folder containing <code>manifest.json</code>).
+        </li>
+        <li>The extension icon will appear on the toolbar.</li>
+      </ol>
+      <h3>Verify</h3>
+      <ul>
+        <li>The extension icon appears on the toolbar.</li>
+        <li>Open DevTools (F12) → <strong>Overrides</strong> tab.</li>
+      </ul>
+
+      <!-- ============ 3 ============ -->
+      <h2 id="interface">3. Interface Overview</h2>
+      <h3>3.1. Popup</h3>
+      <p>Click the extension icon on the toolbar. Contains:</p>
+      <ul>
+        <li>
+          <strong>Header</strong>: "Network Overrides API" with two compact actions:
+          <strong>Refresh captured requests</strong> and <strong>Open user guide</strong>.
+        </li>
+        <li><strong>Enable Overrides toggle</strong>: Turn override functionality on/off.</li>
+        <li>
+          <strong>3 tabs</strong>:
+          <ul>
+            <li>
+              <strong>Captured APIs (N)</strong>: List of captured requests, grouped by resource
+              type.
+            </li>
+            <li><strong>Overridden (N)</strong>: APIs currently matched by an active rule.</li>
+            <li><strong>Rules (N)</strong>: List of all saved override rules.</li>
+          </ul>
+        </li>
+        <li><strong>Search bar</strong>: Filter APIs by URL substring.</li>
+      </ul>
+
+      <h3>3.2. DevTools Panel</h3>
+      <p>Open DevTools (F12) → <strong>Overrides</strong> tab. Same as popup, plus:</p>
+      <ul>
+        <li>
+          <strong>Manual editor</strong>: A quick-add form (pattern + body) above the Rules tab.
+        </li>
+        <li>
+          <strong>HAR auto-load</strong>: Automatically loads request history from
+          <code>chrome.devtools.network.getHAR()</code> on panel open.
+        </li>
+      </ul>
+
+      <h3>3.3. Override Modal</h3>
+      <p>Click an API to open the modal with:</p>
+      <ul>
+        <li><strong>Pattern</strong>: URL pattern for matching.</li>
+        <li>
+          <strong>HTTP Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>,
+          <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the
+          rule to a specific request method. Defaults to <code>Any</code>, which matches every
+          method (same as before this field existed). Pre-filled from the captured request's method
+          when opening the modal from a captured API.
+        </li>
+        <li>
+          <strong>Override body / Redirect to URL / Fail request</strong>: Choose the override type
+          via radio buttons.
+        </li>
+        <li>
+          <strong>Fail request</strong>: The request never receives a response — it fails at the
+          network layer with the chosen reason (<code>Failed</code>, <code>TimedOut</code>,
+          <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
+          <code>InternetDisconnected</code>). Use it to test offline and timeout handling.
+        </li>
+        <li>
+          <strong>Advanced row</strong> (body rules): force a <strong>Status</strong> (100–599), add
+          <strong>Extra headers</strong> (one <code>Header-Name: value</code> per line, same names
+          overwrite the original), and set a <strong>Delay</strong> in milliseconds (also available
+          for fail rules — combine <code>TimedOut</code> with a long delay to simulate a real
+          timeout).
+        </li>
+        <li>
+          <strong>Response body</strong>: Custom response content (for body override), with mode
+          selector (Text / Raw base64).
+        </li>
+        <li><strong>Redirect URL</strong>: Target URL with wildcard substitution support.</li>
+        <li><strong>Format JSON</strong>: Pretty-print JSON body.</li>
+        <li>
+          <strong>Body type badge</strong>: Auto-detects <code>text</code> or <code>json</code>.
+        </li>
+        <li><strong>Save Override</strong>: Save the rule.</li>
+      </ul>
+
+      <!-- ============ 4 ============ -->
+      <h2 id="basic-usage">4. Basic Usage</h2>
+      <h3>Step 1: Open the extension</h3>
+      <ul>
+        <li><strong>Option A</strong>: Click the extension icon on the toolbar → popup opens.</li>
+        <li><strong>Option B</strong>: Open DevTools (F12) → <strong>Overrides</strong> tab.</li>
+      </ul>
+
+      <h3>Step 2: Enable Overrides</h3>
+      <p>Flip the <strong>Enable Overrides</strong> toggle ON.</p>
+      <blockquote>
+        The extension will attach the debugger to the current tab and start monitoring network
+        requests.
+      </blockquote>
+
+      <h3>Step 3: Capture APIs</h3>
+      <p>
+        Browse your application normally. API requests will appear automatically in the
+        <strong>Captured APIs</strong> tab.
+      </p>
+
+      <h3>Step 4: Create an Override</h3>
+      <p><strong>Method 1 (Click API):</strong></p>
+      <ol>
+        <li>Go to <strong>Captured APIs</strong> or <strong>Overridden</strong> tab.</li>
+        <li>Click an API you want to override.</li>
+        <li>
+          The modal opens with the pattern pre-filled, and the <strong>Method</strong> dropdown
+          pre-selected to the captured request's method if it's one of
+          <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code>DELETE</code>
+          (otherwise it defaults to <code>Any</code>).
+        </li>
+        <li>If the API has a stored response body, it will be auto-filled.</li>
+        <li>Edit the content → <strong>Save Override</strong>.</li>
+      </ol>
+      <p><strong>Method 2 (Manual — DevTools panel only):</strong></p>
+      <ol>
+        <li>Go to the <strong>Rules</strong> tab.</li>
+        <li>
+          In the form above, enter a <strong>Pattern</strong> and <strong>Response body</strong>.
+        </li>
+        <li>Click <strong>Add override</strong>.</li>
+      </ol>
+
+      <h3>Step 5: Verify</h3>
+      <ul>
+        <li>Overridden APIs show a blue border in the list.</li>
+        <li>The <strong>Overridden</strong> tab shows the count and list of matched APIs.</li>
+        <li>The real response is replaced with your custom content.</li>
+      </ul>
+
+      <h3>Step 6: Disable</h3>
+      <ul>
+        <li>Toggle the switch OFF to disable all overrides.</li>
+        <li>Or go to <strong>Rules</strong> tab → click ✕ to delete a specific rule.</li>
+      </ul>
+
+      <!-- ============ 5 ============ -->
+      <h2 id="patterns">5. URL Patterns</h2>
+
+      <h3>5.1. Substring (default)</h3>
+      <p>Any URL <strong>containing</strong> the pattern string is a match.</p>
+      <pre>
+Pattern:  /api/users
+Matches:  https://example.com/api/users
+          https://example.com/api/users/123
+          https://example.com/v2/api/users/list
+No match: https://example.com/api/admin</pre
+      >
+
+      <h3>5.2. Wildcard <code>*</code></h3>
+      <p>
+        Use <code>*</code> to match any URL segment. Each <code>*</code> also
+        <strong>captures</strong> the matched value for use in Redirect URLs.
+      </p>
+      <pre>
+Pattern:  /api/*/users/*
+Matches:  /api/v1/users/123  → captures: ["v1", "123"]
+          /api/v2/users/abc  → captures: ["v2", "abc"]</pre
+      >
+
+      <h3>5.3. Regex <code>/pattern/flags</code></h3>
+      <p>
+        Patterns starting and ending with <code>/</code> are treated as regex. Optional flags follow
+        the closing <code>/</code>.
+      </p>
+      <pre>
+Pattern:  /\/api\/v\d+\/users/i
+Matches:  /api/v1/users (case-insensitive)
+          /API/V2/Users
+No match: /api/admin/users</pre
+      >
+
+      <pre>
+Pattern:  /\/api\/user\/(\d+)/
+Matches:  /api/user/42 (captures: ["42"])</pre
+      >
+
+      <h3>5.4. Match everything</h3>
+      <pre>
+Pattern: *
+Pattern: all</pre
+      >
+      <p>Matches <strong>every request</strong>.</p>
+
+      <h3>5.5. Rule order</h3>
+      <p>
+        Rules are evaluated in list order. <strong>The first matching rule wins</strong>.
+        Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in
+        the desired order.
+      </p>
+
+      <h3>5.6. HTTP method</h3>
+      <p>
+        Besides the URL pattern, a rule can also be scoped to a specific HTTP method via the
+        <strong>Method</strong> field in the override modal (see <a href="#interface">3.3</a> and
+        <a href="#basic-usage">4</a>). A rule with a specific method (<code>GET</code>,
+        <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) only applies
+        to requests using that method; <code>Any</code> (the default) matches every method,
+        regardless of pattern type.
+      </p>
+
+      <!-- ============ 6 ============ -->
+      <h2 id="override-body">6. Override Body</h2>
+
+      <h3>6.1. Text mode</h3>
+      <p>Content is base64-encoded and returned as the response body.</p>
+      <pre><code>{
+  "status": "ok",
+  "data": [
+    { "id": 1, "name": "Alice" },
+    { "id": 2, "name": "Bob" }
+  ]
+}</code></pre>
+
+      <h3>6.2. Raw base64 mode</h3>
+      <p>
+        Use when you already have base64-encoded content (e.g., binary data, images, pre-encoded
+        files).
+      </p>
+
+      <h3>6.3. Body type badge</h3>
+      <ul>
+        <li><span class="tag tag-blue">text</span> — Content is not valid JSON.</li>
+        <li>
+          <span class="tag tag-green">json</span> — Content is valid JSON (auto-detected as you
+          type).
+        </li>
+      </ul>
+
+      <h3>6.4. Format JSON</h3>
+      <p>
+        Click <strong>Format JSON</strong> to pretty-print the response body. If the content is not
+        valid JSON, the button has no effect.
+      </p>
+
+      <h3>6.5. Auto-fill</h3>
+      <p>When creating a new override from an API:</p>
+      <ul>
+        <li>
+          If the API has a stored response body (in <code>recentApiBodies</code>), it is pre-filled
+          automatically.
+        </li>
+        <li>
+          Otherwise, the extension sends a <code>getApiData</code> message to the background worker
+          to retrieve the stored body.
+        </li>
+        <li>
+          This feature only works when <strong>Auto-fill on open</strong> is enabled (default: on).
+        </li>
+      </ul>
+
+      <!-- ============ 7 ============ -->
+      <h2 id="redirect">7. Redirect URL</h2>
+
+      <h3>7.1. How it works</h3>
+      <p>
+        When you select <strong>Redirect to URL</strong>, instead of overriding the response body,
+        the extension redirects the request at the <strong>request stage</strong> (before the actual
+        request is sent).
+      </p>
+
+      <h3>7.2. Wildcard substitution</h3>
+      <p>
+        Use <code>*</code> in the Redirect URL to substitute captured values from the pattern match.
+      </p>
+      <table>
+        <tr>
+          <th>Pattern</th>
+          <th>Request URL</th>
+          <th>Captures</th>
+          <th>Redirect URL</th>
+          <th>Result</th>
+        </tr>
+        <tr>
+          <td><code>/api/*</code></td>
+          <td><code>https://site.com/api/user</code></td>
+          <td><code>["user"]</code></td>
+          <td><code>https://site.com/api/v2/*</code></td>
+          <td><code>https://site.com/api/v2/user</code></td>
+        </tr>
+        <tr>
+          <td><code>/api/old/*/data</code></td>
+          <td><code>/api/old/v1/data</code></td>
+          <td><code>["v1"]</code></td>
+          <td><code>/api/new/*/data</code></td>
+          <td><code>/api/new/v1/data</code></td>
+        </tr>
+        <tr>
+          <td><code>https://old.com/*/item/*</code></td>
+          <td><code>https://old.com/shop/item/5</code></td>
+          <td><code>["shop","5"]</code></td>
+          <td><code>https://new.com/*/product/*</code></td>
+          <td><code>https://new.com/shop/product/5</code></td>
+        </tr>
+      </table>
+      <p>
+        If any <code>*</code> remains unsubstituted, the extension logs an error and lets the
+        request proceed normally (no redirect).
+      </p>
+      <p><strong>Common mistake:</strong> Pattern has 1 <code>*</code> but Redirect URL has 2:</p>
+      <table>
+        <tr>
+          <th>Pattern</th>
+          <th>Request URL</th>
+          <th>Captures</th>
+          <th>Redirect URL</th>
+          <th>Result</th>
+        </tr>
+        <tr>
+          <td><code>https://site.com/api/*</code></td>
+          <td><code>https://site.com/api/user</code></td>
+          <td><code>["user"]</code></td>
+          <td><code>https://site.com/api/v2/**</code></td>
+          <td>❌ second <code>*</code> not substituted</td>
+        </tr>
+      </table>
+
+      <h3>7.3. When to use</h3>
+      <ul>
+        <li>Redirect from an old API to a new API without changing frontend code.</li>
+        <li>Point requests from production to a staging/local server for debugging.</li>
+        <li>Suppress certain requests by redirecting to an empty endpoint.</li>
+      </ul>
+
+      <!-- ============ 8 ============ -->
+      <h2 id="managing-rules">8. Managing Rules</h2>
+
+      <h3>8.1. View rules</h3>
+      <p>Go to the <strong>Rules</strong> tab. Each rule displays:</p>
+      <ul>
+        <li>
+          <strong>Enabled checkbox</strong>: at the start of the row. Unchecked means the rule is
+          disabled (see 8.5).
+        </li>
+        <li><strong>Pattern</strong>: Bold blue text.</li>
+        <li>
+          <strong>Method badge</strong> (if set to something other than <code>Any</code>): a small
+          badge (e.g. <code>POST</code>) next to the body preview.
+        </li>
+        <li><strong>Redirect URL</strong> (if set): Arrow → followed by the URL.</li>
+        <li>
+          <strong>Body preview</strong>: First 80 characters + mode label
+          (<code>text</code>/<code>file</code>).
+        </li>
+      </ul>
+
+      <h3>8.2. Edit a rule</h3>
+      <p>
+        Click <strong>✎</strong> next to a rule → modal opens with current values → edit →
+        <strong>Save Override</strong>.
+      </p>
+
+      <h3>8.3. Delete a rule</h3>
+      <p>Click <strong>✕</strong> → rule is removed immediately.</p>
+
+      <h3>8.4. Persistence</h3>
+      <p>
+        Rules are stored in <code>chrome.storage.local</code> →
+        <strong>they never disappear</strong> on page refresh, DevTools close, or browser restart.
+      </p>
+
+      <h3>8.5. Enable/disable a rule</h3>
+      <p>
+        Each rule has a checkbox at the start of its row. Unchecking it
+        <strong>disables</strong> the rule (<code>enabled: false</code>) without deleting it:
+      </p>
+      <ul>
+        <li>The rule stays visible in the <strong>Rules</strong> list, dimmed.</li>
+        <li>
+          Any API it targets stays in the <strong>Overridden</strong> tab (it still "would apply" by
+          pattern and method) but is also shown dimmed, since a disabled rule is no longer actively
+          applied.
+        </li>
+        <li>
+          The background service worker skips disabled rules when deciding which override to apply
+          to a request.
+        </li>
+      </ul>
+      <p>
+        Checking the box re-enables the rule. New rules, and rules that existed before this feature
+        was added, default to <strong>enabled</strong>.
+      </p>
+
+      <h3>8.6. Export rules</h3>
+      <p>
+        Click <strong>Export</strong> in the <strong>Rules</strong> tab to download the rules for
+        the <strong>currently active domain</strong> as a JSON file (named after the domain). The
+        file has this shape:
+      </p>
+      <pre><code>{
+  "version": 1,
+  "domain": "https://example.com",
+  "exportedAt": "2026-07-07T00:00:00.000Z",
+  "overrides": [
+    /* OverrideRule[] */
+  ]
+}</code></pre>
+      <p>Export only includes rules for the domain currently open in the panel, not all domains.</p>
+
+      <h3>8.7. Import rules</h3>
+      <p>
+        Click <strong>Import</strong> in the <strong>Rules</strong> tab and pick a previously
+        exported (or hand-crafted) JSON file:
+      </p>
+      <ul>
+        <li>
+          If the file's <code>domain</code> field is present and doesn't match the domain currently
+          active in the panel, a confirm dialog warns you and asks whether to import into the
+          current domain anyway. Canceling aborts the import with no changes.
+        </li>
+        <li>
+          If the current domain <strong>already has rules</strong>, a confirm dialog asks how to
+          combine them: <strong>OK</strong> merges — the imported rules are appended to the end of
+          the existing list; <strong>Cancel</strong> replaces — all existing rules for the current
+          domain are overwritten by the imported ones.
+        </li>
+        <li>
+          If the current domain <strong>has no rules yet</strong>, the import is applied directly
+          with no prompt.
+        </li>
+        <li>
+          Invalid files (not valid JSON, missing the <code>overrides</code> array, or a rule missing
+          required fields) are rejected with an alert, and nothing is changed.
+        </li>
+        <li>
+          Only known rule fields (<code>pattern</code>, <code>mode</code>, <code>body</code>,
+          <code>redirectUrl</code>, <code>method</code>, <code>enabled</code>) are kept from each
+          imported rule; any other properties in the file are dropped.
+        </li>
+      </ul>
+      <p>
+        Like Export, Import always operates on the domain currently active in the panel — never all
+        domains at once.
+      </p>
+
+      <!-- ============ 9 ============ -->
+      <h2 id="features">9. Additional Features</h2>
+
+      <h3>9.1. Copy cURL</h3>
+      <p>
+        Each API entry has a <strong>cURL</strong> button. Click to copy the request as a cURL
+        command:
+      </p>
+      <pre><code>curl 'https://api.example.com/data' \
+  -X 'POST' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer xxx' \
+  --data-raw '{"key":"value"}'</code></pre>
+
+      <h3>9.2. Search APIs</h3>
+      <p>
+        Search box in the <strong>Captured APIs</strong> and <strong>Overridden</strong> tabs.
+        Searches by URL substring (case-insensitive). Matching text is highlighted with a yellow
+        background.
+      </p>
+
+      <h3>9.3. Refresh API list</h3>
+      <p>
+        Click <strong>Refresh captured requests</strong> in the header or the refresh action beside
+        the captured-request filters. The icon spins and is temporarily disabled while the current
+        API snapshot is loaded. If the list is empty, the extension retries automatically.
+      </p>
+
+      <h3>9.4. Open the user guide</h3>
+      <p>
+        Click <strong>Open user guide</strong> in the header. The complete guide opens in a separate
+        browser tab, so the popup or DevTools panel remains available.
+      </p>
+
+      <h3>9.5. Type grouping</h3>
+      <p>
+        APIs are grouped by resource type: XHR, Fetch, JS, CSS, Img, Media, Font, Doc, WS, Manifest,
+        EventSource, TextTrack, Other.
+      </p>
+      <p>Click a group header to collapse/expand. Collapse state is persisted in storage.</p>
+
+      <h3>9.6. Marker headers</h3>
+      <p>When a request is overridden, the extension adds these response headers:</p>
+      <ul>
+        <li><code>x-network-overrides: true</code></li>
+        <li><code>x-network-overrides-pattern: &lt;pattern&gt;</code></li>
+      </ul>
+      <p>This lets you easily identify overridden requests in the DevTools Network tab.</p>
+
+      <!-- ============ 10 ============ -->
+      <h2 id="notes">10. Important Notes</h2>
+
+      <h3>10.1. Scope</h3>
+      <ul>
+        <li>Overrides only apply to the <strong>currently attached tab</strong>.</li>
+        <li>Each time you toggle ON, the extension attaches to the <strong>active tab</strong>.</li>
+        <li>Switching to another tab disables overrides for the new tab until you toggle again.</li>
+      </ul>
+
+      <h3>10.2. Capacity limits</h3>
+      <ul>
+        <li>Maximum <strong>500 URLs</strong> in the recent APIs list.</li>
+        <li>Maximum <strong>100 response bodies</strong> stored.</li>
+        <li>When exceeded, the oldest entries are evicted (FIFO).</li>
+      </ul>
+
+      <h3>10.3. Body storage</h3>
+      <ul>
+        <li>
+          Only <strong>XHR</strong> and <strong>Fetch</strong> resource types have their response
+          bodies stored (for auto-fill).
+        </li>
+        <li>Other types (JS, CSS, Image, etc.) are not stored.</li>
+      </ul>
+
+      <h3>10.4. Tab ID dependency</h3>
+      <p>
+        Recent APIs and response bodies are keyed by <code>tabId</code>. When you close a tab and
+        reopen it, the new <code>tabId</code> differs → old data is not shown.
+      </p>
+
+      <h3>10.5. Not for production use</h3>
+      <p>
+        This extension is designed for <strong>developer debugging only</strong>. Do not use it in
+        end-user production environments.
+      </p>
+
+      <h3>10.6. Required permissions</h3>
+      <ul>
+        <li><code>debugger</code> — to intercept network requests.</li>
+        <li><code>storage</code> — to persist rules and data.</li>
+        <li><code>&lt;all_urls&gt;</code> — to attach the debugger to any tab.</li>
+      </ul>
+
+      <h3>10.7. Save and apply notifications</h3>
+      <p>Rule operations now report their result in a notification at the top-right:</p>
+      <ul>
+        <li><strong>Green</strong>: the change was saved and applied to the active tab.</li>
+        <li>
+          <strong>Yellow</strong>: the change was saved, but interception could not be updated. This
+          commonly means another debugger or DevTools session owns the tab. Use
+          <strong>Retry</strong> in the notification after resolving the conflict; the rule does not
+          need to be saved again.
+        </li>
+        <li>
+          <strong>Red</strong>: the operation failed and was not saved. The message includes the
+          storage, import, profile, or background error when available.
+        </li>
+      </ul>
+      <p>
+        Validation errors inside the Override editor appear directly above
+        <strong>Save Override</strong>. The editor stays open and focuses the field that needs to be
+        corrected. While persistence is running, the button displays <strong>Saving…</strong> and
+        cannot be pressed twice.
+      </p>
+
+      <!-- ============ 11 ============ -->
+      <h2 id="faq">11. FAQ</h2>
+
+      <div class="faq-q">Q: Override not working?</div>
+      <div class="faq-a">
+        <strong>Checklist:</strong>
+        <ol>
+          <li>Is <strong>Enable Overrides</strong> turned ON?</li>
+          <li>Does the pattern match the URL? Try <code>*</code> to match everything.</li>
+          <li>Is the current tab the one being debugged? Try refreshing the extension.</li>
+          <li>Open DevTools → extension's Console to check for errors.</li>
+        </ol>
+      </div>
+
+      <div class="faq-q">Q: I clicked Save Override, but nothing appeared to happen?</div>
+      <div class="faq-a">
+        Check the message above the Save button and the notification in the top-right corner. A red
+        message means the rule was not stored. A yellow notification means the rule was stored but
+        could not be applied to the active tab; close any competing DevTools/debugger session and
+        click <strong>Retry</strong> in that notification.
+      </div>
+
+      <div class="faq-q">Q: Turned off overrides but requests are still being modified?</div>
+      <div class="faq-a">
+        Try refreshing the page. If the issue persists, disable and re-enable the extension.
+      </div>
+
+      <div class="faq-q">Q: How do I delete all rules at once?</div>
+      <div class="faq-a">
+        Go to the <strong>Rules</strong> tab and click ✕ on each rule. There is no "Clear all"
+        button.
+      </div>
+
+      <div class="faq-q">Q: Extension doesn't work in incognito mode?</div>
+      <div class="faq-a">
+        Go to <code>chrome://extensions</code> → click <strong>Details</strong> on the extension →
+        enable <strong>Allow in incognito</strong>.
+      </div>
+
+      <div class="faq-q">Q: How can I tell if a request was overridden?</div>
+      <div class="faq-a">
+        Check the DevTools Network tab:
+        <ul>
+          <li>Response header <code>x-network-overrides: true</code> is added.</li>
+          <li>
+            In the extension, the API entry is highlighted in blue and appears in the
+            <strong>Overridden</strong> tab.
+          </li>
+        </ul>
+      </div>
+
+      <div class="faq-q">Q: APIs are not showing up in Captured APIs?</div>
+      <div class="faq-a">
+        Click <strong>Refresh captured requests</strong>. The extension retries automatically for a
+        short period. If the list is still empty:
+        <ol>
+          <li>Verify the toggle is ON.</li>
+          <li>Check the Network tab to confirm requests are being sent.</li>
+          <li>Try the DevTools panel instead of the popup.</li>
+        </ol>
+      </div>
+
+      <div class="faq-q">Q: Can I override WebSocket connections?</div>
+      <div class="faq-a">
+        No. The extension only intercepts HTTP requests (XHR, Fetch) via Chrome's Fetch domain.
+        WebSocket is not supported.
+      </div>
+
+      <div class="faq-q">Q: Does this support sync storage?</div>
+      <div class="faq-a">
+        No. The extension uses <code>chrome.storage.local</code> (10MB limit). Sync storage is not
+        used since rules may contain large response bodies.
+      </div>
+
+      <div class="faq-q">Q: Can I import rules exported from a different domain?</div>
+      <div class="faq-a">
+        Yes. Import always writes into the domain that's currently active in the panel, regardless
+        of which domain the file's <code>domain</code> field says it was exported from — but if that
+        field doesn't match the current domain, an import dialog warns you first, so the mismatch
+        isn't silent. If rules already exist, the next dialog provides explicit
+        <strong>Append rules</strong> and <strong>Replace rules</strong> choices.
+      </div>
+
+      <hr />
+      <p style="text-align: center; color: var(--text-secondary); font-size: 0.9em">
+        Network Overrides DevTools —
+        <a href="https://github.com/vannt-dev/network-overrides-devtools">GitHub</a>
+      </p>
+    </div>
+  </body>
+</html>

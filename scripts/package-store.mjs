@@ -11,9 +11,11 @@ const requiredPaths = [
   'devtools.html',
   'panel.html',
   'popup.html',
+  'guide.html',
   'styles.css',
   'dist',
   'icons',
+  'privacy_policy.md',
 ];
 
 function slugify(value) {
@@ -62,7 +64,9 @@ async function copyRequiredFiles() {
 
     await fs.cp(sourcePath, destinationPath, {
       recursive: true,
-      filter: copiedSourcePath => !copiedSourcePath.endsWith('.map'),
+      // Source maps and the store-listing icon are not runtime files.
+      filter: copiedSourcePath =>
+        !copiedSourcePath.endsWith('.map') && path.basename(copiedSourcePath) !== 'storeIcon.png',
     });
   }
 

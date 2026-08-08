@@ -5,7 +5,12 @@ on:
     branches:
       - main
       - master
+      - develop
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -29,16 +34,35 @@ jobs:
       - name: Check code formatting
         run: npx prettier --check .
 
+      - name: Lint TypeScript code
+        run: npm run lint
+
       - name: Lint commit messages
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             npx commitlint --from origin/${{ github.base_ref }} --to HEAD
-          else
+          elif git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
             npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
+          else
+            # Force-push or new branch: the "before" SHA no longer exists; lint just the head commit.
+            npx commitlint --last
           fi
 
       - name: Run tests with coverage
         run: npm run ci:test
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke test
+        run: xvfb-run --auto-servernum npm run smoke
 
       - name: Upload coverage artifact
         if: always()

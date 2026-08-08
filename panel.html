@@ -7,65 +7,320 @@
   </head>
 
   <body>
-    <h2>Network Overrides API</h2>
-
-    <label>Enable Overrides <input id="enable" type="checkbox" /></label>
-    <label>Auto-fill from payload <input id="auto-fill" type="checkbox" /></label>
-    <button id="use-current-body" style="margin: 4px 0">Use current API response body</button>
-
-    <p class="hint">
-      Tip: use pattern <code>*</code> or <code>all</code> to override all requests; or regex format
-      <code>/pattern/flags</code>.
-    </p>
-
-    <div id="override-modal" class="modal" style="display: none">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <h4 class="modal-title">Override <span id="modal-url"></span></h4>
-        <div id="modal-status" style="font-size: 0.9em; margin-bottom: 8px; color: #333"></div>
-        <label class="modal-field">
-          <span>Pattern</span>
-          <input id="modal-pattern" type="text" />
-        </label>
-        <select id="modal-mode">
-          <option value="text">Text</option>
-          <option value="file">Raw base64</option>
-        </select>
-        <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
-        <button id="save-override">Save Override</button>
+    <div class="header-row">
+      <h2>Network Overrides API</h2>
+      <div class="header-actions" aria-label="Popup actions">
+        <button
+          id="refresh-apis"
+          type="button"
+          class="header-btn"
+          title="Refresh captured requests"
+          aria-label="Refresh captured requests"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 6v5h-5"></path>
+            <path d="M4 18v-5h5"></path>
+            <path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9"></path>
+            <path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15"></path>
+          </svg>
+        </button>
+        <button
+          id="info-btn"
+          type="button"
+          class="header-btn info-btn"
+          title="Open user guide"
+          aria-label="Open user guide"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 11v6"></path>
+            <path d="M12 7.5h.01"></path>
+          </svg>
+        </button>
       </div>
     </div>
 
-    <div id="new-row">
-      <input id="pattern" placeholder="URL contains (e.g. /api/data)" />
+    <div class="switch-container">
+      <label class="switch">
+        <input id="enable" type="checkbox" />
+        <span class="switch-slider"></span>
+      </label>
+      <label for="enable" class="switch-label">Enable Overrides</label>
+      <span id="attach-status" class="attach-status" style="display: none"></span>
+    </div>
+
+    <p class="hint">
+      Tip: use <code>*</code> as wildcard in patterns (e.g.,
+      <code>https://old.com/api/*/users</code>), <code>*</code>/<code>all</code> for all requests,
+      or regex <code>/pattern/flags</code>. Use <code>*</code> in Redirect URL to substitute
+      captured wildcards.
+    </p>
+
+    <div id="override-modal" class="modal" style="display: none">
+      <div class="modal-content modal-content--override">
+        <header class="modal-header">
+          <h4 class="modal-title">
+            <span id="modal-title-text"></span>
+            <span id="modal-url"></span>
+          </h4>
+          <button class="close modal-close" type="button" aria-label="Close override editor">
+            &times;
+          </button>
+        </header>
+        <div class="modal-scroll-body">
+          <label class="modal-field">
+            <span>Pattern</span>
+            <input id="modal-pattern" type="text" />
+          </label>
+          <label class="modal-field">
+            <span>Method</span>
+            <select id="modal-method">
+              <option value="ANY">Any</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </label>
+          <label class="modal-field">
+            <span>GraphQL Operation (optional)</span>
+            <input
+              id="modal-graphql-op"
+              type="text"
+              placeholder="e.g. GetUserProfile or query name"
+            />
+          </label>
+          <div class="override-type-selector">
+            <label class="type-radio">
+              <input type="radio" name="modal-override-type" value="body" checked />
+              <span>Override body</span>
+            </label>
+            <label class="type-radio">
+              <input type="radio" name="modal-override-type" value="redirect" />
+              <span>Redirect to URL</span>
+            </label>
+            <label class="type-radio">
+              <input type="radio" name="modal-override-type" value="fail" />
+              <span>Fail request</span>
+            </label>
+          </div>
+          <div id="modal-body-fields">
+            <label class="modal-field">
+              <span>Response body</span>
+              <select id="modal-mode">
+                <option value="text">Text</option>
+                <option value="file">Raw base64</option>
+              </select>
+              <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
+              <div class="modal-body-footer">
+                <button
+                  id="format-json-btn"
+                  type="button"
+                  class="modal-action-btn body-format-btn"
+                  style="display: none"
+                  title="Pretty-print the JSON response body"
+                >
+                  Format JSON
+                </button>
+              </div>
+              <div
+                id="modal-preview-container"
+                class="modal-preview-container"
+                style="display: none"
+              ></div>
+            </label>
+          </div>
+          <div id="modal-redirect-fields" style="display: none">
+            <label class="modal-field">
+              <span>Redirect URL (uses * for captured wildcards)</span>
+              <input
+                id="modal-redirect-url"
+                type="text"
+                placeholder="e.g. https://new-api.example.com/api/*"
+              />
+            </label>
+          </div>
+          <div id="modal-fail-fields" style="display: none">
+            <label class="modal-field">
+              <span>Fail reason</span>
+              <select id="modal-fail-reason">
+                <option value="Failed">Failed</option>
+                <option value="TimedOut">TimedOut</option>
+                <option value="ConnectionRefused">ConnectionRefused</option>
+                <option value="NameNotResolved">NameNotResolved</option>
+                <option value="InternetDisconnected">InternetDisconnected</option>
+              </select>
+            </label>
+          </div>
+          <div id="modal-advanced-fields">
+            <label class="modal-field" id="modal-request-headers-field">
+              <span>Override Request Headers (Key-Value or Raw)</span>
+              <textarea
+                id="modal-request-headers"
+                rows="2"
+                placeholder="Authorization: Bearer mock-token"
+              ></textarea>
+              <div id="modal-request-headers-table" class="modal-headers-table"></div>
+            </label>
+            <label class="modal-field" id="modal-status-field">
+              <span>Status (blank = keep original)</span>
+              <input id="modal-status" type="number" min="100" max="599" placeholder="e.g. 500" />
+            </label>
+            <label class="modal-field">
+              <span>Delay (ms)</span>
+              <input id="modal-delay" type="number" min="0" max="120000" placeholder="0" />
+            </label>
+            <label class="modal-field" id="modal-headers-field">
+              <span>Extra Response Headers (Key-Value or Raw)</span>
+              <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
+              <div id="modal-response-headers-table" class="modal-headers-table"></div>
+            </label>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <div id="modal-feedback" class="modal-feedback" role="status" aria-live="polite"></div>
+          <button id="save-override">Save Override</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- cURL / Swagger Import Modal -->
+    <div id="curl-swagger-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span id="curl-swagger-close" class="close">&times;</span>
+        <h3>Import Rules from cURL or OpenAPI / Swagger Spec</h3>
+        <label class="modal-field">
+          <span>Paste cURL command or OpenAPI/Swagger JSON/YAML spec:</span>
+          <textarea
+            id="curl-swagger-textarea"
+            rows="6"
+            placeholder='curl -X POST https://api.example.com/users -H "Authorization: Bearer token" -d &apos;{"name":"John"}&apos;&#10;&#10;Or paste Swagger/OpenAPI JSON content...'
+          ></textarea>
+        </label>
+        <div class="curl-swagger-file-row">
+          <span>Or choose file (.json, .yaml, .yml, .curl, .txt):</span>
+          <input id="curl-swagger-file-input" type="file" accept=".json,.yaml,.yml,.curl,.txt" />
+        </div>
+        <button
+          id="curl-swagger-import-btn"
+          type="button"
+          class="btn btn-primary"
+          style="margin-top: 10px"
+        >
+          Import Rules
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="other">Captured APIs</button>
+      <button class="tab-btn" data-tab="overridden">Overridden</button>
+      <button class="tab-btn" data-tab="overrides">Rules</button>
+    </div>
+
+    <div id="new-row" class="tab-content" style="display: none">
+      <input id="pattern" placeholder="URL pattern" />
+      <input
+        id="redirect-url"
+        type="text"
+        placeholder="Optional redirect URL (use * for wildcards)"
+      />
       <select id="mode">
         <option value="text">Text</option>
         <option value="file">Raw base64</option>
       </select>
-      <textarea id="body" placeholder="Response body (text)" rows="6"></textarea>
-      <button id="add">Add override</button>
+      <textarea id="body" rows="6" placeholder="Response body"></textarea>
+      <button id="add">Add Manual</button>
     </div>
-    <div id="apis-section" style="display: none">
-      <h3>Recent APIs (click to override)</h3>
+
+    <div id="apis-section" class="tab-content" style="display: none">
       <div class="api-controls">
-        <input id="api-search" type="search" placeholder="Search APIs..." />
-        <div class="api-toolbar">
-          <label class="api-filter-toggle">
-            <input id="only-overridden" type="checkbox" /> Only overridden
-          </label>
-          <div class="api-toolbar-actions">
-            <button id="expand-all" type="button">Expand all</button>
-            <button id="collapse-all" type="button">Collapse all</button>
-          </div>
+        <div class="api-search-row">
+          <input id="api-search" type="search" placeholder="Search APIs..." />
+          <button id="add-api-btn" type="button" class="add-api-btn" title="Add custom API">
+            +
+          </button>
+        </div>
+        <div class="captured-types-bar">
+          <span class="captured-types-label">Capture Body:</span>
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="xhr" checked /> XHR</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="fetch" checked /> Fetch</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="document" /> Doc</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="script" /> JS</label
+          >
+          <label class="type-check"
+            ><input type="checkbox" class="capture-type-cb" value="stylesheet" /> CSS</label
+          >
         </div>
       </div>
-      <ul id="apis-list"></ul>
+      <div id="apis-list"></div>
     </div>
 
-    <h3>Overrides</h3>
-    <ul id="list"></ul>
+    <div id="overrides-section" class="tab-content" style="display: none">
+      <div class="rules-io-row">
+        <button id="export-rules-btn" type="button" class="rules-io-btn">Export</button>
+        <button id="import-rules-btn" type="button" class="rules-io-btn">Import</button>
+        <button id="import-curl-swagger-btn" type="button" class="rules-io-btn">
+          cURL / Swagger
+        </button>
+        <input
+          id="import-rules-input"
+          type="file"
+          accept="application/json"
+          style="display: none"
+        />
+      </div>
+      <div class="profiles-row">
+        <select id="profiles-select" class="profiles-select">
+          <option value="">-- Rule Profiles --</option>
+        </select>
+        <button
+          id="save-profile-btn"
+          type="button"
+          class="profile-btn"
+          title="Save current rules as Profile"
+        >
+          Save Profile
+        </button>
+        <button
+          id="delete-profile-btn"
+          type="button"
+          class="profile-btn"
+          title="Delete selected Profile"
+        >
+          Delete
+        </button>
+      </div>
+      <ul id="list"></ul>
+    </div>
 
+    <script src="dist/utils.js"></script>
     <script src="dist/shared.js"></script>
+    <script src="dist/ui/types.js"></script>
+    <script src="dist/ui/view-utils.js"></script>
+    <script src="dist/ui/primitives.js"></script>
+    <script src="dist/ui/notifications.js"></script>
+    <script src="dist/ui/dialogs.js"></script>
+    <script src="dist/ui/persistence.js"></script>
+    <script src="dist/ui/attach-status.js"></script>
+    <script src="dist/ui/curl.js"></script>
+    <script src="dist/ui/swagger.js"></script>
+    <script src="dist/ui/headers-editor.js"></script>
+    <script src="dist/ui/modal.js"></script>
+    <script src="dist/ui/rules-list.js"></script>
+    <script src="dist/ui/api-list.js"></script>
+    <script src="dist/ui/profiles.js"></script>
+    <script src="dist/ui/modal-controller.js"></script>
+    <script src="dist/ui/rules-io-controller.js"></script>
+    <script src="dist/ui/toolbar-controller.js"></script>
     <script src="dist/ui.js"></script>
     <script src="dist/panel.js"></script>
   </body>

@@ -34,6 +34,15 @@ namespace NetworkOverridesUi {
       const span = document.createElement('span');
       span.className = 'rule-pattern';
 
+      if (rule.isGlobal) {
+        const globalBadge = document.createElement('span');
+        globalBadge.className = 'global-badge rule-global-badge';
+        globalBadge.textContent = 'GLOBAL';
+        globalBadge.style.cssText =
+          'background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;font-size:10px;margin-right:4px;font-weight:bold;';
+        span.appendChild(globalBadge);
+      }
+
       const methodText = rule.method && rule.method !== 'ANY' ? rule.method : null;
       if (methodText) {
         const methodBadge = document.createElement('span');

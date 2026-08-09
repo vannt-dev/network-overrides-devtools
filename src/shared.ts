@@ -16,6 +16,7 @@ declare namespace NetworkOverridesShared {
     processTemplates?: boolean; // whether to process dynamic template tokens {{now}}, {{uuid}}, etc.
     delayMs?: number; // 0–120000 ms; body and fail rules
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
+    isGlobal?: boolean; // applies across all domains if true
   }
   interface RuleProfile {
     id: string;

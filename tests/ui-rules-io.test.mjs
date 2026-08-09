@@ -420,3 +420,22 @@ test('Rule profiles report save and delete outcomes through shared notifications
     true
   );
 });
+
+test('Rules list renders GLOBAL badge for rules with isGlobal true', async () => {
+  const harness = createUiHarness({
+    storageState: {
+      overrides: [{ pattern: 'global-api', body: '{}', mode: 'text', isGlobal: true }],
+    },
+    tabUrl: `${TEST_DOMAIN}/`,
+  });
+  await flushUi(harness.window);
+
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  const badge = harness.document.querySelector('.rule-global-badge');
+  assert.notEqual(badge, null);
+  assert.equal(badge.textContent, 'GLOBAL');
+});

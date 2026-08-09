@@ -11,3 +11,5 @@ Thumbs.db
 .worktrees/
 test-output.txt
 test-results.txt
+docs/
+

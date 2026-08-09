@@ -547,6 +547,42 @@ Pattern: all</pre
       </ul>
       <p>This lets you easily identify overridden requests in the DevTools Network tab.</p>
 
+      <h3>9.7. Dynamic Response Templating</h3>
+      <p>Insert dynamic placeholders into mock response bodies:</p>
+      <ul>
+        <li><code>{{$uuid}}</code> — Random UUID v4</li>
+        <li><code>{{$isoDate}}</code> — ISO 8601 timestamp</li>
+        <li><code>{{$epoch}}</code> — Unix timestamp in ms</li>
+        <li><code>{{$randomEmail}}</code> — Random email address</li>
+        <li><code>{{$randomName}}</code> — Random full name</li>
+        <li><code>{{$randomInt(1, 100)}}</code> — Random integer in range</li>
+        <li><code>{{$query(name)}}</code> — Query parameter value from request URL</li>
+      </ul>
+
+      <h3>9.8. Global Cross-Domain Rules</h3>
+      <p>
+        Mark rules as <strong>Global</strong> to intercept matching requests across all domains.
+        Global rules display a <code>GLOBAL</code> badge in the rules list.
+      </p>
+
+      <h3>9.9. Request Payload Modification</h3>
+      <p>
+        Override outgoing <code>POST</code>, <code>PUT</code>, or <code>PATCH</code> request
+        payloads before they reach the server.
+      </p>
+
+      <h3>9.10. HAR File Import</h3>
+      <p>
+        Drag &amp; drop or import <code>.har</code> files (HTTP Archive) to generate mock rules in
+        bulk from recorded traffic.
+      </p>
+
+      <h3>9.11. Editor Keyboard Shortcuts</h3>
+      <ul>
+        <li><code>Ctrl + Enter</code> / <code>Cmd + Enter</code> — Save override rule</li>
+        <li><code>Ctrl + Shift + F</code> / <code>Cmd + Shift + F</code> — Format JSON body</li>
+      </ul>
+
       <!-- ============ 10 ============ -->
       <h2 id="notes">10. Important Notes</h2>
 

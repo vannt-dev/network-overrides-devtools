@@ -38,6 +38,12 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
 - **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
+- **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
+- **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
+- **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
+- **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.
+- **Traffic Analytics**: Track total overridden and failed request statistics per active tab.
+- **Editor Keyboard Shortcuts**: Modal hotkeys `Ctrl+Enter` / `Cmd+Enter` to save and `Ctrl+Shift+F` / `Cmd+Shift+F` to format JSON.
 - **Auto-fill response body**: When creating a new override, the current response body is automatically fetched from the background worker and pre-filled into the editor.
 - **JSON formatting**: Auto-detect and format JSON bodies with a single button.
 - **Copy cURL**: Copy any API request as a cURL command.
@@ -51,12 +57,12 @@ src/
 ├── background.ts       # Service-worker bootstrap
 ├── background/         # Debugger lifecycle, interception, encoding, capture, message routing
 ├── ui.ts               # Shared UI state and controller orchestration
-├── ui/                  # Reusable modal, rules, headers, dialogs, notifications, profiles, import/export
+├── ui/                  # Reusable modal, rules, headers, dialogs, notifications, profiles, HAR parser, import/export
 ├── shared.ts            # Shared OverrideRule, ApiEntry, and header types
 ├── tab-state.ts         # Per-tab state, session persistence, and worker rehydration
 ├── panel.ts             # DevTools panel initialization and HAR streaming
 ├── popup.ts             # Action popup initialization
-└── utils.ts             # Pattern matching, wildcard, and origin helpers
+└── utils.ts             # Pattern matching, wildcard, dynamic templates, and origin helpers
 
 styles.css               # CSS entrypoint
 styles/                  # Base, feature, modal/rules, primitive, and guide styles

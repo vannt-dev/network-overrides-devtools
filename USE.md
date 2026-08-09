@@ -368,6 +368,44 @@ Click nút **Refresh** (↻) ở góc trên bên phải. Extension sẽ thử 5 
 
 API được nhóm theo resource type:
 
+- **Fetch / XHR**: API calls
+- **JS**: Script files
+- **CSS**: Style files
+- **Img**: Images
+- **Doc**: HTML documents
+- **WS**: WebSockets
+
+### 9.5. Templating Động (Dynamic Response Templates)
+
+Cho phép chèn các biến sinh tự động vào nội dung Response Mock Body:
+
+- `{{$uuid}}`: Tạo ngẫu nhiên UUID v4 (ví dụ `c9bf9e57-1685-4c89-bafb-ff5af830be8a`).
+- `{{$isoDate}}`: Ngày giờ hiện tại chuẩn ISO 8601 (`2026-08-09T10:30:00.000Z`).
+- `{{$epoch}}`: Unix timestamp (tính bằng ms).
+- `{{$randomEmail}}`: Tạo email thử nghiệm ngẫu nhiên (`user_x82a9@example.com`).
+- `{{$randomName}}`: Tạo tên ngẫu nhiên (`Alex Rivers`).
+- `{{$randomInt(1, 100)}}`: Sinh số nguyên ngẫu nhiên trong khoảng `min` tới `max`.
+- `{{$query(id)}}`: Trích xuất trực tiếp giá trị của Query Parameter `id` từ Request URL.
+
+### 9.6. Quy tắc Toàn cục (Global Rules)
+
+Tích chọn tùy chọn **Global Rule** khi tạo/chỉnh sửa quy tắc để áp dụng rule này trên **tất cả các domain**. Các Global Rule sẽ có nhãn badge **GLOBAL** nổi bật trong danh sách Rules.
+
+### 9.7. Can thiệp & Ghi đè Request Payload
+
+Cho phép sửa đổi dữ liệu Request Payload (body của các request `POST`, `PUT`, `PATCH`) trước khi gửi lên Server bằng cách nhập nội dung mới vào ô **Request Payload** trong editor modal.
+
+### 9.8. Import HAR File (HTTP Archive)
+
+Hỗ trợ Import trực tiếp file `.har` (được export từ DevTools Network tab): Hệ thống sẽ tự động phân tích và chuyển đổi lịch sử traffic mạng ghi trong file HAR thành danh sách các Mock Rules sẵn sàng sử dụng.
+
+### 9.9. Phím tắt Thao tác Nhanh (Keyboard Shortcuts)
+
+Tại Editor Modal:
+
+- **`Ctrl + Enter`** (hoặc **`Cmd + Enter`** trên macOS): Lưu quy tắc nhanh (Save Rule).
+- **`Ctrl + Shift + F`** (hoặc **`Cmd + Shift + F`** trên macOS): Định dạng JSON tự động (Format JSON).
+
 | Type        | Hiển thị    | Màu/Icon |
 | ----------- | ----------- | -------- |
 | XHR         | XHR         | --       |

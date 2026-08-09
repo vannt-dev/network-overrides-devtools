@@ -368,21 +368,52 @@ Click the **Refresh** button (↻) in the top right. The extension retries up to
 
 APIs are grouped by resource type:
 
-| Type        | Label       |
-| ----------- | ----------- |
-| XHR         | XHR         |
-| Fetch       | Fetch       |
-| JS          | JS          |
-| CSS         | CSS         |
-| Image       | Img         |
-| Media       | Media       |
-| Font        | Font        |
-| Document    | Doc         |
-| WebSocket   | WS          |
-| Manifest    | Manifest    |
-| EventSource | EventSource |
-| TextTrack   | TextTrack   |
-| Other       | Other       |
+| Type     | Label |
+| -------- | ----- |
+| XHR      | XHR   |
+| Fetch    | Fetch |
+| JS       | JS    |
+| CSS      | CSS   |
+| Image    | Img   |
+| Media    | Media |
+| Font     | Font  |
+| Document | Doc   |
+
+### 9.5. Dynamic Response Templating
+
+Insert dynamic placeholders into mock response bodies:
+
+- `{{$uuid}}`: Generates a random UUID v4 (e.g. `c9bf9e57-1685-4c89-bafb-ff5af830be8a`).
+- `{{$isoDate}}`: Current ISO 8601 timestamp (`2026-08-09T10:30:00.000Z`).
+- `{{$epoch}}`: Current Unix epoch timestamp in milliseconds.
+- `{{$randomEmail}}`: Generates a random test email (`user_x82a9@example.com`).
+- `{{$randomName}}`: Generates a random full name (`Alex Rivers`).
+- `{{$randomInt(min, max)}}`: Generates a random integer between `min` and `max`.
+- `{{$query(paramName)}}`: Extracts the query parameter `paramName` directly from the request URL.
+
+### 9.6. Global Rules
+
+Check **Global Rule** when creating or editing a rule to apply it across **all domains**. Global rules display a prominent `GLOBAL` badge in the rules list.
+
+### 9.7. Request Payload Modification
+
+Override outgoing POST, PUT, or PATCH request payloads before they reach the server by filling in the **Request Payload** field in the editor modal.
+
+### 9.8. HAR File Import
+
+Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules.
+
+### 9.9. Editor Keyboard Shortcuts
+
+In the Override Modal editor:
+
+- **`Ctrl + Enter`** (or **`Cmd + Enter`** on macOS): Save override rule.
+- **`Ctrl + Shift + F`** (or **`Cmd + Shift + F`** on macOS): Format JSON response body.
+  | WebSocket | WS |
+  | Manifest | Manifest |
+  | EventSource | EventSource |
+  | TextTrack | TextTrack |
+  | Other | Other |
 
 Click a group header (e.g. "XHR ▼") to collapse/expand. Collapse state is persisted in storage.
 

@@ -176,3 +176,17 @@ test('glob * matches the empty string', () => {
     true
   );
 });
+
+test('processResponseTemplate processes dynamic placeholders', () => {
+  const { NetworkOverridesUtils } = createUiContext();
+  const template =
+    '{"id":"{{$uuid}}","email":"{{$randomEmail}}","name":"{{$randomName}}","queryId":"{{$query(id)}}","num":{{$randomInt(10, 50)}}}';
+  const processed = NetworkOverridesUtils.processResponseTemplate(
+    template,
+    [],
+    'https://example.com/test?id=999'
+  );
+  assert.match(processed, /"queryId":"999"/);
+  assert.match(processed, /"email":"user_\d+@example\.com"/);
+  assert.match(processed, /"id":"[0-9a-f-]{36}"/);
+});

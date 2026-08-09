@@ -37,6 +37,7 @@ export function normalize(value) {
 export function createUiContext() {
   const context = {
     console,
+    URL,
   };
   vm.createContext(context);
   runDistFile('utils.js', context);

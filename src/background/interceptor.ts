@@ -196,7 +196,7 @@ namespace NetworkOverridesBackground {
         const rawBody = ov.body || '';
         const processedBody =
           ov.mode !== 'file'
-            ? NetworkOverridesUtils.processResponseTemplate(rawBody, captures)
+            ? NetworkOverridesUtils.processResponseTemplate(rawBody, captures, url)
             : rawBody;
         if (ov.mode !== 'file') return NetworkOverridesStringToBase64Local(processedBody);
         try {

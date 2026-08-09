@@ -91,22 +91,50 @@ namespace NetworkOverridesUtils {
     return postData.toLowerCase().includes(target);
   }
 
-  export function processResponseTemplate(body: string, captures: string[] = []): string {
+  export function processResponseTemplate(
+    body: string,
+    captures: string[] = [],
+    requestUrl: string = ''
+  ): string {
     if (!body || !body.includes('{{')) return body;
     let result = body;
-    result = result.replace(/\{\{(timestamp|now)\}\}/gi, () => new Date().toISOString());
-    result = result.replace(/\{\{epoch\}\}/gi, () => String(Date.now()));
-    result = result.replace(/\{\{uuid\}\}/gi, () => {
+    result = result.replace(/\{\{(timestamp|now|\$timestamp|\$isoDate)\}\}/gi, () =>
+      new Date().toISOString()
+    );
+    result = result.replace(/\{\{(epoch|\$epoch)\}\}/gi, () => String(Date.now()));
+    result = result.replace(/\{\{(uuid|\$uuid|\$randomUUID)\}\}/gi, () => {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
         const r = (Math.random() * 16) | 0;
         const v = c === 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       });
     });
-    result = result.replace(/\{\{randomInt:(\d+):(\d+)\}\}/gi, (_, minStr, maxStr) => {
-      const min = parseInt(minStr, 10);
-      const max = parseInt(maxStr, 10);
-      return String(Math.floor(Math.random() * (max - min + 1)) + min);
+    result = result.replace(/\{\{\$(randomEmail)\}\}/gi, () => {
+      const rand = Math.floor(Math.random() * 100000);
+      return `user_${rand}@example.com`;
+    });
+    result = result.replace(/\{\{\$(randomName)\}\}/gi, () => {
+      const names = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Grace', 'Hannah'];
+      const rand = names[Math.floor(Math.random() * names.length)];
+      const num = Math.floor(Math.random() * 1000);
+      return `${rand}_${num}`;
+    });
+    result = result.replace(
+      /\{\{(?:randomInt:(\d+):(\d+)|\$randomInt\((\d+),\s*(\d+)\))\}\}/gi,
+      (_, min1, max1, min2, max2) => {
+        const min = parseInt(min1 || min2, 10);
+        const max = parseInt(max1 || max2, 10);
+        return String(Math.floor(Math.random() * (max - min + 1)) + min);
+      }
+    );
+    result = result.replace(/\{\{\$(?:query|queryParam)\(([^)]+)\)\}\}/gi, (_, paramName) => {
+      if (!requestUrl) return '';
+      try {
+        const urlObj = new URL(requestUrl);
+        return urlObj.searchParams.get(paramName) || '';
+      } catch {
+        return '';
+      }
     });
     result = result.replace(/\{\{param:(\d+)\}\}/gi, (_, indexStr) => {
       const idx = parseInt(indexStr, 10) - 1;

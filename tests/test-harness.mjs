@@ -51,6 +51,7 @@ export function createUiContext() {
   runDistFile('ui/attach-status.js', context);
   runDistFile('ui/curl.js', context);
   runDistFile('ui/swagger.js', context);
+  runDistFile('ui/har.js', context);
   runDistFile('ui/headers-editor.js', context);
   runDistFile('ui/modal.js', context);
   runDistFile('ui/rules-list.js', context);

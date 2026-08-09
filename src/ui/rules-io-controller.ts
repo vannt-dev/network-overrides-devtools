@@ -202,10 +202,15 @@ namespace NetworkOverridesUi {
       elements.curlSwaggerImportBtn?.addEventListener('click', async () => {
         const text = elements.curlSwaggerTextarea?.value || '';
         const curlRule = parseCurlToRule(text);
-        const newRules = curlRule ? [curlRule] : parseSwaggerToRules(text);
+        const harRules = parseHarToRules(text);
+        const newRules = curlRule
+          ? [curlRule]
+          : harRules.length > 0
+            ? harRules
+            : parseSwaggerToRules(text);
         if (newRules.length === 0) {
           showNotification(
-            'Could not parse any rules from the cURL command or Swagger/OpenAPI specification.',
+            'Could not parse any rules from cURL, HAR file, or Swagger/OpenAPI specification.',
             'error'
           );
           return;

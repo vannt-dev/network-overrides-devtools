@@ -190,3 +190,24 @@ test('processResponseTemplate processes dynamic placeholders', () => {
   assert.match(processed, /"email":"user_\d+@example\.com"/);
   assert.match(processed, /"id":"[0-9a-f-]{36}"/);
 });
+
+test('UI parses HAR JSON specification into OverrideRules', () => {
+  const { NetworkOverridesUi } = createUiContext();
+  const harJson = JSON.stringify({
+    log: {
+      entries: [
+        {
+          request: { method: 'POST', url: 'https://example.com/api/orders' },
+          response: { status: 201, content: { mimeType: 'application/json', text: '{"id":101}' } },
+        },
+      ],
+    },
+  });
+
+  const rules = NetworkOverridesUi.parseHarToRules(harJson);
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].pattern, 'https://example.com/api/orders');
+  assert.equal(rules[0].method, 'POST');
+  assert.equal(rules[0].statusCode, 201);
+  assert.equal(rules[0].body, '{"id":101}');
+});

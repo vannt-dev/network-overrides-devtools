@@ -11,6 +11,7 @@
 /// <reference path="./ui/headers-editor.ts" />
 /// <reference path="./ui/curl.ts" />
 /// <reference path="./ui/swagger.ts" />
+/// <reference path="./ui/har.ts" />
 /// <reference path="./ui/modal.ts" />
 /// <reference path="./ui/rules-list.ts" />
 /// <reference path="./ui/api-list.ts" />

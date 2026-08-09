@@ -87,6 +87,49 @@ namespace NetworkOverridesUi {
       return match === null;
     });
 
+    const typeCounts: Record<string, number> = {};
+    let capturedCount = 0;
+    let overriddenCount = 0;
+
+    state.capturedApis.forEach(api => {
+      const t = api.type.toLowerCase();
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+
+      const match = getMatchingRuleStatus(api, state.overrides);
+      if (match !== null && !match.isDisabledOnly) {
+        overriddenCount++;
+      } else {
+        capturedCount++;
+      }
+    });
+
+    typeInputs.forEach(input => {
+      const typeVal = input.value.toLowerCase();
+      const count = typeCounts[typeVal] || 0;
+      const baseLabel = TYPE_LABELS[typeVal] || typeVal.toUpperCase();
+      const parentLabel = input.parentElement;
+      if (parentLabel) {
+        const textNode = Array.from(parentLabel.childNodes).find(
+          n => n.nodeType === Node.TEXT_NODE
+        );
+        if (textNode) {
+          textNode.nodeValue = ` ${baseLabel} (${count})`;
+        }
+      }
+    });
+
+    const tabBtns = document.querySelectorAll<HTMLElement>('.tab-btn');
+    tabBtns.forEach(btn => {
+      const tabType = btn.dataset.tab;
+      if (tabType === 'other') {
+        btn.textContent = `Captured APIs (${capturedCount})`;
+      } else if (tabType === 'overridden') {
+        btn.textContent = `Overridden (${overriddenCount})`;
+      } else if (tabType === 'overrides') {
+        btn.textContent = `Rules (${state.overrides.length})`;
+      }
+    });
+
     apisToRender.sort((a, b) => {
       const idxA = TYPE_ORDER.indexOf(a.type);
       const idxB = TYPE_ORDER.indexOf(b.type);

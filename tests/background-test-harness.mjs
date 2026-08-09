@@ -190,15 +190,7 @@ export function createBackgroundHarness({
     chrome,
   };
   vm.createContext(context);
-  runDistFile('utils.js', context);
-  runDistFile('shared.js', context);
-  runDistFile('tab-state.js', context);
-  runDistFile('background/encoding.js', context);
-  runDistFile('background/api-capture.js', context);
-  runDistFile('background/interceptor.js', context);
-  runDistFile('background/debugger-controller.js', context);
-  runDistFile('background/message-router.js', context);
-  runDistFile('background.js', context);
+  runDistFile('background.bundle.js', context);
 
   return {
     context,

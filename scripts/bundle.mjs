@@ -64,7 +64,23 @@ async function main() {
 
   await bundleFiles(uiFiles, 'ui.bundle.js');
 
-  console.log('Bundled dist/background.bundle.js and dist/ui.bundle.js successfully.');
+  // Clean up unbundled files and subdirectories so dist only contains essential bundles and entrypoints
+  const keepFiles = new Set([
+    'background.bundle.js',
+    'ui.bundle.js',
+    'devtools.js',
+    'panel.js',
+    'popup.js',
+  ]);
+
+  const entries = await fs.readdir(distDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (keepFiles.has(entry.name)) continue;
+    const entryPath = path.join(distDir, entry.name);
+    await fs.rm(entryPath, { recursive: true, force: true });
+  }
+
+  console.log('Bundled dist/ and cleaned unbundled files successfully.');
 }
 
 main().catch(err => {

@@ -11,6 +11,11 @@ namespace NetworkOverridesTabState {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
 
+  export interface TabStateStats {
+    totalOverridden: number;
+    totalFailed: number;
+  }
+
   export interface TabState {
     enabled: boolean;
     origin: string;
@@ -19,6 +24,8 @@ namespace NetworkOverridesTabState {
     attachError?: string;
     recentApis: Map<string, ApiEntry>;
     recentApiBodies: Map<string, string>;
+    stats: TabStateStats;
+    throttlePreset?: 'none' | 'fast3g' | 'slow3g' | 'offline';
   }
 
   // Runtime-only artifacts: never mirrored to storage.
@@ -55,10 +62,22 @@ namespace NetworkOverridesTabState {
         attached: false,
         recentApis: new Map(),
         recentApiBodies: new Map(),
+        stats: { totalOverridden: 0, totalFailed: 0 },
+        throttlePreset: 'none',
       };
       states.set(tabId, state);
     }
     return state;
+  }
+
+  export function recordOverrideStat(tabId: number, isFail = false): void {
+    const state = ensure(tabId);
+    if (isFail) {
+      state.stats.totalFailed++;
+    } else {
+      state.stats.totalOverridden++;
+    }
+    schedulePersist(tabId);
   }
 
   export function runtime(tabId: number): TabRuntime {
@@ -125,6 +144,8 @@ namespace NetworkOverridesTabState {
       attachError: state.attachError,
       recentApis: Object.fromEntries(state.recentApis.entries()),
       recentApiBodies: Object.fromEntries(state.recentApiBodies.entries()),
+      stats: state.stats,
+      throttlePreset: state.throttlePreset,
     };
   }
 

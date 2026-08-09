@@ -73,3 +73,16 @@ test('rehydrate rebuilds live tabs, drops dead tabs, and reports enabled tabs', 
   assert.equal(store.get(999), undefined);
   assert.equal(harness.sessionState['tabState_999'], undefined);
 });
+
+test('recordOverrideStat increments totalOverridden and totalFailed stats', async () => {
+  const harness = createBackgroundHarness();
+  const store = harness.context.NetworkOverridesTabState;
+
+  store.recordOverrideStat(7, false);
+  store.recordOverrideStat(7, false);
+  store.recordOverrideStat(7, true);
+
+  const state = store.get(7);
+  assert.equal(state.stats.totalOverridden, 2);
+  assert.equal(state.stats.totalFailed, 1);
+});

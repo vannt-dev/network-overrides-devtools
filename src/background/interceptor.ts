@@ -63,6 +63,7 @@ namespace NetworkOverridesBackground {
         const postData = params.request?.postData || state.recentApis.get(url)?.postData;
         const match = findOverride(url, params.request?.method, state.overrides, postData);
         if (match && match.override.failReason) {
+          TabState.recordOverrideStat(tabId, true);
           const errorReason = match.override.failReason;
           const fail = () => {
             chrome.debugger.sendCommand(
@@ -266,6 +267,7 @@ namespace NetworkOverridesBackground {
           ? ov.statusCode
           : fallbackCode;
 
+      TabState.recordOverrideStat(tabId, false);
       const doFulfill = () => {
         chrome.debugger.sendCommand(
           { tabId },

@@ -74,7 +74,7 @@ try {
   let statusText = '';
   for (let i = 0; i < 20; i++) {
     statusText = (await popup.textContent('#attach-status'))?.trim() ?? '';
-    if (statusText) break;
+    if (statusText === 'Intercepting requests' || statusText.startsWith('Attach failed:')) break;
     await popup.waitForTimeout(500);
   }
   report(

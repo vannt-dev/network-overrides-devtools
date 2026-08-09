@@ -52,6 +52,16 @@ namespace NetworkOverridesUi {
       (event.target as HTMLElement).removeAttribute?.('aria-invalid');
       if (elements.modalFeedback.classList.contains('is-error')) clearModalFeedback(elements);
     });
+    elements.modal?.addEventListener('keydown', (event: KeyboardEvent) => {
+      const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+      if (isCtrlOrCmd && event.key === 'Enter') {
+        event.preventDefault();
+        elements.saveOverrideBtn?.click();
+      } else if (isCtrlOrCmd && event.shiftKey && (event.key === 'F' || event.key === 'f')) {
+        event.preventDefault();
+        elements.formatJsonBtn?.click();
+      }
+    });
     elements.modalMode?.addEventListener('change', () => {
       updateImagePreview(elements, elements.modalBody.value);
     });

@@ -367,3 +367,31 @@ test('Saving a body override with requestHeaders persists requestHeaders', async
     { name: 'Authorization', value: 'Bearer my-secret-token' },
   ]);
 });
+
+test('Modal triggers save on Ctrl+Enter keyboard shortcut', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('add-api-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document.getElementById('modal-pattern').value = 'api/shortcut';
+  harness.document.getElementById('modal-body').value = '{"ok":true}';
+
+  const modal = harness.document.getElementById('override-modal');
+  modal.dispatchEvent(
+    new harness.window.KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+      bubbles: true,
+    })
+  );
+  await flushUi(harness.window);
+
+  const savedRules = harness.localState[`overrides_${TEST_DOMAIN}`];
+  assert.ok(savedRules);
+  assert.equal(savedRules.length, 1);
+  assert.equal(savedRules[0].pattern, 'api/shortcut');
+});

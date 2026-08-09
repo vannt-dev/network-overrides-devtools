@@ -12,6 +12,7 @@ namespace NetworkOverridesUi {
     onDuplicate: (index: number) => void
   ): void {
     elements.listEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     state.overrides.forEach((rule, index) => {
       const li = document.createElement('li');
       li.className = 'override-item';
@@ -147,7 +148,8 @@ namespace NetworkOverridesUi {
       li.appendChild(cb);
       li.appendChild(span);
       li.appendChild(actionsDiv);
-      elements.listEl.appendChild(li);
+      fragment.appendChild(li);
     });
+    elements.listEl.appendChild(fragment);
   }
 }

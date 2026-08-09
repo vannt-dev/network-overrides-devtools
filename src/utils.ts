@@ -12,31 +12,61 @@ namespace NetworkOverridesUtils {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
+  const regexCache = new Map<string, RegExp | null>();
+  const MAX_REGEX_CACHE_SIZE = 500;
+
+  function getCompiledRegex(key: string, compile: () => RegExp | null): RegExp | null {
+    if (regexCache.has(key)) {
+      return regexCache.get(key)!;
+    }
+    if (regexCache.size >= MAX_REGEX_CACHE_SIZE) {
+      const keysToDelete = Array.from(regexCache.keys()).slice(0, 250);
+      for (const k of keysToDelete) {
+        regexCache.delete(k);
+      }
+    }
+    const compiled = compile();
+    regexCache.set(key, compiled);
+    return compiled;
+  }
+
+  export function clearRegexCache(): void {
+    regexCache.clear();
+  }
+
   export function matchPattern(pattern: string, url: string): string[] | null {
     const trimmed = pattern.trim();
     if (trimmed === '*' || trimmed.toLowerCase() === 'all') {
       return [];
     }
     if (isRegexPattern(trimmed)) {
-      const lastSlash = trimmed.lastIndexOf('/');
-      const source = trimmed.slice(1, lastSlash);
-      const flags = trimmed.slice(lastSlash + 1);
-      try {
-        const regex = new RegExp(source, flags);
-        return regex.test(url) ? [] : null;
-      } catch {
-        return null;
-      }
+      const regex = getCompiledRegex('reg:' + trimmed, () => {
+        const lastSlash = trimmed.lastIndexOf('/');
+        const source = trimmed.slice(1, lastSlash);
+        const flags = trimmed.slice(lastSlash + 1);
+        try {
+          return new RegExp(source, flags);
+        } catch {
+          return null;
+        }
+      });
+      if (!regex) return null;
+      regex.lastIndex = 0;
+      return regex.test(url) ? [] : null;
     }
     if (trimmed.includes('*')) {
-      const parts = trimmed.split('*').map(escapeRegex);
-      try {
-        const regex = new RegExp('^' + parts.join('(.*)') + '$');
-        const match = url.match(regex);
-        return match ? match.slice(1) : null;
-      } catch {
-        return null;
-      }
+      const regex = getCompiledRegex('glob:' + trimmed, () => {
+        const parts = trimmed.split('*').map(escapeRegex);
+        try {
+          return new RegExp('^' + parts.join('(.*)') + '$');
+        } catch {
+          return null;
+        }
+      });
+      if (!regex) return null;
+      regex.lastIndex = 0;
+      const match = url.match(regex);
+      return match ? match.slice(1) : null;
     }
     return url.includes(trimmed) ? [] : null;
   }

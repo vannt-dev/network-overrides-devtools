@@ -109,6 +109,8 @@ namespace NetworkOverridesUi {
       return;
     }
 
+    const fragment = document.createDocumentFragment();
+
     apisToRender.forEach(api => {
       const item = document.createElement('li');
       item.className = 'api-item';
@@ -180,7 +182,9 @@ namespace NetworkOverridesUi {
       item.appendChild(actionsDiv);
 
       item.addEventListener('click', () => onApiClick(api));
-      elements.apisList.appendChild(item);
+      fragment.appendChild(item);
     });
+
+    elements.apisList.appendChild(fragment);
   }
 }

@@ -182,7 +182,7 @@ namespace NetworkOverridesUi {
       return operation;
     }
 
-    function notifyBackground(overrides = state.overrides): Promise<void> {
+    function notifyBackground(overrides = state.overrides, isRetry = false): Promise<void> {
       if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
       return new Promise((resolve, reject) => {
         try {
@@ -196,7 +196,18 @@ namespace NetworkOverridesUi {
             },
             (response: { success?: boolean; error?: string } | undefined) => {
               if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
+                const lastErrMsg = chrome.runtime.lastError.message || '';
+                if (
+                  !isRetry &&
+                  (lastErrMsg.includes('message port closed') ||
+                    lastErrMsg.includes('Could not establish connection'))
+                ) {
+                  window.setTimeout(() => {
+                    notifyBackground(overrides, true).then(resolve, reject);
+                  }, 150);
+                  return;
+                }
+                reject(new Error(lastErrMsg));
                 return;
               }
               if (!response || response.success === false) {
@@ -387,10 +398,9 @@ namespace NetworkOverridesUi {
             : false;
       elements.enableCheckbox.checked = state.enabled;
       renderRules();
-      void notifyBackground().catch(error => {
-        if (state.enabled) {
-          showNotification(`Interception could not start: ${errorMessage(error)}`, 'error');
-        }
+      void notifyBackground().catch(() => {
+        // Startup sync: if port closes during worker startup, ignore silently;
+        // getStatus will report the real debugger attachment status.
       });
 
       if (!port) {

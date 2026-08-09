@@ -1,0 +1,22 @@
+Network Overrides API is a developer-focused Chrome and Edge extension for capturing and overriding network requests directly from a DevTools panel or popup.
+
+Inspect Fetch, XHR, GraphQL, document, script, stylesheet, and image requests in one focused view. Create reusable rules to mock response bodies, status codes, delays, request headers, response headers, redirects, and network failures without changing your application or backend.
+
+Highlights:
+- Capture and filter requests from the active tab.
+- Match requests by URL text, wildcard, regular expression, and HTTP method.
+- Mock JSON, text, and base64 response bodies.
+- Override request and response headers.
+- Simulate HTTP statuses, latency, redirects, and network failures.
+- Enable, disable, duplicate, import, export, and organize reusable rules.
+- Keep rules separated by domain and restore interception after service-worker restarts.
+- See clear save and apply feedback when Chrome cannot attach the debugger.
+
+Designed for frontend developers, QA engineers, and anyone who needs predictable API states while debugging edge cases and failure flows.
+
+Permissions:
+- debugger: required to intercept and fulfill requests through the Chrome DevTools Protocol.
+- storage: saves override rules and session state locally in the browser.
+- access to all URLs: lets rules operate on the sites and APIs you choose to debug.
+
+Network Overrides API is a development tool. Only enable interception on tabs you intend to test.

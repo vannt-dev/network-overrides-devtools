@@ -6,10 +6,17 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const OUTPUT = path.join(ROOT, 'store-assets', 'screenshots');
+const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+const VERSION = `v${manifest.version}`;
+const OUTPUT = path.join(ROOT, 'store-assets', VERSION);
+const STORE_TEMPLATES = path.join(ROOT, 'store-assets', 'templates');
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'network-overrides-store-'));
 const PROFILE = path.join(WORK_DIR, 'profile');
 fs.mkdirSync(OUTPUT, { recursive: true });
+fs.copyFileSync(
+  path.join(STORE_TEMPLATES, 'description.txt'),
+  path.join(OUTPUT, 'description.txt')
+);
 
 const json = value => JSON.stringify(value);
 const server = http.createServer((request, response) => {
@@ -188,6 +195,23 @@ async function screenshot(page, filename) {
   console.log(path.join(OUTPUT, filename));
 }
 
+async function renderPromoImage(sourceFilename, outputFilename, width, height) {
+  const promo = await context.newPage();
+  await promo.setViewportSize({ width, height });
+  const source = fs.readFileSync(path.join(STORE_TEMPLATES, sourceFilename)).toString('base64');
+  await promo.setContent(`
+    <!doctype html>
+    <style>
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #dceeff; }
+      img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    </style>
+    <img src="data:image/png;base64,${source}" alt="" />
+  `);
+  await promo.locator('img').evaluate(image => image.decode());
+  await screenshot(promo, outputFilename);
+  await promo.close();
+}
+
 try {
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 15000 });
@@ -320,6 +344,9 @@ try {
     'Save validation and apply status stay visible, with a one-click retry when Chrome cannot update interception.'
   );
   await screenshot(popup, '04-save-and-retry.png');
+
+  await renderPromoImage('small-promo-source.png', 'small-promo-440x280.png', 440, 280);
+  await renderPromoImage('marquee-promo-source.png', 'marquee-promo-1400x560.png', 1400, 560);
 } finally {
   await context.close();
   await new Promise(resolve => server.close(resolve));

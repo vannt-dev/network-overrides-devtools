@@ -6,13 +6,13 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 
 ## Screenshots
 
-| Live API capture                                                | Override editor                                                     |
-| --------------------------------------------------------------- | ------------------------------------------------------------------- |
-| ![Captured APIs](store-assets/screenshots/01-captured-apis.png) | ![Override editor](store-assets/screenshots/02-override-editor.png) |
+| Live API capture                                           | Override editor                                                |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| ![Captured APIs](store-assets/v2.2.0/01-captured-apis.png) | ![Override editor](store-assets/v2.2.0/02-override-editor.png) |
 
-| Reusable override rules                                           | Save and apply feedback                                                    |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| ![Override rules](store-assets/screenshots/03-override-rules.png) | ![Save and retry feedback](store-assets/screenshots/04-save-and-retry.png) |
+| Reusable override rules                                      | Save and apply feedback                                               |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| ![Override rules](store-assets/v2.2.0/03-override-rules.png) | ![Save and retry feedback](store-assets/v2.2.0/04-save-and-retry.png) |
 
 ## Features
 
@@ -189,7 +189,7 @@ npm test               # Build + run test suite
 npm run coverage       # Build + run tests with coverage report
 npm run ci:test        # CI pipeline (same as coverage)
 npm run smoke          # Real-browser smoke test (loads the unpacked extension into Chromium)
-npm run store:screenshots # Recreate the four 1280x800 Chrome Web Store screenshots
+npm run store:screenshots # Create versioned Store screenshots, promo tiles, and description note
 npm run package:store  # Create a ZIP for Chrome Web Store / Edge Add-ons
 ```
 

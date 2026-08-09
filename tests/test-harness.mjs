@@ -40,27 +40,7 @@ export function createUiContext() {
     URL,
   };
   vm.createContext(context);
-  runDistFile('utils.js', context);
-  runDistFile('shared.js', context);
-  runDistFile('ui/types.js', context);
-  runDistFile('ui/view-utils.js', context);
-  runDistFile('ui/primitives.js', context);
-  runDistFile('ui/notifications.js', context);
-  runDistFile('ui/dialogs.js', context);
-  runDistFile('ui/persistence.js', context);
-  runDistFile('ui/attach-status.js', context);
-  runDistFile('ui/curl.js', context);
-  runDistFile('ui/swagger.js', context);
-  runDistFile('ui/har.js', context);
-  runDistFile('ui/headers-editor.js', context);
-  runDistFile('ui/modal.js', context);
-  runDistFile('ui/rules-list.js', context);
-  runDistFile('ui/api-list.js', context);
-  runDistFile('ui/profiles.js', context);
-  runDistFile('ui/modal-controller.js', context);
-  runDistFile('ui/rules-io-controller.js', context);
-  runDistFile('ui/toolbar-controller.js', context);
-  runDistFile('ui.js', context);
+  runDistFile('ui.bundle.js', context);
   return context;
 }
 
@@ -111,15 +91,7 @@ export function createBackgroundContext() {
     },
   };
   vm.createContext(context);
-  runDistFile('utils.js', context);
-  runDistFile('shared.js', context);
-  runDistFile('tab-state.js', context);
-  runDistFile('background/encoding.js', context);
-  runDistFile('background/api-capture.js', context);
-  runDistFile('background/interceptor.js', context);
-  runDistFile('background/debugger-controller.js', context);
-  runDistFile('background/message-router.js', context);
-  runDistFile('background.js', context);
+  runDistFile('background.bundle.js', context);
   return context;
 }
 
@@ -452,26 +424,7 @@ export function createUiHarness({
   };
 
   const context = dom.getInternalVMContext();
-  runDistFile('utils.js', context);
-  runDistFile('shared.js', context);
-  runDistFile('ui/types.js', context);
-  runDistFile('ui/view-utils.js', context);
-  runDistFile('ui/primitives.js', context);
-  runDistFile('ui/notifications.js', context);
-  runDistFile('ui/dialogs.js', context);
-  runDistFile('ui/persistence.js', context);
-  runDistFile('ui/attach-status.js', context);
-  runDistFile('ui/curl.js', context);
-  runDistFile('ui/swagger.js', context);
-  runDistFile('ui/headers-editor.js', context);
-  runDistFile('ui/modal.js', context);
-  runDistFile('ui/rules-list.js', context);
-  runDistFile('ui/api-list.js', context);
-  runDistFile('ui/profiles.js', context);
-  runDistFile('ui/modal-controller.js', context);
-  runDistFile('ui/rules-io-controller.js', context);
-  runDistFile('ui/toolbar-controller.js', context);
-  runDistFile('ui.js', context);
+  runDistFile('ui.bundle.js', context);
   window.NetworkOverridesUi.init(options);
 
   return {

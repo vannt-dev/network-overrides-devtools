@@ -6,7 +6,7 @@
   "permissions": ["storage", "debugger"],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "dist/background.js"
+    "service_worker": "dist/background.bundle.js"
   },
   "devtools_page": "devtools.html",
   "action": {

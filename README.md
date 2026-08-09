@@ -57,26 +57,56 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 
 ```
 src/
-├── background.ts       # Service-worker bootstrap
-├── background/         # Debugger lifecycle, interception, encoding, capture, message routing
-├── ui.ts               # Shared UI state and controller orchestration
-├── ui/                  # Reusable modal, rules, headers, dialogs, notifications, profiles, HAR parser, import/export
-├── shared.ts            # Shared OverrideRule, ApiEntry, and header types
-├── tab-state.ts         # Per-tab state, session persistence, and worker rehydration
-├── panel.ts             # DevTools panel initialization and HAR streaming
-├── popup.ts             # Action popup initialization
-└── utils.ts             # Pattern matching, wildcard, dynamic templates, LRU regex cache, and origin helpers
+├── background.ts            # Service Worker entrypoint bootstrap
+├── devtools.ts              # Chrome DevTools extension tab registration
+├── panel.ts                 # DevTools panel entrypoint & HAR streaming
+├── popup.ts                 # Action popup entrypoint
+├── ui.ts                    # Shared UI state & controller orchestration
+├── shared.ts                # Shared OverrideRule, ApiEntry, and header types
+├── tab-state.ts             # Per-tab state store, session persistence, & worker rehydration
+├── utils.ts                 # Pattern matching, wildcard, dynamic templates, LRU regex cache, & origin helpers
+├── background/
+│   ├── api-capture.ts       # CDP Network event listener & API tracking
+│   ├── debugger-controller.ts # chrome.debugger attach/detach & domain setup
+│   ├── encoding.ts          # Base64 response body encoding helpers
+│   ├── interceptor.ts       # Fetch.requestPaused request/response/fail interceptor
+│   └── message-router.ts    # Background message listener & route handler
+└── ui/
+    ├── api-list.ts          # Render captured APIs & resource type counters
+    ├── attach-status.ts     # Status badge renderer (green/red)
+    ├── curl.ts              # cURL command generator & parser
+    ├── dialogs.ts           # Prompt & confirmation modal dialogs
+    ├── har.ts               # HAR (HTTP Archive) spec parser
+    ├── headers-editor.ts    # Request & Response headers editor table/textarea
+    ├── modal-controller.ts  # Override editor modal event handlers
+    ├── modal.ts             # Override modal UI state & visibility
+    ├── notifications.ts     # Toast notifications (success/warning/error)
+    ├── persistence.ts       # Storage persistence queue & error handler
+    ├── primitives.ts        # UI element creation primitives
+    ├── profiles.ts          # Per-domain rule profiles & presets
+    ├── rules-io-controller.ts # Import/export JSON rules & HAR/Swagger drag-and-drop
+    ├── rules-list.ts        # Render saved rules list with action buttons & badges
+    ├── swagger.ts          # Swagger / OpenAPI spec parser
+    ├── toolbar-controller.ts# Enable toggle, search, refresh, tabs, & action buttons
+    ├── types.ts             # UI state & elements interfaces
+    └── view-utils.ts        # Highlighting & label formatting helpers
 
-styles.css               # CSS entrypoint
-styles/                  # Base, feature, modal/rules, primitive, and guide styles
-scripts/                  # Smoke, Store screenshot, JS bundling, and packaging automation
-store-assets/screenshots/ # Chrome Web Store-ready screenshots
-icons/                    # Active extension icons (16x16, 48x48, 128x128)
-icons/concepts/          # 3 concept icon design variants (concept-1, concept-2, concept-3)
-dist/                     # Bundled JavaScript output (background.bundle.js, ui.bundle.js, etc.)
-panel.html                # DevTools panel shell
-popup.html                # Action popup shell
-manifest.json             # Manifest V3 configuration
+styles.css                   # CSS stylesheet entrypoint
+styles/                      # Modular CSS stylesheets (base, feature, modal/rules, primitive, guide)
+scripts/                     # Automation scripts:
+├── bundle.mjs               # Bundles TypeScript outputs into 5 clean JS files & cleans dist/
+├── package-store.mjs        # Store zip packager
+├── smoke.mjs                # Real Chromium Playwright integration smoke test
+└── capture-store-screenshots.mjs # Store assets screenshot generator
+
+icons/                       # Active extension icons (16x16, 48x48, 128x128)
+icons/concepts/              # 3 concept icon design variants (concept-1, concept-2, concept-3)
+dist/                        # Bundled JavaScript outputs (background.bundle.js, ui.bundle.js, panel.js, popup.js, devtools.js)
+devtools.html                # DevTools tab registrar page
+panel.html                   # DevTools panel page
+popup.html                   # Extension action popup page
+guide.html                   # Bundled offline user guide
+manifest.json                # Chrome Manifest V3 configuration
 ```
 
 ### Key flows

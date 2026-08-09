@@ -417,3 +417,31 @@ test('Background enforces an imported disabled rule by not applying it: request 
   assert.ok(continueCmd);
   assert.equal(continueCmd.params.body, undefined);
 });
+
+test('Background overrides outgoing request payload when requestBody is set', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [
+      { pattern: '/users$/', body: '', mode: 'text', requestBody: '{"name":"overridden"}' },
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-body-mod',
+    request: { url: TEST_API_URL, method: 'POST', postData: '{"name":"original"}' },
+    resourceType: 'Fetch',
+  });
+
+  const continueCmd = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.continueRequest' && params.requestId === 'req-body-mod'
+  );
+  assert.ok(continueCmd);
+  assert.ok(continueCmd.params.postData);
+});

@@ -105,42 +105,50 @@ namespace NetworkOverridesBackground {
           );
           return;
         }
-        if (
-          match &&
-          Array.isArray(match.override.requestHeaders) &&
-          match.override.requestHeaders.length > 0
-        ) {
-          const originalHeaders = toFetchHeaders(params.request?.headers);
-          const reqHeaderMap = new Map<string, string>();
-          for (const h of originalHeaders) {
-            reqHeaderMap.set(h.name.toLowerCase(), h.value);
-          }
-          for (const h of match.override.requestHeaders) {
-            if (h.name && h.name.trim()) {
-              reqHeaderMap.set(h.name.trim().toLowerCase(), h.value);
+        const hasReqHeaders =
+          Boolean(match) &&
+          Array.isArray(match!.override.requestHeaders) &&
+          match!.override.requestHeaders.length > 0;
+        const hasReqBody =
+          Boolean(match) &&
+          typeof match!.override.requestBody === 'string' &&
+          match!.override.requestBody.trim().length > 0;
+
+        if (match && (hasReqHeaders || hasReqBody)) {
+          const continueParams: any = { requestId: params.requestId };
+          if (hasReqHeaders && match.override.requestHeaders) {
+            const originalHeaders = toFetchHeaders(params.request?.headers);
+            const reqHeaderMap = new Map<string, string>();
+            for (const h of originalHeaders) {
+              reqHeaderMap.set(h.name.toLowerCase(), h.value);
             }
-          }
-          const updatedHeaders = Array.from(reqHeaderMap.entries()).map(([name, value]) => ({
-            name,
-            value,
-          }));
-          const doContinue = () => {
-            chrome.debugger.sendCommand(
-              { tabId },
-              'Fetch.continueRequest',
-              { requestId: params.requestId, headers: updatedHeaders },
-              () => {
-                if (chrome.runtime.lastError) {
-                  proceed();
-                }
+            for (const h of match.override.requestHeaders) {
+              if (h.name && h.name.trim()) {
+                reqHeaderMap.set(h.name.trim().toLowerCase(), h.value);
               }
+            }
+            continueParams.headers = Array.from(reqHeaderMap.entries()).map(([name, value]) => ({
+              name,
+              value,
+            }));
+          }
+          if (hasReqBody && match.override.requestBody) {
+            continueParams.postData = NetworkOverridesStringToBase64Local(
+              match.override.requestBody
             );
+          }
+          const doContinueReq = () => {
+            chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', continueParams, () => {
+              if (chrome.runtime.lastError) {
+                proceed();
+              }
+            });
           };
           const delayMs = typeof match.override.delayMs === 'number' ? match.override.delayMs : 0;
           if (delayMs > 0) {
-            setTimeout(doContinue, delayMs);
+            setTimeout(doContinueReq, delayMs);
           } else {
-            doContinue();
+            doContinueReq();
           }
           return;
         }

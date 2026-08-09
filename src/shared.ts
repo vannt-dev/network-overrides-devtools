@@ -17,6 +17,7 @@ declare namespace NetworkOverridesShared {
     delayMs?: number; // 0–120000 ms; body and fail rules
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
     isGlobal?: boolean; // applies across all domains if true
+    requestBody?: string; // override outgoing request payload
   }
   interface RuleProfile {
     id: string;

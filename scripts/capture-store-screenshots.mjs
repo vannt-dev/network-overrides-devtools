@@ -229,6 +229,13 @@ try {
   await popup.evaluate(() => window.dispatchEvent(new Event('focus')));
   await popup.waitForTimeout(500);
   if (!(await popup.locator('#enable').isChecked())) await popup.click('.switch-slider');
+  // Enabling interception is asynchronous. Starting the demo requests before
+  // the debugger is attached makes the first screenshot intermittently empty.
+  await popup.waitForFunction(
+    () => document.querySelector('#attach-status')?.textContent?.trim() === 'Intercepting requests',
+    undefined,
+    { timeout: 15000 }
+  );
 
   await site.evaluate(async baseUrl => {
     await Promise.all([
@@ -331,11 +338,34 @@ try {
   await screenshot(popup, '03-override-rules.png');
 
   await popup.evaluate(() => {
-    window.NetworkOverridesUi.showPersistenceNotification('Override saved', {
-      applied: false,
-      warning: 'Another debugger is currently using this tab',
-      retry: async () => undefined,
-    });
+    const region = document.createElement('div');
+    region.id = 'notification-region';
+    region.className = 'notification-region';
+    region.setAttribute('aria-live', 'polite');
+
+    const toast = document.createElement('div');
+    toast.className = 'notification-toast notification-toast--warning';
+    toast.setAttribute('role', 'status');
+
+    const message = document.createElement('span');
+    message.className = 'notification-toast__message';
+    message.textContent =
+      'Override saved, but interception was not updated: Another debugger is currently using this tab';
+
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'notification-toast__action';
+    retry.textContent = 'Retry';
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'notification-toast__close';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.textContent = '×';
+
+    toast.append(message, retry, close);
+    region.appendChild(toast);
+    document.body.appendChild(region);
   });
   await setCaption(
     popup,

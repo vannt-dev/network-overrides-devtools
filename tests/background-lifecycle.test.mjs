@@ -81,6 +81,71 @@ test('Navigating to a new origin loads that origin saved rules and clears captur
   assert.equal(state.recentApis.size, 0);
 });
 
+test('Navigation clears old-origin rules before the new-origin storage read completes', async () => {
+  const harness = createBackgroundHarness();
+  await harness.context.NetworkOverridesBackground.ready;
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://old.test/',
+    enabled: true,
+    overrides: [{ pattern: '*', body: '{"old":true}', mode: 'text' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const originalGet = harness.chrome.storage.local.get;
+  let completeStorageRead;
+  harness.chrome.storage.local.get = (keys, callback) => {
+    completeStorageRead = () => originalGet(keys, callback);
+  };
+  harness.navigateTab(7, 'https://new.test/home');
+
+  assert.deepEqual(normalize(harness.context.NetworkOverridesTabState.get(7).overrides), []);
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-during-navigation',
+    request: { url: 'https://new.test/api/users', method: 'GET' },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+  assert.equal(
+    harness.commandLog.some(
+      ({ method, params }) =>
+        method === 'Fetch.fulfillRequest' && params.requestId === 'req-during-navigation'
+    ),
+    false
+  );
+  assert.equal(typeof completeStorageRead, 'function');
+  completeStorageRead();
+});
+
+test('Navigating to a new origin keeps global rules and loads local rules', async () => {
+  const harness = createBackgroundHarness({
+    storageState: {
+      overrides_global: [
+        { pattern: '/shared', body: '{"global":true}', mode: 'text', isGlobal: true },
+      ],
+      'overrides_https://new.test': [{ pattern: '/local', body: '{"local":true}', mode: 'text' }],
+    },
+  });
+  await harness.context.NetworkOverridesBackground.ready;
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: 'https://old.test/',
+    enabled: true,
+    overrides: [],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.navigateTab(7, 'https://new.test/home');
+  const state = harness.context.NetworkOverridesTabState.get(7);
+  assert.deepEqual(normalize(state.overrides), [
+    { pattern: '/local', body: '{"local":true}', mode: 'text' },
+    { pattern: '/shared', body: '{"global":true}', mode: 'text', isGlobal: true },
+  ]);
+});
+
 test('Same-origin navigation leaves rules and captured APIs untouched', async () => {
   const harness = createBackgroundHarness();
   await harness.context.NetworkOverridesBackground.ready;

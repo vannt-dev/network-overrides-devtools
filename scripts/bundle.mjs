@@ -40,6 +40,10 @@ const uiFiles = [
   'ui.js',
 ];
 
+function stripSourceMapComments(text) {
+  return text.replace(/^\/\/# sourceMappingURL=.*(?:\r?\n|$)/gm, '');
+}
+
 async function bundleFiles(fileList, outputFile, filterFn) {
   const contents = [];
   for (const relFile of fileList) {
@@ -48,6 +52,7 @@ async function bundleFiles(fileList, outputFile, filterFn) {
     if (filterFn) {
       text = filterFn(text, relFile);
     }
+    text = stripSourceMapComments(text);
     contents.push(`/* --- ${relFile} --- */\n${text}`);
   }
   const bundledContent = contents.join('\n\n');
@@ -63,6 +68,14 @@ async function main() {
   });
 
   await bundleFiles(uiFiles, 'ui.bundle.js');
+
+  // Entrypoints are kept as standalone files, but their generated source maps
+  // are removed from release builds below. Avoid leaving broken map references.
+  for (const entrypoint of ['devtools.js', 'panel.js', 'popup.js']) {
+    const entrypointPath = path.join(distDir, entrypoint);
+    const text = await fs.readFile(entrypointPath, 'utf8');
+    await fs.writeFile(entrypointPath, stripSourceMapComments(text), 'utf8');
+  }
 
   // Clean up unbundled files and subdirectories so dist only contains essential bundles and entrypoints
   const keepFiles = new Set([

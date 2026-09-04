@@ -45,6 +45,8 @@ namespace NetworkOverridesUi {
         (Array.isArray(rule.requestHeaders) && rule.requestHeaders.every(isValidImportHeader))) &&
       (rule.graphqlOperation === undefined || typeof rule.graphqlOperation === 'string') &&
       (rule.processTemplates === undefined || typeof rule.processTemplates === 'boolean') &&
+      (rule.isGlobal === undefined || typeof rule.isGlobal === 'boolean') &&
+      (rule.requestBody === undefined || typeof rule.requestBody === 'string') &&
       (rule.failReason === undefined ||
         (typeof rule.failReason === 'string' &&
           FAIL_REASONS.includes(rule.failReason) &&
@@ -63,6 +65,8 @@ namespace NetworkOverridesUi {
     if (source.method !== undefined) clean.method = source.method.toUpperCase();
     if (source.graphqlOperation !== undefined) clean.graphqlOperation = source.graphqlOperation;
     if (source.processTemplates !== undefined) clean.processTemplates = source.processTemplates;
+    if (source.isGlobal !== undefined) clean.isGlobal = source.isGlobal;
+    if (source.requestBody !== undefined) clean.requestBody = source.requestBody;
     if (source.statusCode !== undefined) clean.statusCode = source.statusCode;
     if (source.delayMs !== undefined) clean.delayMs = source.delayMs;
     if (source.responseHeaders !== undefined) {

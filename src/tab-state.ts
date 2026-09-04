@@ -232,6 +232,16 @@ namespace NetworkOverridesTabState {
       state.attachError = undefined;
       state.recentApis = new Map(Object.entries(raw.recentApis || {}));
       state.recentApiBodies = new Map(Object.entries(raw.recentApiBodies || {}));
+      if (raw.stats && typeof raw.stats === 'object') {
+        state.stats = {
+          totalOverridden:
+            typeof raw.stats.totalOverridden === 'number' ? raw.stats.totalOverridden : 0,
+          totalFailed: typeof raw.stats.totalFailed === 'number' ? raw.stats.totalFailed : 0,
+        };
+      }
+      if (['none', 'fast3g', 'slow3g', 'offline'].includes(raw.throttlePreset)) {
+        state.throttlePreset = raw.throttlePreset;
+      }
       if (state.enabled) toReattach.push(tabId);
     }
     if (deadKeys.length) {

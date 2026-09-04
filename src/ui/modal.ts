@@ -40,6 +40,9 @@ namespace NetworkOverridesUi {
     if (elements.modalRequestHeadersField) {
       elements.modalRequestHeadersField.style.display = type === 'fail' ? 'none' : '';
     }
+    if (elements.modalRequestBodyField) {
+      elements.modalRequestBodyField.style.display = type === 'fail' ? 'none' : '';
+    }
     elements.modalPattern.disabled = type === 'body';
   }
 
@@ -95,6 +98,15 @@ namespace NetworkOverridesUi {
       elements.modalRequestHeaders.value = (existing?.requestHeaders || [])
         .map(header => `${header.name}: ${header.value}`)
         .join('\n');
+    }
+    if (elements.modalRequestBody) {
+      elements.modalRequestBody.value = existing?.requestBody || '';
+    }
+    if (elements.modalProcessTemplates) {
+      elements.modalProcessTemplates.checked = existing?.processTemplates !== false;
+    }
+    if (elements.modalGlobalRule) {
+      elements.modalGlobalRule.checked = existing?.isGlobal === true;
     }
     elements.modalFailReason.value =
       existing?.failReason && FAIL_REASONS.includes(existing.failReason)

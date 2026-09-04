@@ -144,6 +144,7 @@ function buildUiHtml() {
           <option value="DELETE">DELETE</option>
         </select>
         <input id="modal-graphql-op" type="text">
+        <input id="modal-global-rule" type="checkbox">
         <div class="override-type-selector">
           <label class="type-radio">
             <input type="radio" name="modal-override-type" value="body" checked />
@@ -164,6 +165,7 @@ function buildUiHtml() {
             <option value="file">Raw base64</option>
           </select>
           <textarea id="modal-body"></textarea>
+          <input id="modal-process-templates" type="checkbox" checked>
           <div class="modal-body-footer">
             <button id="format-json-btn" type="button" style="display:none">Format JSON</button>
           </div>
@@ -182,6 +184,7 @@ function buildUiHtml() {
           </select>
         </div>
         <div id="modal-advanced-fields">
+          <label id="modal-request-body-field"><textarea id="modal-request-body"></textarea></label>
           <label id="modal-request-headers-field" class="modal-field">
             <textarea id="modal-request-headers"></textarea>
             <div id="modal-request-headers-table"></div>

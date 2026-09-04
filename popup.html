@@ -91,6 +91,10 @@
               placeholder="e.g. GetUserProfile or query name"
             />
           </label>
+          <label class="type-radio" title="Apply this rule on every domain">
+            <input id="modal-global-rule" type="checkbox" />
+            <span>Global rule (all domains)</span>
+          </label>
           <div class="override-type-selector">
             <label class="type-radio">
               <input type="radio" name="modal-override-type" value="body" checked />
@@ -113,6 +117,13 @@
                 <option value="file">Raw base64</option>
               </select>
               <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
+              <label
+                class="type-radio"
+                title="Resolve dynamic {{...}} placeholders at request time"
+              >
+                <input id="modal-process-templates" type="checkbox" checked />
+                <span>Process dynamic templates</span>
+              </label>
               <div class="modal-body-footer">
                 <button
                   id="format-json-btn"
@@ -154,6 +165,14 @@
             </label>
           </div>
           <div id="modal-advanced-fields">
+            <label class="modal-field" id="modal-request-body-field">
+              <span>Override Request Payload (optional)</span>
+              <textarea
+                id="modal-request-body"
+                rows="3"
+                placeholder='e.g. {"name":"mock"}'
+              ></textarea>
+            </label>
             <label class="modal-field" id="modal-request-headers-field">
               <span>Override Request Headers (Key-Value or Raw)</span>
               <textarea

@@ -195,3 +195,36 @@ test('Import normalizes method casing to uppercase', async () => {
   const saved = harness.storageSets.findLast(set => `overrides_${TEST_DOMAIN}` in set);
   assert.equal(saved[`overrides_${TEST_DOMAIN}`][0].method, 'GET');
 });
+
+test('Import preserves global scope and request body fields', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  selectImportFile(
+    harness,
+    JSON.stringify({
+      version: 1,
+      domain: TEST_DOMAIN,
+      overrides: [
+        {
+          pattern: '/api/users',
+          mode: 'text',
+          body: '{}',
+          isGlobal: true,
+          requestBody: '{"page":2}',
+        },
+      ],
+    })
+  );
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState.overrides_global, [
+    {
+      pattern: '/api/users',
+      mode: 'text',
+      body: '{}',
+      isGlobal: true,
+      requestBody: '{"page":2}',
+    },
+  ]);
+});

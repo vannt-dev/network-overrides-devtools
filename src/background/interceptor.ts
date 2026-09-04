@@ -204,7 +204,7 @@ namespace NetworkOverridesBackground {
       function bodyToValidBase64(): string {
         const rawBody = ov.body || '';
         const processedBody =
-          ov.mode !== 'file'
+          ov.mode !== 'file' && ov.processTemplates !== false
             ? NetworkOverridesUtils.processResponseTemplate(rawBody, captures, url)
             : rawBody;
         if (ov.mode !== 'file') return NetworkOverridesStringToBase64Local(processedBody);
@@ -223,7 +223,25 @@ namespace NetworkOverridesBackground {
 
       const responseBodyBase64 = bodyToValidBase64();
 
-      const headers = [...((params.responseHeaders as FetchHeader[]) || [])];
+      // A fulfilled body is decoded bytes supplied by this extension. Reusing
+      // representation-specific headers from the origin can make Chromium try
+      // to decompress the new body or enforce the old byte length/checksum.
+      // Rule-provided headers are merged afterwards, so advanced users can
+      // still opt into one of these headers explicitly.
+      const bodyDependentHeaders = new Set([
+        'content-encoding',
+        'content-length',
+        'content-md5',
+        'content-range',
+        'digest',
+        'transfer-encoding',
+        'trailer',
+        'x-network-overrides',
+        'x-network-overrides-pattern',
+      ]);
+      const headers = ((params.responseHeaders as FetchHeader[]) || []).filter(
+        header => !bodyDependentHeaders.has(header.name.toLowerCase().trim())
+      );
       if (Array.isArray(ov.responseHeaders)) {
         for (const extra of ov.responseHeaders) {
           if (!extra || typeof extra.name !== 'string' || !extra.name.trim()) continue;

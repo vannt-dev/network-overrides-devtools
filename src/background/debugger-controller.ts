@@ -5,6 +5,19 @@
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
 
+  const GLOBAL_OVERRIDES_KEY = 'overrides_global';
+
+  function combineOverrides(
+    domainRules: unknown,
+    globalRules: unknown
+  ): NetworkOverridesShared.OverrideRule[] {
+    const combined = [
+      ...(Array.isArray(domainRules) ? domainRules : []).filter(rule => rule?.isGlobal !== true),
+      ...(Array.isArray(globalRules) ? globalRules.filter(rule => rule?.isGlobal === true) : []),
+    ];
+    return combined;
+  }
+
   async function enableInterception(tabId: number): Promise<void> {
     await sendDebugCommand(tabId, 'Network.enable', {});
     await sendDebugCommand(tabId, 'Fetch.enable', {
@@ -134,11 +147,13 @@ namespace NetworkOverridesBackground {
     state.origin = newOrigin;
     state.recentApis.clear();
     state.recentApiBodies.clear();
+    // Do not let requests from the new origin race against rules left over
+    // from the previous origin while storage is being read.
+    state.overrides = state.overrides.filter(rule => rule.isGlobal === true);
     const overridesKey = `overrides_${newOrigin}`;
-    chrome.storage.local.get([overridesKey], (data: any) => {
+    chrome.storage.local.get([overridesKey, GLOBAL_OVERRIDES_KEY], (data: any) => {
       if (state.origin !== newOrigin) return;
-      const saved = data?.[overridesKey];
-      state.overrides = Array.isArray(saved) ? saved : [];
+      state.overrides = combineOverrides(data?.[overridesKey], data?.[GLOBAL_OVERRIDES_KEY]);
       TabState.schedulePersist(tabId);
     });
   });

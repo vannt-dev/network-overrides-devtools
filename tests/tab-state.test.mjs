@@ -60,6 +60,8 @@ test('rehydrate rebuilds live tabs, drops dead tabs, and reports enabled tabs', 
     attached: true,
     recentApis: { 'https://b.test/x': { url: 'https://b.test/x', type: 'xhr' } },
     recentApiBodies: {},
+    stats: { totalOverridden: 12, totalFailed: 3 },
+    throttlePreset: 'slow3g',
   };
   harness.sessionState['tabState_999'] = { enabled: true, origin: '', overrides: [] };
 
@@ -70,6 +72,8 @@ test('rehydrate rebuilds live tabs, drops dead tabs, and reports enabled tabs', 
   assert.equal(state.enabled, true);
   assert.equal(state.attached, false); // never survives a restart
   assert.equal(state.recentApis.size, 1);
+  assert.deepEqual(normalize(state.stats), { totalOverridden: 12, totalFailed: 3 });
+  assert.equal(state.throttlePreset, 'slow3g');
   assert.equal(store.get(999), undefined);
   assert.equal(harness.sessionState['tabState_999'], undefined);
 });

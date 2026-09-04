@@ -121,7 +121,7 @@ manifest.json                # Chrome Manifest V3 configuration
 
 4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
 
-5. **UI state**: `enabled`, per-domain rules (`overrides_{origin}`), and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts.
+5. **UI state**: `enabled`, per-domain rules (`overrides_{origin}`), global rules (`overrides_global`), and `apiSearchTerm` are persisted in `chrome.storage.local` and survive across DevTools sessions and browser restarts. Domain-specific rules take precedence over global rules.
 
 ## Storage
 
@@ -131,6 +131,7 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 | -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `enabled`            | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
 | `overrides_{origin}` | `OverrideRule[]` (rules for one domain, e.g. `overrides_https://a.test`)  | Permanent — survives browser restart                                                                    |
+| `overrides_global`   | `OverrideRule[]` shared across every domain                               | Permanent — survives browser restart                                                                    |
 | `apiSearchTerm`      | `string`                                                                  | Permanent — survives browser restart                                                                    |
 | `tabState_{tabId}`   | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
 

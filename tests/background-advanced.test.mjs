@@ -142,6 +142,77 @@ test('Background merges rule responseHeaders over the originals and keeps the ma
   );
 });
 
+test('Background removes stale body-dependent response headers when fulfilling a new body', async () => {
+  const harness = createBackgroundHarness();
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: '{"mocked":true}', mode: 'text' }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-compressed-headers',
+    request: { url: TEST_API_URL },
+    responseHeaders: [
+      { name: 'Content-Type', value: 'application/json' },
+      { name: 'Content-Encoding', value: 'br' },
+      { name: 'Content-Length', value: '999' },
+      { name: 'Transfer-Encoding', value: 'chunked' },
+      { name: 'Digest', value: 'sha-256=stale' },
+      { name: 'X-Network-Overrides', value: 'false' },
+    ],
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-compressed-headers'
+  );
+  assert.ok(fulfill);
+  const byName = name =>
+    fulfill.params.responseHeaders.filter(header => header.name.toLowerCase() === name);
+  assert.equal(byName('content-encoding').length, 0);
+  assert.equal(byName('content-length').length, 0);
+  assert.equal(byName('transfer-encoding').length, 0);
+  assert.equal(byName('digest').length, 0);
+  assert.deepEqual(
+    byName('x-network-overrides').map(header => header.value),
+    ['true']
+  );
+});
+
+test('Background honors processTemplates false', async () => {
+  const harness = createBackgroundHarness();
+  const literalBody = '{"token":"{{$uuid}}"}';
+
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [{ pattern: '/users$/', body: literalBody, mode: 'text', processTemplates: false }],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId: 'req-no-templates',
+    request: { url: TEST_API_URL },
+    responseStatusCode: 200,
+    resourceType: 'Fetch',
+  });
+
+  const fulfill = harness.commandLog.find(
+    ({ method, params }) =>
+      method === 'Fetch.fulfillRequest' && params.requestId === 'req-no-templates'
+  );
+  assert.equal(Buffer.from(fulfill.params.body, 'base64').toString('utf8'), literalBody);
+});
+
 test('Background skips rule headers that conflict with marker headers', async () => {
   const harness = createBackgroundHarness();
 

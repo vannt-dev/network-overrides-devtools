@@ -61,6 +61,10 @@ namespace NetworkOverridesUi {
     importRulesInput: HTMLInputElement;
     modalRequestHeaders?: HTMLTextAreaElement;
     modalRequestHeadersField?: HTMLElement;
+    modalRequestBody?: HTMLTextAreaElement;
+    modalRequestBodyField?: HTMLElement;
+    modalProcessTemplates?: HTMLInputElement;
+    modalGlobalRule?: HTMLInputElement;
     modalGraphqlOp?: HTMLInputElement;
     modalPreviewContainer?: HTMLDivElement;
     profilesSelect?: HTMLSelectElement;

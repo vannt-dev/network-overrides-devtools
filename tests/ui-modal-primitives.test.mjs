@@ -51,6 +51,38 @@ test('Saving a body override persists status, delay, and extra headers', async (
   ]);
 });
 
+test('Modal saves global scope, request body, and template processing preference', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  harness.document
+    .getElementById('add-api-btn')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  harness.document.getElementById('modal-pattern').value = '/api/users';
+  harness.document.getElementById('modal-body').value = '{"id":"{{$uuid}}"}';
+  harness.document.getElementById('modal-request-body').value = '{"page":2}';
+  harness.document.getElementById('modal-process-templates').checked = false;
+  harness.document.getElementById('modal-global-rule').checked = true;
+  harness.document
+    .getElementById('save-override')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState.overrides_global, [
+    {
+      pattern: '/api/users',
+      body: '{"id":"{{$uuid}}"}',
+      mode: 'text',
+      requestBody: '{"page":2}',
+      processTemplates: false,
+      isGlobal: true,
+    },
+  ]);
+  assert.deepEqual(harness.localState[`overrides_${TEST_DOMAIN}`], []);
+});
+
 test('Saving a fail rule persists failReason and delay with an empty body', async () => {
   const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
   await flushUi(harness.window);

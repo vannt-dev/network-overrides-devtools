@@ -22,6 +22,7 @@
 
 namespace NetworkOverridesUi {
   let currentDomain = '';
+  const GLOBAL_OVERRIDES_KEY = 'overrides_global';
 
   export function matchPattern(pattern: string, url: string): string[] | null {
     return NetworkOverridesUtils.matchPattern(pattern, url);
@@ -87,6 +88,10 @@ namespace NetworkOverridesUi {
       modalRequestHeadersField: document.getElementById(
         'modal-request-headers-field'
       ) as HTMLElement,
+      modalRequestBody: document.getElementById('modal-request-body') as HTMLTextAreaElement,
+      modalRequestBodyField: document.getElementById('modal-request-body-field') as HTMLElement,
+      modalProcessTemplates: document.getElementById('modal-process-templates') as HTMLInputElement,
+      modalGlobalRule: document.getElementById('modal-global-rule') as HTMLInputElement,
       modalGraphqlOp: document.getElementById('modal-graphql-op') as HTMLInputElement,
       modalPreviewContainer: document.getElementById('modal-preview-container') as HTMLDivElement,
       profilesSelect: document.getElementById('profiles-select') as HTMLSelectElement,
@@ -158,8 +163,15 @@ namespace NetworkOverridesUi {
 
       const operation = persistenceQueue.then(async () => {
         const overridesKey = getStorageKey('overrides');
+        const localRules = snapshot.filter(rule => rule.isGlobal !== true);
+        const globalRules = snapshot.filter(rule => rule.isGlobal === true);
         try {
-          await Promise.resolve(chrome.storage.local.set({ [overridesKey]: snapshot }));
+          await Promise.resolve(
+            chrome.storage.local.set({
+              [overridesKey]: localRules,
+              [GLOBAL_OVERRIDES_KEY]: globalRules,
+            })
+          );
         } catch (error) {
           if (state.overrides === snapshot) state.overrides = previousOverrides;
           throw error;
@@ -382,14 +394,32 @@ namespace NetworkOverridesUi {
       const data = await chrome.storage.local.get([
         overridesKey,
         enabledKey,
+        GLOBAL_OVERRIDES_KEY,
         'overrides',
         'enabled',
       ]);
-      state.overrides = Array.isArray(data[overridesKey])
+      const domainRules = Array.isArray(data[overridesKey])
         ? data[overridesKey]
         : Array.isArray(data.overrides)
           ? data.overrides
           : [];
+      const globalRules = Array.isArray(data[GLOBAL_OVERRIDES_KEY])
+        ? data[GLOBAL_OVERRIDES_KEY].filter((rule: OverrideRule) => rule?.isGlobal === true)
+        : [];
+      const seenGlobals = new Set<string>();
+      const uniqueGlobals = [
+        ...domainRules.filter((rule: OverrideRule) => rule?.isGlobal === true),
+        ...globalRules,
+      ].filter((rule: OverrideRule) => {
+        const signature = JSON.stringify(rule);
+        if (seenGlobals.has(signature)) return false;
+        seenGlobals.add(signature);
+        return true;
+      });
+      // Domain-specific rules take precedence over broader global rules.
+      state.overrides = domainRules
+        .filter((rule: OverrideRule) => rule?.isGlobal !== true)
+        .concat(uniqueGlobals);
       state.enabled =
         typeof data[enabledKey] === 'boolean'
           ? data[enabledKey]

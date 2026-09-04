@@ -186,6 +186,15 @@ namespace NetworkOverridesUi {
       if (elements.modalGraphqlOp?.value.trim()) {
         rule.graphqlOperation = elements.modalGraphqlOp.value.trim();
       }
+      if (elements.modalRequestBody?.value.trim()) {
+        rule.requestBody = elements.modalRequestBody.value;
+      }
+      if (overrideType === 'body' && elements.modalProcessTemplates?.checked === false) {
+        rule.processTemplates = false;
+      }
+      if (elements.modalGlobalRule?.checked) {
+        rule.isGlobal = true;
+      }
       if (overrideType === 'fail') {
         rule.failReason = FAIL_REASONS.includes(elements.modalFailReason.value)
           ? elements.modalFailReason.value

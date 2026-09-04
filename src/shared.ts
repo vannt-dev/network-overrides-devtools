@@ -2,6 +2,7 @@
 
 declare namespace NetworkOverridesShared {
   type OverrideMode = 'text' | 'file';
+  type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
   interface OverrideRule {
     pattern: string;
     body: string;

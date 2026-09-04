@@ -355,6 +355,53 @@ test('Background handles updateCapturedBodyTypes message', async () => {
   assert.equal(responded, true);
 });
 
+test('Background applies and persists network throttling presets', async () => {
+  const harness = createBackgroundHarness();
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides: [],
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const result = harness.callMessage({ type: 'setThrottle', tabId: 7, preset: 'fast3g' });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(result.keepAlive, true);
+  assert.deepEqual(normalize(result.response), {
+    type: 'setThrottleResponse',
+    success: true,
+    preset: 'fast3g',
+  });
+  const command = harness.commandLog.findLast(
+    ({ method, params }) => method === 'Network.emulateNetworkConditions' && params.latency === 150
+  );
+  assert.deepEqual(normalize(command.params), {
+    offline: false,
+    latency: 150,
+    downloadThroughput: 200000,
+    uploadThroughput: 93750,
+  });
+  assert.equal(harness.context.NetworkOverridesTabState.get(7).throttlePreset, 'fast3g');
+});
+
+test('Background rejects an unknown network throttling preset', async () => {
+  const harness = createBackgroundHarness();
+  const result = harness.callMessage({ type: 'setThrottle', tabId: 7, preset: 'dialup' });
+
+  assert.deepEqual(normalize(result.response), {
+    type: 'setThrottleResponse',
+    success: false,
+    error: 'Invalid throttle preset',
+  });
+  assert.equal(
+    harness.commandLog.some(({ method }) => method === 'Network.emulateNetworkConditions'),
+    false
+  );
+});
+
 test('Background processes response template tokens {{uuid}} and {{timestamp}}', async () => {
   const harness = createBackgroundHarness();
 

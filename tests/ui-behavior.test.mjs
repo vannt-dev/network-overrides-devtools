@@ -509,3 +509,30 @@ test('Editing a rule with an out-of-range stored method falls back to ANY in the
   // modal showed and the user had the chance to review.
   assert.equal(harness.localState.overrides[0].method, undefined);
 });
+
+test('UI renders live traffic analytics and applies a network preset', async () => {
+  const harness = createUiHarness({ apis: [{ url: TEST_API_URL, type: 'fetch' }] });
+  await flushUi(harness.window);
+
+  harness.emitPortMessage({
+    type: 'stats',
+    stats: { totalOverridden: 12, totalFailed: 3 },
+  });
+  assert.equal(
+    harness.document.getElementById('traffic-stats').textContent,
+    'Overridden 12 · Failed 3'
+  );
+
+  const select = harness.document.getElementById('throttle-preset');
+  select.value = 'slow3g';
+  select.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  await flushUi(harness.window);
+
+  assert.equal(
+    harness.sentMessages.some(
+      message => message.type === 'setThrottle' && message.preset === 'slow3g'
+    ),
+    true
+  );
+  assert.equal(select.value, 'slow3g');
+});

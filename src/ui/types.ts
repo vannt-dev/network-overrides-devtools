@@ -5,6 +5,7 @@
 namespace NetworkOverridesUi {
   export const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   export type OverrideMode = NetworkOverridesShared.OverrideMode;
+  export type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
   export type OverrideRule = NetworkOverridesShared.OverrideRule;
   export type ApiEntry = NetworkOverridesShared.ApiEntry;
   export type FetchHeader = NetworkOverridesShared.FetchHeader;
@@ -19,6 +20,8 @@ namespace NetworkOverridesUi {
   export interface Elements {
     enableCheckbox: HTMLInputElement;
     attachStatus: HTMLElement;
+    throttleSelect: HTMLSelectElement;
+    trafficStats: HTMLElement;
     patternInput: HTMLInputElement;
     bodyInput: HTMLTextAreaElement;
     addBtn: HTMLButtonElement;
@@ -108,5 +111,7 @@ namespace NetworkOverridesUi {
     attached: boolean;
     enabled: boolean;
     attachError: string | null;
+    stats: { totalOverridden: number; totalFailed: number };
+    throttlePreset: ThrottlePreset;
   }
 }

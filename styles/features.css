@@ -43,6 +43,35 @@
   color: #c62828;
 }
 
+.runtime-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 8px;
+  color: #35506b;
+  font-size: 11px;
+}
+
+.throttle-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.throttle-control select {
+  min-width: 112px;
+  padding: 3px 22px 3px 7px;
+  font-size: 11px;
+}
+
+.traffic-stats {
+  white-space: nowrap;
+  color: #4e708e;
+  font-variant-numeric: tabular-nums;
+}
+
 #modal-advanced-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

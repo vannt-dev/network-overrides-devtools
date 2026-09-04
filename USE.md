@@ -395,11 +395,15 @@ Tích chọn tùy chọn **Global Rule** khi tạo/chỉnh sửa quy tắc để
 
 Cho phép sửa đổi dữ liệu Request Payload (body của các request `POST`, `PUT`, `PATCH`) trước khi gửi lên Server bằng cách nhập nội dung mới vào ô **Request Payload** trong editor modal.
 
-### 9.8. Import HAR File (HTTP Archive)
+### 9.8. Giới hạn Mạng và Thống kê Traffic
+
+Dùng bộ chọn **Network** để mô phỏng **Fast 3G**, **Slow 3G** hoặc **Offline** cho tab đang được kết nối. Thanh công cụ đồng thời hiển thị trực tiếp số request đã override và bị lỗi, đồng thời khôi phục các số liệu này sau khi service worker khởi động lại.
+
+### 9.9. Import HAR File (HTTP Archive)
 
 Hỗ trợ Import trực tiếp file `.har` (được export từ DevTools Network tab): Hệ thống sẽ tự động phân tích và chuyển đổi lịch sử traffic mạng ghi trong file HAR thành danh sách các Mock Rules sẵn sàng sử dụng.
 
-### 9.9. Phím tắt Thao tác Nhanh (Keyboard Shortcuts)
+### 9.10. Phím tắt Thao tác Nhanh (Keyboard Shortcuts)
 
 Tại Editor Modal:
 

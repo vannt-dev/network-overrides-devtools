@@ -10,6 +10,7 @@ declare namespace chrome.storage {
 namespace NetworkOverridesTabState {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type ApiEntry = NetworkOverridesShared.ApiEntry;
+  type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
 
   export interface TabStateStats {
     totalOverridden: number;
@@ -25,7 +26,7 @@ namespace NetworkOverridesTabState {
     recentApis: Map<string, ApiEntry>;
     recentApiBodies: Map<string, string>;
     stats: TabStateStats;
-    throttlePreset?: 'none' | 'fast3g' | 'slow3g' | 'offline';
+    throttlePreset: ThrottlePreset;
   }
 
   // Runtime-only artifacts: never mirrored to storage.
@@ -78,6 +79,11 @@ namespace NetworkOverridesTabState {
       state.stats.totalOverridden++;
     }
     schedulePersist(tabId);
+    runtime(tabId).subscriberPorts.forEach(port => {
+      try {
+        port.postMessage({ type: 'stats', stats: { ...state.stats } });
+      } catch {}
+    });
   }
 
   export function runtime(tabId: number): TabRuntime {

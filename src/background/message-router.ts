@@ -6,6 +6,8 @@ namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
 
   type OverrideRule = NetworkOverridesShared.OverrideRule;
+  type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
+  const THROTTLE_PRESETS: ThrottlePreset[] = ['none', 'fast3g', 'slow3g', 'offline'];
 
   type Msg =
     | {
@@ -19,6 +21,7 @@ namespace NetworkOverridesBackground {
     | { type: 'getApiData'; tabId: number; url?: string }
     | { type: 'clearApis'; tabId: number }
     | { type: 'getStatus'; tabId: number }
+    | { type: 'setThrottle'; tabId: number; preset: ThrottlePreset }
     | { type: 'updateCapturedBodyTypes'; types: string[] };
 
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
@@ -86,7 +89,13 @@ namespace NetworkOverridesBackground {
           if (state) {
             state.recentApis.clear();
             state.recentApiBodies.clear();
+            state.stats = { totalOverridden: 0, totalFailed: 0 };
             TabState.schedulePersist(clearTabId);
+            TabState.runtime(clearTabId).subscriberPorts.forEach(port => {
+              try {
+                port.postMessage({ type: 'stats', stats: { ...state.stats } });
+              } catch {}
+            });
           }
         }
         if (typeof sendResponse === 'function') {
@@ -116,6 +125,42 @@ namespace NetworkOverridesBackground {
         } else {
           respond();
         }
+        return true;
+      }
+      case 'setThrottle': {
+        const tabId = Number(msg.tabId);
+        const preset = msg.preset;
+        if (Number.isNaN(tabId) || !THROTTLE_PRESETS.includes(preset)) {
+          sendResponse({
+            type: 'setThrottleResponse',
+            success: false,
+            error: 'Invalid throttle preset',
+          });
+          return;
+        }
+        const state = TabState.ensure(tabId);
+        const previousPreset = state.throttlePreset;
+        state.throttlePreset = preset;
+        TabState.schedulePersist(tabId);
+        const update = state.attached ? applyThrottle(tabId, preset) : Promise.resolve();
+        void update
+          .then(() => {
+            TabState.runtime(tabId).subscriberPorts.forEach(port => {
+              try {
+                port.postMessage({ type: 'throttle', throttlePreset: preset });
+              } catch {}
+            });
+            sendResponse({ type: 'setThrottleResponse', success: true, preset });
+          })
+          .catch(error => {
+            state.throttlePreset = previousPreset;
+            TabState.schedulePersist(tabId);
+            sendResponse({
+              type: 'setThrottleResponse',
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
         return true;
       }
       case 'getApiData': {

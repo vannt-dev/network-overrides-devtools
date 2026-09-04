@@ -44,6 +44,8 @@ namespace NetworkOverridesUi {
     return {
       enableCheckbox: document.getElementById('enable') as HTMLInputElement,
       attachStatus: document.getElementById('attach-status') as HTMLElement,
+      throttleSelect: document.getElementById('throttle-preset') as HTMLSelectElement,
+      trafficStats: document.getElementById('traffic-stats') as HTMLElement,
       patternInput: document.getElementById('pattern') as HTMLInputElement,
       bodyInput: document.getElementById('body') as HTMLTextAreaElement,
       addBtn: document.getElementById('add') as HTMLButtonElement,
@@ -126,6 +128,8 @@ namespace NetworkOverridesUi {
       attached: false,
       enabled: false,
       attachError: null,
+      stats: { totalOverridden: 0, totalFailed: 0 },
+      throttlePreset: 'none',
     };
 
     let activeTabId: number | null = null;
@@ -152,6 +156,26 @@ namespace NetworkOverridesUi {
 
     function renderApis(): void {
       renderCapturedApis(elements, state, api => handleApiClick(api));
+    }
+
+    function renderRuntimeState(): void {
+      elements.trafficStats.textContent = `Overridden ${state.stats.totalOverridden} · Failed ${state.stats.totalFailed}`;
+      elements.throttleSelect.value = state.throttlePreset;
+    }
+
+    function updateRuntimeState(message: any): void {
+      if (message?.stats && typeof message.stats === 'object') {
+        state.stats = {
+          totalOverridden:
+            typeof message.stats.totalOverridden === 'number' ? message.stats.totalOverridden : 0,
+          totalFailed:
+            typeof message.stats.totalFailed === 'number' ? message.stats.totalFailed : 0,
+        };
+      }
+      if (['none', 'fast3g', 'slow3g', 'offline'].includes(message?.throttlePreset)) {
+        state.throttlePreset = message.throttlePreset;
+      }
+      renderRuntimeState();
     }
 
     let persistenceQueue: Promise<void> = Promise.resolve();
@@ -359,6 +383,25 @@ namespace NetworkOverridesUi {
       renderApis,
       loadApis: () => loadApisWithRetry(),
       notifyBackground,
+      setThrottle: preset => {
+        if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
+        return new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { type: 'setThrottle', tabId: activeTabId, preset },
+            response => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (!response?.success) {
+                reject(new Error(response?.error || 'Could not update network throttling'));
+              } else {
+                state.throttlePreset = preset;
+                renderRuntimeState();
+                resolve();
+              }
+            }
+          );
+        });
+      },
     });
 
     async function loadApisWithRetry(attempt = 0): Promise<void> {
@@ -442,6 +485,7 @@ namespace NetworkOverridesUi {
               type: normalizeApiType(api.type),
             }));
             renderApis();
+            updateRuntimeState(msg);
           } else if (msg.type === 'apisDelta' && Array.isArray(msg.apis)) {
             const byUrl = new Map(state.capturedApis.map(api => [api.url, api]));
             msg.apis.forEach((api: ApiEntry) => {
@@ -449,6 +493,10 @@ namespace NetworkOverridesUi {
             });
             state.capturedApis = Array.from(byUrl.values());
             renderApis();
+          } else if (msg.type === 'stats') {
+            updateRuntimeState(msg);
+          } else if (msg.type === 'throttle') {
+            updateRuntimeState(msg);
           } else if (msg.type === 'status') {
             updateAttachStatus(
               elements,
@@ -471,6 +519,7 @@ namespace NetworkOverridesUi {
 
       chrome.runtime.sendMessage({ type: 'getStatus', tabId: activeTabId }, resp => {
         if (resp) {
+          updateRuntimeState(resp);
           updateAttachStatus(
             elements,
             state,
@@ -508,6 +557,7 @@ namespace NetworkOverridesUi {
     }
 
     void refreshActiveTab();
+    renderRuntimeState();
     window.addEventListener('focus', () => void refreshActiveTab());
 
     function addApis(newApis: ApiEntry[]): void {

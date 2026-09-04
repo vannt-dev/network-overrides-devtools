@@ -12,6 +12,7 @@ namespace NetworkOverridesUi {
     renderApis: () => void;
     loadApis: () => Promise<void>;
     notifyBackground: () => Promise<void>;
+    setThrottle: (preset: ThrottlePreset) => Promise<void>;
   }
 
   export function bindToolbarController(options: ToolbarControllerOptions): void {
@@ -24,6 +25,7 @@ namespace NetworkOverridesUi {
       renderApis,
       loadApis,
       notifyBackground,
+      setThrottle,
     } = options;
 
     const tabButtons = elements.tabsContainer?.querySelectorAll('.tab-btn') || [];
@@ -52,6 +54,24 @@ namespace NetworkOverridesUi {
         chrome.runtime.sendMessage({ type: 'updateCapturedBodyTypes', types });
         renderApis();
       });
+    });
+    elements.throttleSelect?.addEventListener('change', async () => {
+      const previousPreset = state.throttlePreset;
+      const preset = elements.throttleSelect.value as ThrottlePreset;
+      elements.throttleSelect.disabled = true;
+      try {
+        await setThrottle(preset);
+        showNotification(
+          `Network preset changed to ${elements.throttleSelect.selectedOptions[0]?.text || preset}.`,
+          'success'
+        );
+      } catch (error) {
+        state.throttlePreset = previousPreset;
+        elements.throttleSelect.value = previousPreset;
+        showNotification(`Could not update network preset: ${errorMessage(error)}`, 'error');
+      } finally {
+        elements.throttleSelect.disabled = false;
+      }
     });
 
     async function refreshApis(button: HTMLButtonElement): Promise<void> {

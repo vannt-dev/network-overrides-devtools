@@ -399,11 +399,15 @@ Check **Global Rule** when creating or editing a rule to apply it across **all d
 
 Override outgoing POST, PUT, or PATCH request payloads before they reach the server by filling in the **Request Payload** field in the editor modal.
 
-### 9.8. HAR File Import
+### 9.8. Network Throttling and Traffic Analytics
+
+Use the **Network** selector to simulate **Fast 3G**, **Slow 3G**, or **Offline** conditions for the attached tab. The toolbar also shows live overridden and failed request counters, and restores them after a service-worker restart.
+
+### 9.9. HAR File Import
 
 Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules.
 
-### 9.9. Editor Keyboard Shortcuts
+### 9.10. Editor Keyboard Shortcuts
 
 In the Override Modal editor:
 

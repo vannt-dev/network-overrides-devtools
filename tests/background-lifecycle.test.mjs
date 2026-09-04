@@ -27,6 +27,15 @@ test('Background rehydrates from storage.session and re-attaches enabled tabs on
   assert.deepEqual(normalize(state.overrides), [
     { pattern: 'users', body: '{"mocked":true}', mode: 'text' },
   ]);
+  assert.equal(
+    harness.commandLog.some(
+      ({ target, method, params }) =>
+        target.tabId === 8 &&
+        method === 'Network.emulateNetworkConditions' &&
+        params.downloadThroughput === -1
+    ),
+    true
+  );
 });
 
 test('Background startup removes legacy recentApis_* keys from storage.local', async () => {

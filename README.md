@@ -46,6 +46,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
 - **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.
 - **Traffic Analytics**: Track total overridden and failed request statistics per active tab.
+- **Network Throttling Presets**: Apply No throttling, Fast 3G, Slow 3G, or Offline conditions to the active tab through the Chrome DevTools Protocol.
 - **Editor Keyboard Shortcuts**: Modal hotkeys `Ctrl+Enter` / `Cmd+Enter` to save and `Ctrl+Shift+F` / `Cmd+Shift+F` to format JSON.
 - **Auto-fill response body**: When creating a new override, the current response body is automatically fetched from the background worker and pre-filled into the editor.
 - **JSON formatting**: Auto-detect and format JSON bodies with a single button.
@@ -113,7 +114,7 @@ manifest.json                # Chrome Manifest V3 configuration
 
 1. **Initialization**: `devtools.ts` creates a DevTools panel → `panel.ts` fires up UI + listens to `chrome.devtools.network` events (HAR + `onRequestFinished`). Popup uses `popup.ts` instead, without HAR or manual editor.
 
-2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, then enables `Network` and `Fetch` domains (both Request and Response stages). Detachment happens on disable, tab close, or debugger disconnect.
+2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, enables `Network`, applies the selected throttling preset, and enables `Fetch` for both Request and Response stages. Detachment happens on disable, tab close, or debugger disconnect.
 
 3. **Request interception** (`Fetch.requestPaused`):
    - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
@@ -179,6 +180,8 @@ Two entry points:
 ### 2. Enable overrides
 
 Toggle **Enable Overrides** on. The extension attaches the debugger to the current tab.
+
+Use the **Network** selector to apply a Fast 3G, Slow 3G, or Offline preset. The live counters beside it show how many requests were overridden or failed in the active tab.
 
 ### 3. Capture APIs
 

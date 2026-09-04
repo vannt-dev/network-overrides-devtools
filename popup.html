@@ -48,6 +48,18 @@
       <label for="enable" class="switch-label">Enable Overrides</label>
       <span id="attach-status" class="attach-status" style="display: none"></span>
     </div>
+    <div class="runtime-controls" aria-label="Network conditions and traffic analytics">
+      <label class="throttle-control" for="throttle-preset">
+        Network
+        <select id="throttle-preset">
+          <option value="none">No throttling</option>
+          <option value="fast3g">Fast 3G</option>
+          <option value="slow3g">Slow 3G</option>
+          <option value="offline">Offline</option>
+        </select>
+      </label>
+      <span id="traffic-stats" class="traffic-stats">Overridden 0 · Failed 0</span>
+    </div>
 
     <p class="hint">
       Tip: use <code>*</code> as wildcard in patterns (e.g.,

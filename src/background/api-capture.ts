@@ -113,7 +113,12 @@ namespace NetworkOverridesBackground {
       const state = TabState.get(tabId);
       const apis = state ? Array.from(state.recentApis.values()) : [];
       try {
-        port.postMessage({ type: 'apis', apis });
+        port.postMessage({
+          type: 'apis',
+          apis,
+          stats: state?.stats || { totalOverridden: 0, totalFailed: 0 },
+          throttlePreset: state?.throttlePreset || 'none',
+        });
       } catch {}
     });
   });

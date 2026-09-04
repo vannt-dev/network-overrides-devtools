@@ -101,6 +101,13 @@ function buildUiHtml() {
     <body>
       <input id="enable" type="checkbox">
       <span id="attach-status" style="display:none"></span>
+      <select id="throttle-preset">
+        <option value="none">No throttling</option>
+        <option value="fast3g">Fast 3G</option>
+        <option value="slow3g">Slow 3G</option>
+        <option value="offline">Offline</option>
+      </select>
+      <span id="traffic-stats">Overridden 0 · Failed 0</span>
       <div class="header-actions">
         <button
           id="refresh-apis"

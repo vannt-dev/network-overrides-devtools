@@ -4,6 +4,7 @@
 /// <reference path="../tab-state.ts" />
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
+  type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
 
   const GLOBAL_OVERRIDES_KEY = 'overrides_global';
 
@@ -20,9 +21,40 @@ namespace NetworkOverridesBackground {
 
   async function enableInterception(tabId: number): Promise<void> {
     await sendDebugCommand(tabId, 'Network.enable', {});
+    await applyThrottle(tabId, TabState.ensure(tabId).throttlePreset);
     await sendDebugCommand(tabId, 'Fetch.enable', {
       patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
     });
+  }
+
+  export async function applyThrottle(tabId: number, preset: ThrottlePreset): Promise<void> {
+    const conditions: Record<ThrottlePreset, object> = {
+      none: {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      },
+      fast3g: {
+        offline: false,
+        latency: 150,
+        downloadThroughput: 200000,
+        uploadThroughput: 93750,
+      },
+      slow3g: {
+        offline: false,
+        latency: 400,
+        downloadThroughput: 50000,
+        uploadThroughput: 50000,
+      },
+      offline: {
+        offline: true,
+        latency: 0,
+        downloadThroughput: 0,
+        uploadThroughput: 0,
+      },
+    };
+    await sendDebugCommand(tabId, 'Network.emulateNetworkConditions', conditions[preset]);
   }
 
   function sendDebugCommand(tabId: number, method: string, params: object): Promise<void> {

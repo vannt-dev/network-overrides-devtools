@@ -295,6 +295,38 @@ input[type='search'] {
 .override-item--disabled {
   opacity: 0.55;
 }
+.rule-drag-handle {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: #8a9bb0;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: grab;
+}
+.rule-drag-handle:hover,
+.rule-drag-handle:focus-visible {
+  background: #eef4fa;
+  color: #35506b;
+}
+.rule-drag-handle:focus-visible {
+  outline: 2px solid #007acc;
+  outline-offset: 1px;
+}
+.rule-drag-handle:active {
+  cursor: grabbing;
+}
+.override-item--dragging {
+  opacity: 0.4;
+}
+.override-item--drop-before {
+  box-shadow: 0 -2px 0 0 #007acc;
+}
+.override-item--drop-after {
+  box-shadow: 0 2px 0 0 #007acc;
+}
 .override-enabled-toggle {
   flex-shrink: 0;
   margin-top: 2px;

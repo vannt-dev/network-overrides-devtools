@@ -194,7 +194,9 @@ Khớp với **mọi request**.
 
 ### 5.5. Thứ tự ưu tiên
 
-Rules được duyệt theo thứ tự trong danh sách. **Rule đầu tiên** khớp sẽ được áp dụng. Kéo thả không hỗ trợ — nếu cần ưu tiên, xóa và tạo lại rule theo thứ tự mong muốn.
+Rules được duyệt theo thứ tự trong danh sách. **Rule đầu tiên** khớp sẽ được áp dụng. Để đổi ưu tiên, kéo rule bằng tay nắm `⠿` rồi thả vào nửa trên hoặc nửa dưới của rule khác, hoặc focus vào tay nắm và nhấn phím mũi tên lên/xuống. Thứ tự mới được lưu ngay.
+
+Rule theo domain luôn chạy trước rule global, nên mỗi rule chỉ di chuyển được trong nhóm của nó: rule domain giữa các rule domain, rule global giữa các rule global.
 
 ### 5.6. HTTP method
 

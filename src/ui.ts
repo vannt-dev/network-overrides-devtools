@@ -149,7 +149,8 @@ namespace NetworkOverridesUi {
         index => openEditModal(index),
         (index, enabled) => toggleRule(index, enabled),
         index => deleteRule(index),
-        index => duplicateRule(index)
+        index => duplicateRule(index),
+        (from, target, placement) => reorderRule(from, target, placement)
       );
       renderApis();
     }
@@ -284,6 +285,18 @@ namespace NetworkOverridesUi {
       const nextOverrides = [...state.overrides];
       nextOverrides.splice(index + 1, 0, copy);
       void persistRuleChange(saveState, nextOverrides, 'Rule duplicated', renderRules);
+    }
+
+    function reorderRule(from: number, target: number, placement: RulePlacement): void {
+      const moved = state.overrides[from];
+      const nextOverrides = moveRule(state.overrides, from, target, placement);
+      if (!nextOverrides) return;
+      const newIndex = nextOverrides.indexOf(moved);
+      void persistRuleChange(saveState, nextOverrides, 'Rule moved', () => {
+        renderRules();
+        // The list is rebuilt on every render; keep the keyboard on the rule that moved.
+        elements.listEl.querySelectorAll<HTMLElement>('.rule-drag-handle')[newIndex]?.focus();
+      });
     }
 
     function openEditModal(index: number): void {

@@ -28,6 +28,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **Request Headers & Response Headers Overriding**: inject or modify request headers (e.g. `Authorization: Bearer token`) during the request stage or extra response headers during the response stage.
 - **Response Image & Visual Preview**: instant image preview (Base64 PNG/JPG, SVG) directly inside the editor modal.
 - **Dynamic Captured Resource Filters**: toggle body capture for XHR, Fetch, Document, Script, or Stylesheet resources with real-time counters.
+- **Reorder rules**: drag a rule by its handle, or use the arrow keys on the handle, to change which rule wins when several match. Domain rules and global rules each keep their own order.
 - **Three pattern matching modes** for override rules:
   - URL substring match (e.g. `/api/users`)
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
@@ -140,7 +141,7 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 
 ## Pattern Reference
 
-Override rules are evaluated in order; the first matching rule for a URL is used.
+Override rules are evaluated in order; the first matching rule for a URL is used. Domain rules come before global rules; within each group the order is the one shown in the Rules tab, which you can change by dragging.
 
 | Pattern                       | Matches                                                      |
 | ----------------------------- | ------------------------------------------------------------ |

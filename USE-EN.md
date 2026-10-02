@@ -194,7 +194,9 @@ Matches **every request**.
 
 ### 5.5. Rule order
 
-Rules are evaluated in list order. **The first matching rule wins**. Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in the desired order.
+Rules are evaluated in list order. **The first matching rule wins**. To change priority, drag a rule by its `⠿` handle and drop it on the upper or lower half of another rule, or focus the handle and press the up or down arrow key. The new order is saved at once.
+
+Domain rules always run before global rules, so a rule can only be moved within its own group: a domain rule among the domain rules, a global rule among the global rules.
 
 ### 5.6. HTTP method
 

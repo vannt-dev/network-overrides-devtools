@@ -405,6 +405,12 @@ Dùng bộ chọn **Network** để mô phỏng **Fast 3G**, **Slow 3G** hoặc 
 
 Hỗ trợ Import trực tiếp file `.har` (được export từ DevTools Network tab): Hệ thống sẽ tự động phân tích và chuyển đổi lịch sử traffic mạng ghi trong file HAR thành danh sách các Mock Rules sẵn sàng sử dụng.
 
+#### Export HAR file
+
+Bấm nút **HAR** cạnh ô tìm kiếm ở tab Captured APIs để tải mọi request đã bắt của tab hiện tại thành file `.har`. Mỗi entry gồm method, URL, query string, request headers và payload, status của response, và response body nếu đã được bắt (xem các ô _Capture Body_). Phần capture không ghi response headers và thời gian, nên các trường này để trống và mọi entry mang thời điểm export.
+
+File mở được bằng mọi trình xem HAR và có thể import lại để biến một phiên đã bắt thành các mock rule.
+
 ### 9.10. Phím tắt Thao tác Nhanh (Keyboard Shortcuts)
 
 Tại Editor Modal:

@@ -409,6 +409,12 @@ Use the **Network** selector to simulate **Fast 3G**, **Slow 3G**, or **Offline*
 
 Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules.
 
+#### Exporting a HAR file
+
+Click **HAR** next to the search box in the Captured APIs tab to download every request captured for the current tab as a `.har` file. Each entry holds the method, URL, query string, request headers and payload, the response status, and the response body when it was captured (see the _Capture Body_ checkboxes). Response headers and timings are not recorded by the capture: they are written empty, and every entry carries the time of the export.
+
+The file opens in any HAR viewer and can be imported back to turn a captured session into mock rules.
+
 ### 9.10. Editor Keyboard Shortcuts
 
 In the Override Modal editor:

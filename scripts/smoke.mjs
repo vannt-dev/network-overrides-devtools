@@ -97,6 +97,25 @@ try {
   report('request appears in the captured APIs list', captured);
   await popup.screenshot({ path: path.join(WORK_DIR, '2-captured.png') });
 
+  // ---- 2b. the captured list exports as a HAR file with the real response body
+  if (captured) {
+    const downloadPromise = popup.waitForEvent('download', { timeout: 10000 });
+    await popup.click('#export-har-btn');
+    const download = await downloadPromise.catch(() => null);
+    let harEntry = null;
+    if (download) {
+      const har = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+      harEntry = har.log.entries.find(entry => entry.request.url.endsWith('/api/users')) ?? null;
+    }
+    report(
+      'Export HAR downloads a .har file holding the captured request and its body',
+      Boolean(download?.suggestedFilename().endsWith('.har')) &&
+        harEntry?.response.status === 200 &&
+        harEntry?.response.content.text === '{"real":true}',
+      download ? JSON.stringify(harEntry?.response.content ?? null) : 'no download'
+    );
+  }
+
   // ---- 3. create an override rule through the modal, verify the response is mocked
   if (captured) {
     await apiItem.click();

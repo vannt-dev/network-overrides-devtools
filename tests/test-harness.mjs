@@ -130,6 +130,7 @@ function buildUiHtml() {
       <div id="apis-section" style="display:none;"></div>
       <input id="api-search" type="search">
       <button id="add-api-btn" type="button">+</button>
+      <button id="export-har-btn" type="button">HAR</button>
       <div id="apis-list"></div>
       <div id="override-modal" style="display:none;">
         <div class="modal-content modal-content--override">
@@ -372,6 +373,9 @@ export function createUiHarness({
             disconnectListeners.clear();
           },
         };
+      },
+      getManifest() {
+        return { version: '0.0.0-test' };
       },
       sendMessage(message, callback) {
         sentMessages.push(structuredClone(message));

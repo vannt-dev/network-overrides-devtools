@@ -1,6 +1,7 @@
 /// <reference path="./types.ts" />
 /// <reference path="./modal.ts" />
 /// <reference path="./primitives.ts" />
+/// <reference path="./view-utils.ts" />
 
 namespace NetworkOverridesUi {
   export function renderRulesList(
@@ -9,13 +10,83 @@ namespace NetworkOverridesUi {
     onEdit: (index: number) => void,
     onToggle: (index: number, enabled: boolean) => void,
     onDelete: (index: number) => void,
-    onDuplicate: (index: number) => void
+    onDuplicate: (index: number) => void,
+    onMove: (from: number, target: number, placement: RulePlacement) => void = () => {}
   ): void {
     elements.listEl.innerHTML = '';
     const fragment = document.createDocumentFragment();
+    // Index of the rule being dragged; null between drags.
+    let dragIndex: number | null = null;
+    const clearDropMarkers = () => {
+      elements.listEl
+        .querySelectorAll('.override-item--drop-before, .override-item--drop-after')
+        .forEach(item =>
+          item.classList.remove('override-item--drop-before', 'override-item--drop-after')
+        );
+    };
+
     state.overrides.forEach((rule, index) => {
       const li = document.createElement('li');
       li.className = 'override-item';
+
+      const canDropHere = () =>
+        dragIndex !== null &&
+        dragIndex !== index &&
+        isSameRuleGroup(state.overrides[dragIndex], rule);
+      // The upper half of a row drops before it, the lower half after it.
+      const placementFor = (event: DragEvent): RulePlacement => {
+        const bounds = li.getBoundingClientRect();
+        return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+      };
+
+      const handle = document.createElement('button');
+      handle.type = 'button';
+      handle.className = 'rule-drag-handle';
+      handle.textContent = '⠿';
+      handle.draggable = true;
+      handle.title = 'Drag to reorder, or press the up and down arrow keys';
+      handle.setAttribute('aria-label', `Reorder rule ${rule.pattern}`);
+      handle.addEventListener('click', e => e.stopPropagation());
+      handle.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.key === 'ArrowUp') onMove(index, index - 1, 'before');
+        else onMove(index, index + 1, 'after');
+      });
+      handle.addEventListener('dragstart', e => {
+        dragIndex = index;
+        li.classList.add('override-item--dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(index));
+          e.dataTransfer.setDragImage(li, 0, 0);
+        }
+      });
+      handle.addEventListener('dragend', () => {
+        dragIndex = null;
+        li.classList.remove('override-item--dragging');
+        clearDropMarkers();
+      });
+
+      li.addEventListener('dragover', e => {
+        if (!canDropHere()) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        clearDropMarkers();
+        li.classList.add(`override-item--drop-${placementFor(e)}`);
+      });
+      li.addEventListener('dragleave', () => {
+        li.classList.remove('override-item--drop-before', 'override-item--drop-after');
+      });
+      li.addEventListener('drop', e => {
+        if (!canDropHere()) return;
+        e.preventDefault();
+        const from = dragIndex as number;
+        dragIndex = null;
+        clearDropMarkers();
+        onMove(from, index, placementFor(e));
+      });
 
       const isEnabled = rule.enabled !== false;
       if (!isEnabled) {
@@ -145,6 +216,7 @@ namespace NetworkOverridesUi {
       actionsDiv.appendChild(dupBtn);
       actionsDiv.appendChild(delBtn);
 
+      li.appendChild(handle);
       li.appendChild(cb);
       li.appendChild(span);
       li.appendChild(actionsDiv);

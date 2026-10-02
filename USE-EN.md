@@ -194,7 +194,9 @@ Matches **every request**.
 
 ### 5.5. Rule order
 
-Rules are evaluated in list order. **The first matching rule wins**. Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in the desired order.
+Rules are evaluated in list order. **The first matching rule wins**. To change priority, drag a rule by its `⠿` handle and drop it on the upper or lower half of another rule, or focus the handle and press the up or down arrow key. The new order is saved at once.
+
+Domain rules always run before global rules, so a rule can only be moved within its own group: a domain rule among the domain rules, a global rule among the global rules.
 
 ### 5.6. HTTP method
 
@@ -406,6 +408,12 @@ Use the **Network** selector to simulate **Fast 3G**, **Slow 3G**, or **Offline*
 ### 9.9. HAR File Import
 
 Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules.
+
+#### Exporting a HAR file
+
+Click **HAR** next to the search box in the Captured APIs tab to download every request captured for the current tab as a `.har` file. Each entry holds the method, URL, query string, request headers and payload, the response status, and the response body when it was captured (see the _Capture Body_ checkboxes). Response headers and timings are not recorded by the capture: they are written empty, and every entry carries the time of the export.
+
+The file opens in any HAR viewer and can be imported back to turn a captured session into mock rules.
 
 ### 9.10. Editor Keyboard Shortcuts
 

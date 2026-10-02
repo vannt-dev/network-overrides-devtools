@@ -83,6 +83,7 @@ namespace NetworkOverridesUi {
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       redirectUrlInput: document.getElementById('redirect-url') as HTMLInputElement,
       addApiBtn: document.getElementById('add-api-btn') as HTMLButtonElement,
+      exportHarBtn: document.getElementById('export-har-btn') as HTMLButtonElement,
       exportRulesBtn: document.getElementById('export-rules-btn') as HTMLButtonElement,
       importRulesBtn: document.getElementById('import-rules-btn') as HTMLButtonElement,
       importRulesInput: document.getElementById('import-rules-input') as HTMLInputElement,
@@ -149,7 +150,8 @@ namespace NetworkOverridesUi {
         index => openEditModal(index),
         (index, enabled) => toggleRule(index, enabled),
         index => deleteRule(index),
-        index => duplicateRule(index)
+        index => duplicateRule(index),
+        (from, target, placement) => reorderRule(from, target, placement)
       );
       renderApis();
     }
@@ -286,6 +288,18 @@ namespace NetworkOverridesUi {
       void persistRuleChange(saveState, nextOverrides, 'Rule duplicated', renderRules);
     }
 
+    function reorderRule(from: number, target: number, placement: RulePlacement): void {
+      const moved = state.overrides[from];
+      const nextOverrides = moveRule(state.overrides, from, target, placement);
+      if (!nextOverrides) return;
+      const newIndex = nextOverrides.indexOf(moved);
+      void persistRuleChange(saveState, nextOverrides, 'Rule moved', () => {
+        renderRules();
+        // The list is rebuilt on every render; keep the keyboard on the rule that moved.
+        elements.listEl.querySelectorAll<HTMLElement>('.rule-drag-handle')[newIndex]?.focus();
+      });
+    }
+
     function openEditModal(index: number): void {
       const rule = state.overrides[index];
       if (!rule) return;
@@ -419,6 +433,49 @@ namespace NetworkOverridesUi {
         window.setTimeout(() => void loadApisWithRetry(attempt + 1), 200);
       }
     }
+
+    /** Downloads every request captured for the active tab as a HAR 1.2 file. */
+    async function exportHar(): Promise<void> {
+      if (activeTabId === null) {
+        showNotification('No active tab to export from.', 'error');
+        return;
+      }
+      try {
+        const response = await new Promise<any>(resolve => {
+          chrome.runtime.sendMessage(
+            { type: 'getApis', tabId: activeTabId, includeBodies: true },
+            resolve
+          );
+        });
+        const apis: UiApi[] = Array.isArray(response?.apis) ? response.apis : [];
+        if (apis.length === 0) {
+          showNotification('Nothing captured yet; there is nothing to export.', 'error');
+          return;
+        }
+        const har = buildHar(apis, {
+          creatorVersion: chrome.runtime.getManifest().version,
+          exportedAt: new Date(),
+        });
+        const blob = new Blob([JSON.stringify(har, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const safeDomain = currentDomain.replace(/[^a-z0-9.-]+/gi, '_') || 'capture';
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `network-overrides-${safeDomain}-${Date.now()}.har`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        const withBody = apis.filter(api => typeof api.body === 'string').length;
+        showNotification(
+          `Exported ${apis.length} request(s), ${withBody} with a response body.`,
+          'success'
+        );
+      } catch (error) {
+        showNotification(`Failed to export HAR: ${errorMessage(error)}`, 'error');
+      }
+    }
+    elements.exportHarBtn?.addEventListener('click', () => void exportHar());
 
     async function handleActiveTab(tab: chrome.tabs.Tab | undefined): Promise<void> {
       if (!tab || typeof tab.id !== 'number') return;

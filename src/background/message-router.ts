@@ -6,6 +6,7 @@ namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
 
   type OverrideRule = NetworkOverridesShared.OverrideRule;
+  type ApiEntry = NetworkOverridesShared.ApiEntry;
   type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
   const THROTTLE_PRESETS: ThrottlePreset[] = ['none', 'fast3g', 'slow3g', 'offline'];
 
@@ -17,7 +18,7 @@ namespace NetworkOverridesBackground {
         overrides?: OverrideRule[];
         tabUrl?: string;
       }
-    | { type: 'getApis'; tabId: number }
+    | { type: 'getApis'; tabId: number; includeBodies?: boolean }
     | { type: 'getApiData'; tabId: number; url?: string }
     | { type: 'clearApis'; tabId: number }
     | { type: 'getStatus'; tabId: number }
@@ -65,18 +66,35 @@ namespace NetworkOverridesBackground {
       case 'getApis': {
         const tabId = Number(msg.tabId);
         if (Number.isNaN(tabId)) return;
+        // The list normally travels without bodies, which are fetched one at a
+        // time when a rule is created. An export asks for all of them at once.
+        const withBodies = (apis: ApiEntry[], bodyOf: (url: string) => unknown): ApiEntry[] =>
+          msg.includeBodies !== true
+            ? apis
+            : apis.map(api => {
+                const body = bodyOf(api.url);
+                return typeof body === 'string' ? { ...api, body } : api;
+              });
         const state = TabState.get(tabId);
         if (state && typeof sendResponse === 'function') {
-          sendResponse({ type: 'apisResponse', apis: Array.from(state.recentApis.values()) });
+          sendResponse({
+            type: 'apisResponse',
+            apis: withBodies(Array.from(state.recentApis.values()), url =>
+              state.recentApiBodies.get(url)
+            ),
+          });
           return true;
         }
 
         void Promise.resolve(chrome.storage.session.get(TabState.stateKey(tabId))).then(
           (data: any) => {
             const snapshot = data?.[TabState.stateKey(tabId)];
-            const apis = snapshot?.recentApis ? Object.values(snapshot.recentApis) : [];
+            const apis: ApiEntry[] = snapshot?.recentApis ? Object.values(snapshot.recentApis) : [];
             if (typeof sendResponse === 'function') {
-              sendResponse({ type: 'apisResponse', apis });
+              sendResponse({
+                type: 'apisResponse',
+                apis: withBodies(apis, url => snapshot?.recentApiBodies?.[url]),
+              });
             }
           }
         );

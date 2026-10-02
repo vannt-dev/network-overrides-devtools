@@ -30,6 +30,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **Request Headers & Response Headers Overriding**: inject or modify request headers (e.g. `Authorization: Bearer token`) during the request stage or extra response headers during the response stage.
 - **Response Image & Visual Preview**: instant image preview (Base64 PNG/JPG, SVG) directly inside the editor modal.
 - **Dynamic Captured Resource Filters**: toggle body capture for XHR, Fetch, Document, Script, or Stylesheet resources with real-time counters.
+- **Reorder rules**: drag a rule by its handle, or use the arrow keys on the handle, to change which rule wins when several match. Domain rules and global rules each keep their own order.
 - **Three pattern matching modes** for override rules:
   - URL substring match (e.g. `/api/users`)
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
@@ -47,6 +48,7 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 - **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
 - **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.
+- **HAR File Export**: The **HAR** button next to the search box saves every request captured for the tab as a HAR 1.2 file: method, URL, request headers and payload, status, and the response body where one was captured. Response headers and timings are not recorded by the capture, so they are left empty. The file can be imported again to turn the capture into mock rules.
 - **Traffic Analytics**: Track total overridden and failed request statistics per active tab.
 - **Network Throttling Presets**: Apply No throttling, Fast 3G, Slow 3G, or Offline conditions to the active tab through the Chrome DevTools Protocol.
 - **Editor Keyboard Shortcuts**: Modal hotkeys `Ctrl+Enter` / `Cmd+Enter` to save and `Ctrl+Shift+F` / `Cmd+Shift+F` to format JSON.
@@ -79,7 +81,7 @@ src/
     ├── attach-status.ts     # Status badge renderer (green/red)
     ├── curl.ts              # cURL command generator & parser
     ├── dialogs.ts           # Prompt & confirmation modal dialogs
-    ├── har.ts               # HAR (HTTP Archive) spec parser
+    ├── har.ts               # HAR (HTTP Archive) parser and exporter
     ├── headers-editor.ts    # Request & Response headers editor table/textarea
     ├── modal-controller.ts  # Override editor modal event handlers
     ├── modal.ts             # Override modal UI state & visibility
@@ -142,7 +144,7 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 
 ## Pattern Reference
 
-Override rules are evaluated in order; the first matching rule for a URL is used.
+Override rules are evaluated in order; the first matching rule for a URL is used. Domain rules come before global rules; within each group the order is the one shown in the Rules tab, which you can change by dragging.
 
 | Pattern                       | Matches                                                      |
 | ----------------------------- | ------------------------------------------------------------ |

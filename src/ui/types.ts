@@ -59,6 +59,7 @@ namespace NetworkOverridesUi {
     infoBtn: HTMLButtonElement;
     redirectUrlInput: HTMLInputElement;
     addApiBtn: HTMLButtonElement;
+    exportHarBtn: HTMLButtonElement;
     exportRulesBtn: HTMLButtonElement;
     importRulesBtn: HTMLButtonElement;
     importRulesInput: HTMLInputElement;

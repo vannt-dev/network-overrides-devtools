@@ -4,6 +4,7 @@
 /// <reference path="./profiles.ts" />
 /// <reference path="./notifications.ts" />
 /// <reference path="./dialogs.ts" />
+/// <reference path="./websocket-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface RulesIoControllerOptions {
@@ -51,6 +52,11 @@ namespace NetworkOverridesUi {
         (typeof rule.failReason === 'string' &&
           FAIL_REASONS.includes(rule.failReason) &&
           rule.redirectUrl === undefined)) &&
+      (rule.kind === undefined || rule.kind === 'http' || rule.kind === 'websocket') &&
+      (rule.wsDirection === undefined || isValidWsDirection(rule.wsDirection)) &&
+      (rule.wsMatch === undefined || typeof rule.wsMatch === 'string') &&
+      (rule.wsMatchRegex === undefined || typeof rule.wsMatchRegex === 'boolean') &&
+      (rule.wsAction === undefined || isValidWsAction(rule.wsAction)) &&
       (rule.enabled === undefined || typeof rule.enabled === 'boolean')
     );
   }
@@ -82,6 +88,11 @@ namespace NetworkOverridesUi {
       }));
     }
     if (source.failReason !== undefined) clean.failReason = source.failReason;
+    if (source.kind !== undefined) clean.kind = source.kind;
+    if (source.wsDirection !== undefined) clean.wsDirection = source.wsDirection;
+    if (source.wsMatch !== undefined) clean.wsMatch = source.wsMatch;
+    if (source.wsMatchRegex !== undefined) clean.wsMatchRegex = source.wsMatchRegex;
+    if (source.wsAction !== undefined) clean.wsAction = source.wsAction;
     return clean;
   }
 

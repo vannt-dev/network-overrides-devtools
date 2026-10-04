@@ -2,6 +2,7 @@
 /// <reference path="./headers-editor.ts" />
 /// <reference path="./modal.ts" />
 /// <reference path="./notifications.ts" />
+/// <reference path="./websocket-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface ModalControllerOptions {
@@ -88,13 +89,45 @@ namespace NetworkOverridesUi {
     const typeRadios = elements.modal?.querySelectorAll('input[name="modal-override-type"]') || [];
     typeRadios.forEach(radio => {
       radio.addEventListener('change', event => {
-        const value = (event.target as HTMLInputElement).value as 'body' | 'redirect' | 'fail';
+        const value = (event.target as HTMLInputElement).value as ModalType;
         updateModalVisibility(elements, value);
       });
+    });
+    elements.modalWsAction?.addEventListener('change', () => {
+      updateModalVisibility(elements, 'websocket');
     });
 
     elements.saveOverrideBtn?.addEventListener('click', async () => {
       clearModalFeedback(elements);
+      const commit = async (rule: OverrideRule) => {
+        const previousOverrides = state.overrides;
+        const nextOverrides = [...state.overrides];
+        if (state.currentEditIndex !== null) nextOverrides[state.currentEditIndex] = rule;
+        else nextOverrides.push(rule);
+
+        const originalButtonText = elements.saveOverrideBtn.textContent || 'Save Override';
+        elements.saveOverrideBtn.disabled = true;
+        elements.saveOverrideBtn.textContent = 'Saving…';
+        showModalFeedback(elements, 'Saving override…', 'info');
+        try {
+          const result = await saveState(nextOverrides);
+          renderRules();
+          closeModal(elements);
+          showPersistenceNotification('Override saved', result);
+        } catch (error) {
+          state.overrides = previousOverrides;
+          const reason = error instanceof Error ? error.message : String(error);
+          showModalFeedback(
+            elements,
+            `Could not save override${reason ? `: ${reason}` : '.'}`,
+            'error'
+          );
+        } finally {
+          elements.saveOverrideBtn.disabled = false;
+          elements.saveOverrideBtn.textContent = originalButtonText;
+        }
+      };
+
       const pattern = elements.modalPattern.value.trim();
       if (!pattern) {
         showModalFeedback(elements, 'Pattern is required.', 'error', elements.modalPattern);
@@ -154,6 +187,16 @@ namespace NetworkOverridesUi {
         }
       }
 
+      if (overrideType === 'websocket') {
+        const result = readWebSocketRule(elements, pattern, delayMs);
+        if ('error' in result) {
+          showModalFeedback(elements, result.error, 'error', result.field);
+          return;
+        }
+        await commit(result.rule);
+        return;
+      }
+
       if (hasMalformedHeaderLine(elements.modalHeaders.value)) {
         showModalFeedback(
           elements,
@@ -205,32 +248,7 @@ namespace NetworkOverridesUi {
       if (responseHeaders.length > 0) rule.responseHeaders = responseHeaders;
       if (requestHeaders && requestHeaders.length > 0) rule.requestHeaders = requestHeaders;
 
-      const previousOverrides = state.overrides;
-      const nextOverrides = [...state.overrides];
-      if (state.currentEditIndex !== null) nextOverrides[state.currentEditIndex] = rule;
-      else nextOverrides.push(rule);
-
-      const originalButtonText = elements.saveOverrideBtn.textContent || 'Save Override';
-      elements.saveOverrideBtn.disabled = true;
-      elements.saveOverrideBtn.textContent = 'Saving…';
-      showModalFeedback(elements, 'Saving override…', 'info');
-      try {
-        const result = await saveState(nextOverrides);
-        renderRules();
-        closeModal(elements);
-        showPersistenceNotification('Override saved', result);
-      } catch (error) {
-        state.overrides = previousOverrides;
-        const reason = error instanceof Error ? error.message : String(error);
-        showModalFeedback(
-          elements,
-          `Could not save override${reason ? `: ${reason}` : '.'}`,
-          'error'
-        );
-      } finally {
-        elements.saveOverrideBtn.disabled = false;
-        elements.saveOverrideBtn.textContent = originalButtonText;
-      }
+      await commit(rule);
     });
   }
 }

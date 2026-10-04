@@ -49,6 +49,7 @@ namespace NetworkOverridesUi {
     let firstMatch: { rule: OverrideRule; index: number } | null = null;
     for (let i = 0; i < overrides.length; i++) {
       const rule = overrides[i];
+      if ((rule.kind === 'websocket') !== (api.type.toLowerCase() === 'websocket')) continue;
       if (!matchesMethod(rule.method, api.method)) continue;
       if (NetworkOverridesUtils.patternMatches(rule.pattern, api.url)) {
         if (!firstMatch) firstMatch = { rule, index: i };

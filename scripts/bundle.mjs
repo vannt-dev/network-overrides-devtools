@@ -32,6 +32,7 @@ const uiFiles = [
   'ui/har.js',
   'ui/headers-editor.js',
   'ui/modal.js',
+  'ui/websocket-rule.js',
   'ui/rules-list.js',
   'ui/api-list.js',
   'ui/profiles.js',

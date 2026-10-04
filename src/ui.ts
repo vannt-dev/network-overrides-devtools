@@ -72,6 +72,11 @@ namespace NetworkOverridesUi {
       modalFailFields: document.getElementById('modal-fail-fields') as HTMLDivElement,
       modalFailReason: document.getElementById('modal-fail-reason') as HTMLSelectElement,
       modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDivElement,
+      modalWsFields: document.getElementById('modal-ws-fields') as HTMLDivElement,
+      modalWsDirection: document.getElementById('modal-ws-direction') as HTMLSelectElement,
+      modalWsMatch: document.getElementById('modal-ws-match') as HTMLInputElement,
+      modalWsRegex: document.getElementById('modal-ws-regex') as HTMLInputElement,
+      modalWsAction: document.getElementById('modal-ws-action') as HTMLSelectElement,
       modalStatusField: document.getElementById('modal-status-field') as HTMLElement,
       modalHeadersField: document.getElementById('modal-headers-field') as HTMLElement,
       modalFeedback: document.getElementById('modal-feedback') as HTMLElement,
@@ -311,8 +316,9 @@ namespace NetworkOverridesUi {
       const storedMethod = (rule.method || 'ANY').toUpperCase();
       elements.modalMethod.value = KNOWN_METHODS.includes(storedMethod) ? storedMethod : 'ANY';
 
-      let type: 'body' | 'redirect' | 'fail' = 'body';
-      if (rule.failReason) type = 'fail';
+      let type: ModalType = 'body';
+      if (rule.kind === 'websocket') type = 'websocket';
+      else if (rule.failReason) type = 'fail';
       else if (rule.redirectUrl) type = 'redirect';
 
       const typeRadio = elements.modal.querySelector(
@@ -320,6 +326,7 @@ namespace NetworkOverridesUi {
       ) as HTMLInputElement;
       if (typeRadio) typeRadio.checked = true;
 
+      prefillWebSocketFields(elements, rule);
       updateModalVisibility(elements, type);
       elements.modalMode.value = rule.mode || 'text';
       elements.modalBody.value = formatJsonIfPossible(rule.body || '');
@@ -348,6 +355,25 @@ namespace NetworkOverridesUi {
       if (match) {
         openEditModal(match.index);
         void fillModalBody(api.url);
+        return;
+      }
+
+      if (api.type.toLowerCase() === 'websocket') {
+        state.currentEditIndex = null;
+        elements.modalTitleText.textContent = 'Add override';
+        elements.modalUrl.textContent = api.url;
+        elements.modalPattern.value = api.url;
+        const wsRadio = elements.modal.querySelector(
+          'input[name="modal-override-type"][value="websocket"]'
+        ) as HTMLInputElement;
+        if (wsRadio) wsRadio.checked = true;
+        elements.modalBody.value = '';
+        elements.modalRedirectUrl.value = '';
+        prefillAdvancedFields(elements, null);
+        prefillWebSocketFields(elements, null);
+        updateModalVisibility(elements, 'websocket');
+        updateBodyFormatAction(elements);
+        openModal(elements);
         return;
       }
 
@@ -552,6 +578,11 @@ namespace NetworkOverridesUi {
             renderApis();
           } else if (msg.type === 'stats') {
             updateRuntimeState(msg);
+          } else if (msg.type === 'wsRuleError') {
+            showNotification(
+              `WebSocket rule "${msg.pattern}" was skipped: ${msg.message}`,
+              'error'
+            );
           } else if (msg.type === 'throttle') {
             updateRuntimeState(msg);
           } else if (msg.type === 'status') {

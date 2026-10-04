@@ -36,10 +36,11 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
-- **Three override types:**
+- **Four override types:**
   - **Override body**: Replace the response body with custom text or raw base64 content.
   - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
   - **Fail request**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
+  - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket frames" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
@@ -141,6 +142,21 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 | `tabState_{tabId}`   | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
 
 **Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy keys from older extension versions are migrated automatically: a flat `overrides` list is moved to the current domain's `overrides_{origin}` key on UI load, and `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys are removed from `chrome.storage.local` on worker startup.
+
+## WebSocket frame rules
+
+A WebSocket rule matches the socket URL (`wss://api.example.com/*`), the direction (send, receive or both) and optionally the frame text (contains, or a regular expression). The first enabled rule that fits is applied:
+
+| Action     | Effect                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| Replace    | The frame becomes the body (templates such as `{{now}}` work).             |
+| Substitute | Every match is replaced by the body; `$1`… refer to regex groups.          |
+| Block      | The frame is dropped.                                                      |
+| Delay      | The frame waits the given milliseconds; frames behind it keep their order. |
+
+Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open.
+
+The wrapper is installed through the debugger session the extension already holds (`Page.addScriptToEvaluateOnNewDocument` and `Runtime.evaluate`), so it needs no extra permission and stops when interception is turned off.
 
 ## Pattern Reference
 

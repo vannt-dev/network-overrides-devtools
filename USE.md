@@ -436,6 +436,19 @@ Tại Editor Modal:
 
 Click vào tiêu đề nhóm (ví dụ "XHR ▼") để thu gọn/mở rộng. Trạng thái thu gọn được lưu trong storage.
 
+### 9.11. WebSocket frames
+
+Để sửa nội dung một WebSocket, mở modal override (hoặc bấm vào một mục **WS** trong danh sách API) rồi chọn **WebSocket frames**. Đặt pattern URL của socket, chiều (gửi, nhận hoặc cả hai), chuỗi cần khớp (không bắt buộc; có thể là regex) và hành động. Rule bật đầu tiên khớp với frame sẽ được áp dụng:
+
+| Hành động  | Tác dụng                                                               |
+| ---------- | ---------------------------------------------------------------------- |
+| Replace    | Frame được thay bằng nội dung body (dùng được template như `{{now}}`). |
+| Substitute | Mọi đoạn khớp được thay bằng body; `$1`… là các nhóm của regex.        |
+| Block      | Frame bị bỏ.                                                           |
+| Delay      | Frame chờ số mili giây đã đặt; các frame phía sau vẫn giữ đúng thứ tự. |
+
+Giới hạn: chỉ frame dạng text được sửa (frame binary đi qua nguyên vẹn); socket mở từ Web Worker hoặc iframe khác origin không được xử lý; frame mà trang nhận sau khi bị rule sửa do extension phát lại nên `event.isTrusted` là `false`. Nếu socket đã mở trước khi thêm rule WebSocket đầu tiên, hãy reload trang.
+
 ### 9.5. Headers đánh dấu
 
 Khi một request bị ghi đè, extension thêm các header sau vào response:

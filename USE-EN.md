@@ -429,6 +429,21 @@ In the Override Modal editor:
 
 Click a group header (e.g. "XHR ▼") to collapse/expand. Collapse state is persisted in storage.
 
+### 9.11. WebSocket frames
+
+To change what a WebSocket carries, open the override dialog (or click a **WS** entry in the API list) and choose **WebSocket frames**. Set the socket URL pattern, the direction, an optional match, and the action.
+
+A WebSocket rule matches the socket URL (`wss://api.example.com/*`), the direction (send, receive or both) and optionally the frame text (contains, or a regular expression). The first enabled rule that fits is applied:
+
+| Action     | Effect                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| Replace    | The frame becomes the body (templates such as `{{now}}` work).             |
+| Substitute | Every match is replaced by the body; `$1`… refer to regex groups.          |
+| Block      | The frame is dropped.                                                      |
+| Delay      | The frame waits the given milliseconds; frames behind it keep their order. |
+
+Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open.
+
 ### 9.5. Marker headers
 
 When a request is overridden, the extension adds these response headers:

@@ -156,7 +156,7 @@ A WebSocket rule matches the socket URL (`wss://api.example.com/*`), the directi
 
 Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open.
 
-The wrapper is installed through the debugger session the extension already holds (`Page.addScriptToEvaluateOnNewDocument` and `Runtime.evaluate`), so it needs no extra permission and stops when interception is turned off.
+The wrapper is installed through the debugger session the extension already holds (`Page.addScriptToEvaluateOnNewDocument` and `Runtime.evaluate`), so it needs no extra permission. Turning interception off empties the rules in the page. If the debugger is detached another way (the "Cancel" button on Chrome's debugging bar, or DevTools taking over the tab), the page keeps its last rules until it reloads or interception is turned on again. Rule changes reach iframes that are already open only after they reload.
 
 ## Pattern Reference
 

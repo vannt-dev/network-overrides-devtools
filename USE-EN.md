@@ -442,7 +442,7 @@ A WebSocket rule matches the socket URL (`wss://api.example.com/*`), the directi
 | Block      | The frame is dropped.                                                      |
 | Delay      | The frame waits the given milliseconds; frames behind it keep their order. |
 
-Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open.
+Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open. Turning interception off empties the rules in the page; pressing "Cancel" on Chrome's debugging bar does not, so reload the page after that.
 
 ### 9.5. Marker headers
 

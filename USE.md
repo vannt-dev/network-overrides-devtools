@@ -447,7 +447,7 @@ Click vào tiêu đề nhóm (ví dụ "XHR ▼") để thu gọn/mở rộng. T
 | Block      | Frame bị bỏ.                                                           |
 | Delay      | Frame chờ số mili giây đã đặt; các frame phía sau vẫn giữ đúng thứ tự. |
 
-Giới hạn: chỉ frame dạng text được sửa (frame binary đi qua nguyên vẹn); socket mở từ Web Worker hoặc iframe khác origin không được xử lý; frame mà trang nhận sau khi bị rule sửa do extension phát lại nên `event.isTrusted` là `false`. Nếu socket đã mở trước khi thêm rule WebSocket đầu tiên, hãy reload trang.
+Giới hạn: chỉ frame dạng text được sửa (frame binary đi qua nguyên vẹn); socket mở từ Web Worker hoặc iframe khác origin không được xử lý; frame mà trang nhận sau khi bị rule sửa do extension phát lại nên `event.isTrusted` là `false`. Nếu socket đã mở trước khi thêm rule WebSocket đầu tiên, hãy reload trang. Tắt interception sẽ xóa rule trong trang; còn bấm "Cancel" trên thanh debug của Chrome thì không, nên hãy reload trang sau khi bấm.
 
 ### 9.5. Headers đánh dấu
 

@@ -85,7 +85,6 @@
   grid-column: 1 / -1;
 }
 
-.override-status-badge,
 .ws-badge {
   font-size: 10px;
   padding: 1px 5px;
@@ -100,6 +99,7 @@
   opacity: 0.75;
   margin-left: 4px;
 }
+.override-status-badge,
 .override-delay-badge,
 .override-fail-badge {
   font-size: 10px;

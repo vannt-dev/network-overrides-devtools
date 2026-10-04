@@ -43,11 +43,13 @@ namespace NetworkOverridesBackground {
         state.overrides = overrides;
         if (tabUrl) state.origin = NetworkOverridesUtils.getOrigin(tabUrl);
         TabState.schedulePersist(tabId);
-        // A first attach installs the WebSocket rules itself; an attached tab
-        // needs the new rules pushed.
-        const wasAttached = !!TabState.get(tabId)?.attached;
+        // A first attach installs the WebSocket rules itself. A tab that is
+        // attached, or still attaching (its sync may have read the old rules
+        // already), needs the new rules pushed.
+        const needsSync =
+          !!TabState.get(tabId)?.attached || !!TabState.runtime(tabId).attachPromise;
         const update = enabled
-          ? attachDebugger(tabId).then(() => (wasAttached ? syncWebSocketRules(tabId) : undefined))
+          ? attachDebugger(tabId).then(() => (needsSync ? syncWebSocketRules(tabId) : undefined))
           : detachDebugger(tabId);
         void update
           .then(() => {

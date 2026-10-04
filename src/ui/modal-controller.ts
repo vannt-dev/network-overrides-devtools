@@ -160,7 +160,8 @@ namespace NetworkOverridesUi {
       }
 
       let statusCode: number | undefined;
-      if (elements.modalStatus.value.trim()) {
+      // Hidden for WebSocket rules, so a value left from another type must not block saving.
+      if (overrideType !== 'websocket' && elements.modalStatus.value.trim()) {
         statusCode = parseInt(elements.modalStatus.value.trim(), 10);
         if (isNaN(statusCode) || statusCode < 100 || statusCode > 599) {
           showModalFeedback(

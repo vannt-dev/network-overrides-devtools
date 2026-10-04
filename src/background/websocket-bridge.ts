@@ -29,12 +29,18 @@ namespace NetworkOverridesBackground {
     return `(${NETWORK_OVERRIDES_WS_WRAPPER})(${JSON.stringify(rules)});`;
   }
 
-  /** Evaluated on a live page before a voluntary detach: frames pass untouched. */
-  export function webSocketDetachScript(): string {
-    return wrapperScript([]);
-  }
+  /**
+   * Empties the rules of a wrapper already in the page, and installs nothing
+   * where there is none. Runs without the binding, so it also works on a page
+   * a previous debugger session left a wrapper in.
+   */
+  const CLEAR_SCRIPT =
+    'window.__networkOverridesWsWrapper && window.__networkOverridesWsWrapper.setRules([]);';
 
-  /** A new debugger session has no binding and none of our scripts. */
+  /**
+   * A new or lost debugger session has no binding and none of our scripts.
+   * `wsPageTouched` survives: the page itself may still hold a wrapper.
+   */
   export function resetWebSocketBridge(tabId: number): void {
     const rt = TabState.runtime(tabId);
     rt.wsScriptId = undefined;
@@ -45,8 +51,24 @@ namespace NetworkOverridesBackground {
     const state = TabState.get(tabId);
     if (!state) return;
     const rt = TabState.runtime(tabId);
+    // A detached tab has no session to send to; the next attach syncs again.
+    if (!state.attached && !rt.attachPromise) return;
     const rules = state.enabled ? activeWebSocketRules(state.overrides) : [];
-    if (rules.length === 0 && rt.wsScriptId === undefined) return;
+
+    if (rules.length === 0) {
+      if (rt.wsScriptId !== undefined) {
+        const identifier = rt.wsScriptId;
+        rt.wsScriptId = undefined;
+        await command(tabId, 'Page.removeScriptToEvaluateOnNewDocument', { identifier }).catch(
+          () => {}
+        );
+      }
+      if (rt.wsPageTouched) {
+        await command(tabId, 'Runtime.evaluate', { expression: CLEAR_SCRIPT });
+        rt.wsPageTouched = false;
+      }
+      return;
+    }
 
     if (!rt.wsBindingReady) {
       await command(tabId, 'Runtime.enable', {});
@@ -70,6 +92,7 @@ namespace NetworkOverridesBackground {
       { source }
     );
     rt.wsScriptId = added?.identifier;
+    rt.wsPageTouched = true;
     await command(tabId, 'Runtime.evaluate', { expression: source });
   }
 
@@ -84,6 +107,25 @@ namespace NetworkOverridesBackground {
       .then(() => sync(tabId))
       .catch(error => {
         console.error('[NetworkOverrides] WebSocket rules not applied for tab', tabId, error);
+      });
+    return rt.wsSync;
+  }
+
+  /**
+   * Queued behind any sync still in flight, so a rule change made just before
+   * turning interception off cannot re-arm the page after it was cleared.
+   * Never rejects: detaching must go ahead regardless.
+   */
+  export function clearWebSocketRulesBeforeDetach(tabId: number): Promise<void> {
+    const rt = TabState.runtime(tabId);
+    rt.wsSync = rt.wsSync
+      .then(async () => {
+        if (!rt.wsPageTouched) return;
+        await command(tabId, 'Runtime.evaluate', { expression: CLEAR_SCRIPT });
+        rt.wsPageTouched = false;
+      })
+      .catch(error => {
+        console.error('[NetworkOverrides] WebSocket rules not cleared for tab', tabId, error);
       });
     return rt.wsSync;
   }

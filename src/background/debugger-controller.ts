@@ -159,16 +159,7 @@ namespace NetworkOverridesBackground {
               resolve();
             });
           });
-        if (TabState.runtime(tabId).wsScriptId !== undefined) {
-          chrome.debugger.sendCommand(
-            { tabId },
-            'Runtime.evaluate',
-            { expression: webSocketDetachScript() },
-            () => disable()
-          );
-        } else {
-          disable();
-        }
+        void clearWebSocketRulesBeforeDetach(tabId).then(disable);
       } catch (error) {
         console.error(error);
         resolve();
@@ -216,6 +207,9 @@ namespace NetworkOverridesBackground {
     state.attached = false;
     state.enabled = false;
     state.attachError = `Debugger detached (${reason || 'unknown reason'})`;
+    // The session's scripts and binding are gone; a wrapper may stay in the
+    // page until it reloads, and the next attach clears or replaces it.
+    resetWebSocketBridge(tabId);
     TabState.schedulePersist(tabId);
     broadcastStatus(tabId);
   });

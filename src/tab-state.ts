@@ -38,6 +38,7 @@ namespace NetworkOverridesTabState {
     attachPromise: Promise<void> | null;
     wsScriptId: string | undefined; // current Page.addScriptToEvaluateOnNewDocument id
     wsBindingReady: boolean; // Runtime.addBinding done in this debugger session
+    wsPageTouched: boolean; // a wrapper with rules may be live in the page, from any session
     wsSync: Promise<void>; // serialises WebSocket rule syncs
   }
 
@@ -100,6 +101,7 @@ namespace NetworkOverridesTabState {
         attachPromise: null,
         wsScriptId: undefined,
         wsBindingReady: false,
+        wsPageTouched: false,
         wsSync: Promise.resolve(),
       };
       runtimes.set(tabId, rt);

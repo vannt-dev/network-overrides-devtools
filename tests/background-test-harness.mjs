@@ -6,6 +6,9 @@ export function createBackgroundHarness({
   storageState: initialStorageState = {},
   existingTabIds = [7],
   preAttachedTabIds = [],
+  // Real Chrome answers CDP commands later, not inside sendCommand; races
+  // between commands only show up when the callbacks are deferred too.
+  deferCommandCallbacks = false,
 } = {}) {
   const listeners = {
     onMessage: null,
@@ -98,8 +101,15 @@ export function createBackgroundHarness({
         attachedTargets.delete(target.tabId);
         callback?.();
       },
-      sendCommand(target, method, params, callback) {
+      sendCommand(target, method, params, rawCallback) {
         commandLog.push({ target, method, params });
+        if (deferCommandCallbacks) {
+          setTimeout(() => chrome.debugger.answerCommand(target, method, params, rawCallback), 2);
+          return;
+        }
+        chrome.debugger.answerCommand(target, method, params, rawCallback);
+      },
+      answerCommand(target, method, params, callback) {
         // Real Chrome scopes runtime.lastError per callback; this mock runs
         // callbacks synchronously, so isolate it from any enclosing callback.
         const priorLastError = chrome.runtime.lastError;

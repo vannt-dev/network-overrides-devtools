@@ -153,3 +153,16 @@ test('clicking a WS entry in the APIs tab opens the modal preset to WebSocket fr
   );
   assert.equal($(harness, 'modal-pattern').value, 'wss://x.test/feed');
 });
+
+test('a status code typed for a body rule does not block saving a WebSocket rule', async () => {
+  const harness = createUiHarness({ storageState: { enabled: true, overrides: [] } });
+  await openAddModal(harness);
+  $(harness, 'modal-status').value = '9999';
+  chooseType(harness, 'websocket');
+  $(harness, 'modal-pattern').value = 'wss://x.test/*';
+  $(harness, 'modal-ws-action').value = 'block';
+  click(harness, $(harness, 'save-override'));
+  await flushUi(harness.window);
+  assert.equal(harness.localState.overrides?.length, 1);
+  assert.equal(harness.localState.overrides[0].statusCode, undefined);
+});

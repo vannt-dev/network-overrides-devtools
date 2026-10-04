@@ -3,6 +3,8 @@
 declare namespace NetworkOverridesShared {
   type OverrideMode = 'text' | 'file';
   type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
+  type WsDirection = 'send' | 'receive' | 'both';
+  type WsAction = 'replace' | 'substitute' | 'block' | 'delay';
   interface OverrideRule {
     pattern: string;
     body: string;
@@ -19,6 +21,11 @@ declare namespace NetworkOverridesShared {
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
     isGlobal?: boolean; // applies across all domains if true
     requestBody?: string; // override outgoing request payload
+    kind?: 'http' | 'websocket'; // undefined = 'http'
+    wsDirection?: WsDirection; // websocket rules; undefined = 'receive'
+    wsMatch?: string; // websocket rules; empty/undefined = every text frame
+    wsMatchRegex?: boolean; // wsMatch is a regular expression
+    wsAction?: WsAction; // websocket rules
   }
   interface RuleProfile {
     id: string;

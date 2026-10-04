@@ -50,6 +50,9 @@ namespace NetworkOverridesBackground {
 
     if (!rt.wsBindingReady) {
       await command(tabId, 'Runtime.enable', {});
+      // Scripts added with Page.addScriptToEvaluateOnNewDocument only run in
+      // new documents once the Page domain is enabled for this session.
+      await command(tabId, 'Page.enable', {});
       await command(tabId, 'Runtime.addBinding', { name: WS_BINDING });
       rt.wsBindingReady = true;
     }

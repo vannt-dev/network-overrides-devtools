@@ -38,14 +38,15 @@ test('attaching with a WebSocket rule installs the binding and the wrapper', asy
     wsCommands.map(({ method }) => method),
     [
       'Runtime.enable',
+      'Page.enable',
       'Runtime.addBinding',
       'Page.addScriptToEvaluateOnNewDocument',
       'Runtime.evaluate',
     ]
   );
-  assert.deepEqual(normalize(wsCommands[1].params), { name: '__nowsReport' });
-  const source = wsCommands[2].params.source;
-  assert.equal(wsCommands[3].params.expression, source);
+  assert.deepEqual(normalize(wsCommands[2].params), { name: '__nowsReport' });
+  const source = wsCommands[3].params.source;
+  assert.equal(wsCommands[4].params.expression, source);
   assert.ok(source.startsWith('((function (rules)'));
   assert.ok(source.includes(JSON.stringify([wsRule])));
 });
@@ -97,6 +98,7 @@ test('re-attach resets the bridge instead of removing a stale script id', async 
   const wsMethods = methods(harness).filter(m => m.startsWith('Runtime.') || m.startsWith('Page.'));
   assert.deepEqual(wsMethods, [
     'Runtime.enable',
+    'Page.enable',
     'Runtime.addBinding',
     'Page.addScriptToEvaluateOnNewDocument',
     'Runtime.evaluate',

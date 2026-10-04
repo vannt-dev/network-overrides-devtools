@@ -16,6 +16,7 @@ namespace NetworkOverridesBackground {
     postData?: string
   ): { override: OverrideRule; captures: string[] } | null {
     for (const test of overrides) {
+      if (test.kind === 'websocket') continue;
       if (test.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;

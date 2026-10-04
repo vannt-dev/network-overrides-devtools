@@ -2,6 +2,7 @@
 /// <reference path="../shared.ts" />
 /// <reference path="../utils.ts" />
 /// <reference path="../tab-state.ts" />
+/// <reference path="./websocket-bridge.ts" />
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
   type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
@@ -25,6 +26,8 @@ namespace NetworkOverridesBackground {
     await sendDebugCommand(tabId, 'Fetch.enable', {
       patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
     });
+    resetWebSocketBridge(tabId);
+    await syncWebSocketRules(tabId);
   }
 
   export async function applyThrottle(tabId: number, preset: ThrottlePreset): Promise<void> {
@@ -149,12 +152,23 @@ namespace NetworkOverridesBackground {
 
     return new Promise(resolve => {
       try {
-        chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
-          chrome.debugger.detach({ tabId }, () => {
-            TabState.dispose(tabId);
-            resolve();
+        const disable = () =>
+          chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
+            chrome.debugger.detach({ tabId }, () => {
+              TabState.dispose(tabId);
+              resolve();
+            });
           });
-        });
+        if (TabState.runtime(tabId).wsScriptId !== undefined) {
+          chrome.debugger.sendCommand(
+            { tabId },
+            'Runtime.evaluate',
+            { expression: webSocketDetachScript() },
+            () => disable()
+          );
+        } else {
+          disable();
+        }
       } catch (error) {
         console.error(error);
         resolve();
@@ -187,6 +201,7 @@ namespace NetworkOverridesBackground {
       if (state.origin !== newOrigin) return;
       state.overrides = combineOverrides(data?.[overridesKey], data?.[GLOBAL_OVERRIDES_KEY]);
       TabState.schedulePersist(tabId);
+      void syncWebSocketRules(tabId);
     });
   });
 
@@ -215,6 +230,18 @@ namespace NetworkOverridesBackground {
     }
 
     if (!TabState.get(tabId)?.attached) return;
+
+    if (method === 'Runtime.bindingCalled') {
+      handleWebSocketBinding(tabId, params);
+      return;
+    }
+
+    if (method === 'Network.webSocketCreated') {
+      if (typeof params?.url === 'string') {
+        recordApi(tabId, { url: params.url, type: 'websocket' });
+      }
+      return;
+    }
 
     if (method === 'Network.requestWillBeSent') {
       const requestUrlInner = params?.request?.url;

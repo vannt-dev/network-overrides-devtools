@@ -25,6 +25,7 @@ export function createBackgroundHarness({
   const responseBodies = new Map();
   const errors = [];
   let attachError = null;
+  let scriptCounter = 0;
   // Browser-side attachment state: chrome.debugger sessions belong to the
   // extension, not the worker instance, so they survive worker restarts.
   const attachedTargets = new Set(preAttachedTabIds);
@@ -110,6 +111,9 @@ export function createBackgroundHarness({
           callback?.();
         } else if (method === 'Fetch.getResponseBody') {
           callback?.(responseBodies.get(params.requestId) || {});
+        } else if (method === 'Page.addScriptToEvaluateOnNewDocument') {
+          scriptCounter += 1;
+          callback?.({ identifier: String(scriptCounter) });
         } else {
           callback?.();
         }
@@ -226,6 +230,9 @@ export function createBackgroundHarness({
     },
     navigateTab(tabId, url) {
       listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
+    },
+    dropSession(tabId = 7) {
+      attachedTargets.delete(tabId);
     },
     setAttachError(message) {
       attachError = message;

@@ -11,6 +11,7 @@ const backgroundFiles = [
   'background/encoding.js',
   'background/api-capture.js',
   'background/interceptor.js',
+  'background/websocket-bridge.js',
   'background/debugger-controller.js',
   'background/message-router.js',
   'background.js',

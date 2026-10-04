@@ -36,6 +36,9 @@ namespace NetworkOverridesTabState {
     broadcastQueue: Map<string, ApiEntry>;
     broadcastTimer: ReturnType<typeof setTimeout> | null;
     attachPromise: Promise<void> | null;
+    wsScriptId: string | undefined; // current Page.addScriptToEvaluateOnNewDocument id
+    wsBindingReady: boolean; // Runtime.addBinding done in this debugger session
+    wsSync: Promise<void>; // serialises WebSocket rule syncs
   }
 
   export const RECENT_APIS_LIMIT = 500;
@@ -95,6 +98,9 @@ namespace NetworkOverridesTabState {
         broadcastQueue: new Map(),
         broadcastTimer: null,
         attachPromise: null,
+        wsScriptId: undefined,
+        wsBindingReady: false,
+        wsSync: Promise.resolve(),
       };
       runtimes.set(tabId, rt);
     }

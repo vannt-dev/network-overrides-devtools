@@ -2,6 +2,7 @@
 /// <reference path="./modal.ts" />
 /// <reference path="./primitives.ts" />
 /// <reference path="./view-utils.ts" />
+/// <reference path="./websocket-rule.ts" />
 
 namespace NetworkOverridesUi {
   export function renderRulesList(
@@ -130,8 +131,22 @@ namespace NetworkOverridesUi {
         span.appendChild(gqlBadge);
       }
 
+      if (rule.kind === 'websocket') {
+        const wsBadge = document.createElement('span');
+        wsBadge.className = 'ws-badge';
+        wsBadge.textContent = 'WS';
+        span.appendChild(wsBadge);
+      }
+
       const patternText = document.createTextNode(` ${rule.pattern} `);
       span.appendChild(patternText);
+
+      if (rule.kind === 'websocket') {
+        const summary = document.createElement('span');
+        summary.className = 'ws-summary';
+        summary.textContent = describeWebSocketRule(rule);
+        span.appendChild(summary);
+      }
 
       if (rule.failReason) {
         const failBadge = document.createElement('span');
@@ -153,7 +168,7 @@ namespace NetworkOverridesUi {
         span.appendChild(statusBadge);
       }
 
-      if (typeof rule.delayMs === 'number' && rule.delayMs > 0) {
+      if (rule.kind !== 'websocket' && typeof rule.delayMs === 'number' && rule.delayMs > 0) {
         const delayBadge = document.createElement('span');
         delayBadge.className = 'delay-badge override-delay-badge';
         delayBadge.textContent = `⏱ ${rule.delayMs}ms`;

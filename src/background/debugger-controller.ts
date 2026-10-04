@@ -2,6 +2,7 @@
 /// <reference path="../shared.ts" />
 /// <reference path="../utils.ts" />
 /// <reference path="../tab-state.ts" />
+/// <reference path="./websocket-bridge.ts" />
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
   type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
@@ -25,6 +26,8 @@ namespace NetworkOverridesBackground {
     await sendDebugCommand(tabId, 'Fetch.enable', {
       patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],
     });
+    resetWebSocketBridge(tabId);
+    await syncWebSocketRules(tabId);
   }
 
   export async function applyThrottle(tabId: number, preset: ThrottlePreset): Promise<void> {
@@ -149,12 +152,14 @@ namespace NetworkOverridesBackground {
 
     return new Promise(resolve => {
       try {
-        chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
-          chrome.debugger.detach({ tabId }, () => {
-            TabState.dispose(tabId);
-            resolve();
+        const disable = () =>
+          chrome.debugger.sendCommand({ tabId }, 'Fetch.disable', {}, () => {
+            chrome.debugger.detach({ tabId }, () => {
+              TabState.dispose(tabId);
+              resolve();
+            });
           });
-        });
+        void clearWebSocketRulesBeforeDetach(tabId).then(disable);
       } catch (error) {
         console.error(error);
         resolve();
@@ -187,6 +192,7 @@ namespace NetworkOverridesBackground {
       if (state.origin !== newOrigin) return;
       state.overrides = combineOverrides(data?.[overridesKey], data?.[GLOBAL_OVERRIDES_KEY]);
       TabState.schedulePersist(tabId);
+      void syncWebSocketRules(tabId);
     });
   });
 
@@ -201,6 +207,9 @@ namespace NetworkOverridesBackground {
     state.attached = false;
     state.enabled = false;
     state.attachError = `Debugger detached (${reason || 'unknown reason'})`;
+    // The session's scripts and binding are gone; a wrapper may stay in the
+    // page until it reloads, and the next attach clears or replaces it.
+    resetWebSocketBridge(tabId);
     TabState.schedulePersist(tabId);
     broadcastStatus(tabId);
   });
@@ -215,6 +224,18 @@ namespace NetworkOverridesBackground {
     }
 
     if (!TabState.get(tabId)?.attached) return;
+
+    if (method === 'Runtime.bindingCalled') {
+      handleWebSocketBinding(tabId, params);
+      return;
+    }
+
+    if (method === 'Network.webSocketCreated') {
+      if (typeof params?.url === 'string') {
+        recordApi(tabId, { url: params.url, type: 'websocket' });
+      }
+      return;
+    }
 
     if (method === 'Network.requestWillBeSent') {
       const requestUrlInner = params?.request?.url;

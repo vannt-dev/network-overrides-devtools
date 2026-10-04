@@ -27,22 +27,27 @@ namespace NetworkOverridesUi {
       .replace(/'/g, '&#039;');
   }
 
-  export function updateModalVisibility(
-    elements: Elements,
-    type: 'body' | 'redirect' | 'fail'
-  ): void {
-    elements.modalBodyFields.style.display = type === 'body' ? '' : 'none';
-    elements.modalRedirectFields.style.display = type === 'redirect' ? '' : 'none';
-    elements.modalFailFields.style.display = type === 'fail' ? '' : 'none';
-    elements.modalAdvancedFields.style.display = type === 'redirect' ? 'none' : '';
-    elements.modalStatusField.style.display = type === 'body' ? '' : 'none';
-    elements.modalHeadersField.style.display = type === 'body' ? '' : 'none';
-    if (elements.modalRequestHeadersField) {
-      elements.modalRequestHeadersField.style.display = type === 'fail' ? 'none' : '';
-    }
-    if (elements.modalRequestBodyField) {
-      elements.modalRequestBodyField.style.display = type === 'fail' ? 'none' : '';
-    }
+  export function updateModalVisibility(elements: Elements, type: ModalType): void {
+    const isWs = type === 'websocket';
+    const wsAction = elements.modalWsAction?.value || 'replace';
+    const wsUsesBody = wsAction === 'replace' || wsAction === 'substitute';
+    const show = (el: HTMLElement | null | undefined, visible: boolean) => {
+      if (el) el.style.display = visible ? '' : 'none';
+    };
+
+    show(elements.modalBodyFields, type === 'body' || (isWs && wsUsesBody));
+    show(elements.modalRedirectFields, type === 'redirect');
+    show(elements.modalFailFields, type === 'fail');
+    show(elements.modalWsFields, isWs);
+    show(elements.modalAdvancedFields, type !== 'redirect');
+    show(elements.modalStatusField, type === 'body');
+    show(elements.modalHeadersField, type === 'body');
+    show(elements.modalRequestHeadersField, type !== 'fail' && !isWs);
+    show(elements.modalRequestBodyField, type !== 'fail' && !isWs);
+    show(elements.modalDelay.closest('label'), !isWs || wsAction === 'delay');
+    show(elements.modalMethod.closest('label'), !isWs);
+    show(elements.modalGraphqlOp?.closest('label'), !isWs);
+    show(elements.modalMode, !isWs);
     elements.modalPattern.disabled = type === 'body';
   }
 

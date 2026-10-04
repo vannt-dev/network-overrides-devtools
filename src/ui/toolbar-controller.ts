@@ -1,6 +1,7 @@
 /// <reference path="./types.ts" />
 /// <reference path="./modal.ts" />
 /// <reference path="./notifications.ts" />
+/// <reference path="./websocket-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface ToolbarControllerOptions {
@@ -111,7 +112,12 @@ namespace NetworkOverridesUi {
       elements.modalMethod.value = 'ANY';
       elements.modalBody.value = '';
       elements.modalRedirectUrl.value = '';
+      const bodyRadio = elements.modal.querySelector(
+        'input[name="modal-override-type"][value="body"]'
+      ) as HTMLInputElement;
+      if (bodyRadio) bodyRadio.checked = true;
       prefillAdvancedFields(elements, null);
+      prefillWebSocketFields(elements, null);
       updateModalVisibility(elements, 'body');
       elements.modalPattern.disabled = false;
       openModal(elements);

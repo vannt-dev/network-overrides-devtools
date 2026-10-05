@@ -2,6 +2,10 @@ export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
     'header-max-length': [2, 'always', 100],
+    // Off: a subject may start with a name that is spelled with capitals
+    // (WebSocket, HAR, Chrome). A squash merge takes the PR title as it is, so
+    // the default rule failed CI after the merge, when nothing could be fixed.
+    'subject-case': [0],
     'type-enum': [
       2,
       'always',

@@ -6,6 +6,9 @@ export function createBackgroundHarness({
   storageState: initialStorageState = {},
   existingTabIds = [7],
   preAttachedTabIds = [],
+  // Real Chrome answers CDP commands later, not inside sendCommand; races
+  // between commands only show up when the callbacks are deferred too.
+  deferCommandCallbacks = false,
 } = {}) {
   const listeners = {
     onMessage: null,
@@ -25,6 +28,7 @@ export function createBackgroundHarness({
   const responseBodies = new Map();
   const errors = [];
   let attachError = null;
+  let scriptCounter = 0;
   // Browser-side attachment state: chrome.debugger sessions belong to the
   // extension, not the worker instance, so they survive worker restarts.
   const attachedTargets = new Set(preAttachedTabIds);
@@ -97,8 +101,15 @@ export function createBackgroundHarness({
         attachedTargets.delete(target.tabId);
         callback?.();
       },
-      sendCommand(target, method, params, callback) {
+      sendCommand(target, method, params, rawCallback) {
         commandLog.push({ target, method, params });
+        if (deferCommandCallbacks) {
+          setTimeout(() => chrome.debugger.answerCommand(target, method, params, rawCallback), 2);
+          return;
+        }
+        chrome.debugger.answerCommand(target, method, params, rawCallback);
+      },
+      answerCommand(target, method, params, callback) {
         // Real Chrome scopes runtime.lastError per callback; this mock runs
         // callbacks synchronously, so isolate it from any enclosing callback.
         const priorLastError = chrome.runtime.lastError;
@@ -110,6 +121,9 @@ export function createBackgroundHarness({
           callback?.();
         } else if (method === 'Fetch.getResponseBody') {
           callback?.(responseBodies.get(params.requestId) || {});
+        } else if (method === 'Page.addScriptToEvaluateOnNewDocument') {
+          scriptCounter += 1;
+          callback?.({ identifier: String(scriptCounter) });
         } else {
           callback?.();
         }
@@ -226,6 +240,9 @@ export function createBackgroundHarness({
     },
     navigateTab(tabId, url) {
       listeners.onUpdated?.(tabId, { url }, { id: tabId, url });
+    },
+    dropSession(tabId = 7) {
+      attachedTargets.delete(tabId);
     },
     setAttachError(message) {
       attachError = message;

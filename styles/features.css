@@ -85,6 +85,20 @@
   grid-column: 1 / -1;
 }
 
+.ws-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+  background: #e0f2f1;
+  color: #00695c;
+  font-weight: bold;
+}
+.ws-summary {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-left: 4px;
+}
 .override-status-badge,
 .override-delay-badge,
 .override-fail-badge {

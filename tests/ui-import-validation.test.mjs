@@ -228,3 +228,44 @@ test('Import preserves global scope and request body fields', async () => {
     },
   ]);
 });
+
+test('Import keeps the fields of a WebSocket rule', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+  const rule = {
+    pattern: 'wss://x.test/*',
+    mode: 'text',
+    body: '"price":0',
+    kind: 'websocket',
+    wsDirection: 'both',
+    wsMatch: '"price":\d+',
+    wsMatchRegex: true,
+    wsAction: 'substitute',
+  };
+
+  selectImportFile(harness, JSON.stringify({ version: 1, domain: TEST_DOMAIN, overrides: [rule] }));
+  await flushUi(harness.window);
+
+  assert.deepEqual(harness.localState[`overrides_${TEST_DOMAIN}`], [rule]);
+});
+
+test('Import rejects an unknown WebSocket action or rule kind', async () => {
+  const harness = createUiHarness({ apis: [], tabUrl: `${TEST_DOMAIN}/` });
+  await flushUi(harness.window);
+
+  for (const bad of [
+    { pattern: 'wss://x.test/*', mode: 'text', body: '', kind: 'websocket', wsAction: 'explode' },
+    { pattern: 'x', mode: 'text', body: '', kind: 'mqtt' },
+  ]) {
+    selectImportFile(
+      harness,
+      JSON.stringify({ version: 1, domain: TEST_DOMAIN, overrides: [bad] })
+    );
+    await flushUi(harness.window);
+    assert.match(
+      harness.document.querySelector('.notification-toast--error').textContent,
+      /invalid/i
+    );
+    assert.equal(harness.localState.overrides, undefined);
+  }
+});

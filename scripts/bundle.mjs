@@ -11,6 +11,7 @@ const backgroundFiles = [
   'background/encoding.js',
   'background/api-capture.js',
   'background/interceptor.js',
+  'background/websocket-bridge.js',
   'background/debugger-controller.js',
   'background/message-router.js',
   'background.js',
@@ -31,6 +32,7 @@ const uiFiles = [
   'ui/har.js',
   'ui/headers-editor.js',
   'ui/modal.js',
+  'ui/websocket-rule.js',
   'ui/rules-list.js',
   'ui/api-list.js',
   'ui/profiles.js',
@@ -44,8 +46,21 @@ function stripSourceMapComments(text) {
   return text.replace(/^\/\/# sourceMappingURL=.*(?:\r?\n|$)/gm, '');
 }
 
-async function bundleFiles(fileList, outputFile, filterFn) {
-  const contents = [];
+// The WebSocket wrapper runs inside web pages, so it is shipped as source
+// text: a function expression the background evaluates with the rules,
+// `(<source>)(rules)`. utils.js goes in with it for pattern matching and
+// templates; everything stays inside the function, off the page's globals.
+async function buildWebSocketWrapperSource() {
+  const parts = [];
+  for (const relFile of ['utils.js', 'injected/websocket-wrapper.js']) {
+    const text = await fs.readFile(path.join(distDir, relFile), 'utf8');
+    parts.push(stripSourceMapComments(text));
+  }
+  return `(function (rules) {\n${parts.join('\n')}\nNetworkOverridesInjected.install(window, rules);\n})`;
+}
+
+async function bundleFiles(fileList, outputFile, filterFn, prefix = '') {
+  const contents = prefix ? [prefix] : [];
   for (const relFile of fileList) {
     const filePath = path.join(distDir, relFile);
     let text = await fs.readFile(filePath, 'utf8');
@@ -60,12 +75,18 @@ async function bundleFiles(fileList, outputFile, filterFn) {
 }
 
 async function main() {
-  await bundleFiles(backgroundFiles, 'background.bundle.js', (text, file) => {
-    if (file === 'background.js') {
-      return text.replace(/importScripts\([\s\S]*?\);?/g, '// importScripts bundled');
-    }
-    return text;
-  });
+  const wrapperSource = await buildWebSocketWrapperSource();
+  await bundleFiles(
+    backgroundFiles,
+    'background.bundle.js',
+    (text, file) => {
+      if (file === 'background.js') {
+        return text.replace(/importScripts\([\s\S]*?\);?/g, '// importScripts bundled');
+      }
+      return text;
+    },
+    `/* --- injected/websocket-wrapper (source text) --- */\nvar NETWORK_OVERRIDES_WS_WRAPPER = ${JSON.stringify(wrapperSource)};`
+  );
 
   await bundleFiles(uiFiles, 'ui.bundle.js');
 

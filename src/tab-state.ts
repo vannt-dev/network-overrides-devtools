@@ -36,6 +36,10 @@ namespace NetworkOverridesTabState {
     broadcastQueue: Map<string, ApiEntry>;
     broadcastTimer: ReturnType<typeof setTimeout> | null;
     attachPromise: Promise<void> | null;
+    wsScriptId: string | undefined; // current Page.addScriptToEvaluateOnNewDocument id
+    wsBindingReady: boolean; // Runtime.addBinding done in this debugger session
+    wsPageTouched: boolean; // a wrapper with rules may be live in the page, from any session
+    wsSync: Promise<void>; // serialises WebSocket rule syncs
   }
 
   export const RECENT_APIS_LIMIT = 500;
@@ -71,12 +75,12 @@ namespace NetworkOverridesTabState {
     return state;
   }
 
-  export function recordOverrideStat(tabId: number, isFail = false): void {
+  export function recordOverrideStat(tabId: number, isFail = false, count = 1): void {
     const state = ensure(tabId);
     if (isFail) {
-      state.stats.totalFailed++;
+      state.stats.totalFailed += count;
     } else {
-      state.stats.totalOverridden++;
+      state.stats.totalOverridden += count;
     }
     schedulePersist(tabId);
     runtime(tabId).subscriberPorts.forEach(port => {
@@ -95,6 +99,10 @@ namespace NetworkOverridesTabState {
         broadcastQueue: new Map(),
         broadcastTimer: null,
         attachPromise: null,
+        wsScriptId: undefined,
+        wsBindingReady: false,
+        wsPageTouched: false,
+        wsSync: Promise.resolve(),
       };
       runtimes.set(tabId, rt);
     }

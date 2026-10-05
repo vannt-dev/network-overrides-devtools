@@ -143,15 +143,15 @@ function buildUiHtml() {
           </header>
           <div class="modal-scroll-body">
         <input id="modal-pattern" type="text">
-        <select id="modal-method">
+        <label><select id="modal-method">
           <option value="ANY">Any</option>
           <option value="GET">GET</option>
           <option value="POST">POST</option>
           <option value="PUT">PUT</option>
           <option value="PATCH">PATCH</option>
           <option value="DELETE">DELETE</option>
-        </select>
-        <input id="modal-graphql-op" type="text">
+        </select></label>
+        <label><input id="modal-graphql-op" type="text"></label>
         <input id="modal-global-rule" type="checkbox">
         <div class="override-type-selector">
           <label class="type-radio">
@@ -165,6 +165,10 @@ function buildUiHtml() {
           <label class="type-radio">
             <input type="radio" name="modal-override-type" value="fail" />
             <span>Fail request</span>
+          </label>
+          <label class="type-radio">
+            <input type="radio" name="modal-override-type" value="websocket" />
+            <span>WebSocket frames</span>
           </label>
         </div>
         <div id="modal-body-fields">
@@ -191,6 +195,33 @@ function buildUiHtml() {
             <option value="InternetDisconnected">InternetDisconnected</option>
           </select>
         </div>
+          <div id="modal-ws-fields" style="display: none">
+            <label class="modal-field">
+              <span>Direction</span>
+              <select id="modal-ws-direction">
+                <option value="receive">Receive (server → page)</option>
+                <option value="send">Send (page → server)</option>
+                <option value="both">Both</option>
+              </select>
+            </label>
+            <label class="modal-field">
+              <span>Match frame (blank = every text frame)</span>
+              <input id="modal-ws-match" type="text" placeholder='e.g. "type":"price"' />
+            </label>
+            <label class="type-radio">
+              <input id="modal-ws-regex" type="checkbox" />
+              <span>Match is a regular expression</span>
+            </label>
+            <label class="modal-field">
+              <span>Action</span>
+              <select id="modal-ws-action">
+                <option value="replace">Replace whole frame</option>
+                <option value="substitute">Substitute match</option>
+                <option value="block">Block frame</option>
+                <option value="delay">Delay frame</option>
+              </select>
+            </label>
+          </div>
         <div id="modal-advanced-fields">
           <label id="modal-request-body-field"><textarea id="modal-request-body"></textarea></label>
           <label id="modal-request-headers-field" class="modal-field">

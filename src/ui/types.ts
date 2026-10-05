@@ -3,6 +3,8 @@
 /// <reference path="../utils.ts" />
 
 namespace NetworkOverridesUi {
+  export type ModalType = 'body' | 'redirect' | 'fail' | 'websocket';
+
   export const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   export type OverrideMode = NetworkOverridesShared.OverrideMode;
   export type ThrottlePreset = NetworkOverridesShared.ThrottlePreset;
@@ -48,6 +50,11 @@ namespace NetworkOverridesUi {
     modalFailFields: HTMLDivElement;
     modalFailReason: HTMLSelectElement;
     modalAdvancedFields: HTMLDivElement;
+    modalWsFields: HTMLDivElement;
+    modalWsDirection: HTMLSelectElement;
+    modalWsMatch: HTMLInputElement;
+    modalWsRegex: HTMLInputElement;
+    modalWsAction: HTMLSelectElement;
     modalStatusField: HTMLElement;
     modalHeadersField: HTMLElement;
     modalFeedback: HTMLElement;

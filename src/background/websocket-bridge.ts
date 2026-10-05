@@ -11,6 +11,7 @@ namespace NetworkOverridesBackground {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
 
   export const WS_BINDING = '__nowsReport';
+  const MAX_APPLIED_PER_REPORT = 1000;
 
   function command<T = unknown>(tabId: number, method: string, params: object): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -139,7 +140,14 @@ namespace NetworkOverridesBackground {
       return;
     }
     if (report?.event === 'applied') {
-      TabState.recordOverrideStat(tabId);
+      // The page can call the binding itself, so the count is only trusted
+      // within bounds.
+      const count = Number.isInteger(report.count) ? report.count : 1;
+      TabState.recordOverrideStat(
+        tabId,
+        false,
+        Math.min(Math.max(count, 1), MAX_APPLIED_PER_REPORT)
+      );
     } else if (report?.event === 'error') {
       const message = {
         type: 'wsRuleError',

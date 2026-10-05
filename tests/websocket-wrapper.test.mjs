@@ -39,7 +39,16 @@ class FakeWebSocket extends EventTarget {
   }
   close() {
     this.readyState = 3;
-    this.dispatchEvent(new Event('close'));
+    this.dispatchEvent(new FakeCloseEvent('close', { code: 1000, reason: 'done', wasClean: true }));
+  }
+}
+
+class FakeCloseEvent extends Event {
+  constructor(type, init = {}) {
+    super(type);
+    this.code = init.code;
+    this.reason = init.reason;
+    this.wasClean = init.wasClean;
   }
 }
 
@@ -48,6 +57,7 @@ function setup(rules) {
   const window = {
     WebSocket: FakeWebSocket,
     MessageEvent,
+    CloseEvent: FakeCloseEvent,
     setTimeout,
     clearTimeout,
     URL,
@@ -70,14 +80,16 @@ const ws = fields => ({
 
 const tick = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-test('replaces a received frame before the page sees it', () => {
+test('replaces a received frame before the page sees it', async () => {
   const { window, reports } = setup([ws({ wsAction: 'replace', body: '{"price":1}' })]);
   const socket = new window.WebSocket('wss://x.test/feed');
   const seen = [];
   socket.addEventListener('message', e => seen.push(e.data));
   socket.serverSends('{"price":99}');
   assert.deepEqual(seen, ['{"price":1}']);
-  assert.deepEqual(reports, [{ event: 'applied' }]);
+  assert.deepEqual(reports, []);
+  await tick(300);
+  assert.deepEqual(reports, [{ event: 'applied', count: 1 }]);
 });
 
 test('onmessage assigned after creation sees the rewritten frame once', () => {
@@ -152,6 +164,54 @@ test('drops queued frames when the socket closes', async () => {
   socket.close();
   await tick(40);
   assert.deepEqual(socket.sent, []);
+});
+
+test('reports several changed frames as one count', async () => {
+  const { window, reports } = setup([ws({ wsAction: 'block' })]);
+  const socket = new window.WebSocket('wss://x.test/feed');
+  socket.serverSends('a');
+  socket.serverSends('b');
+  socket.serverSends('c');
+  await tick(300);
+  assert.deepEqual(reports, [{ event: 'applied', count: 3 }]);
+  socket.serverSends('d');
+  await tick(300);
+  assert.deepEqual(reports[1], { event: 'applied', count: 1 });
+});
+
+test('holds the close event behind frames that are still delayed', async () => {
+  const { window } = setup([ws({ wsAction: 'delay', delayMs: 30 })]);
+  const socket = new window.WebSocket('wss://x.test/feed');
+  const seen = [];
+  socket.addEventListener('message', e => seen.push(e.data));
+  socket.addEventListener('close', e => seen.push(`close ${e.code} ${e.reason} ${e.wasClean}`));
+  socket.serverSends('last words');
+  socket.close();
+  assert.deepEqual(seen, []);
+  await tick(60);
+  assert.deepEqual(seen, ['last words', 'close 1000 done true']);
+});
+
+test('passes the close event straight through when nothing is waiting', () => {
+  const { window } = setup([ws({ wsAction: 'delay', delayMs: 30 })]);
+  const socket = new window.WebSocket('wss://x.test/feed');
+  const seen = [];
+  socket.addEventListener('close', e => seen.push(e.code));
+  socket.close();
+  assert.deepEqual(seen, [1000]);
+});
+
+test('leaves nothing the page can list on window, sockets or events', () => {
+  const { window } = setup([ws({ wsAction: 'replace', body: 'x' })]);
+  const socket = new window.WebSocket('wss://x.test/feed');
+  let event;
+  socket.addEventListener('message', e => (event = e));
+  socket.serverSends('y');
+  const ours = name => /networkOverrides/i.test(name);
+  assert.deepEqual(Object.keys(window).filter(ours), []);
+  assert.deepEqual(Object.getOwnPropertyNames(socket).filter(ours), []);
+  assert.deepEqual(Object.getOwnPropertyNames(event).filter(ours), []);
+  assert.equal(typeof window.__networkOverridesWsWrapper.setRules, 'function');
 });
 
 test('passes binary frames and other URLs untouched', () => {

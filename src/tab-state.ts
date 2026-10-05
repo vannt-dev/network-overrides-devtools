@@ -75,12 +75,12 @@ namespace NetworkOverridesTabState {
     return state;
   }
 
-  export function recordOverrideStat(tabId: number, isFail = false): void {
+  export function recordOverrideStat(tabId: number, isFail = false, count = 1): void {
     const state = ensure(tabId);
     if (isFail) {
-      state.stats.totalFailed++;
+      state.stats.totalFailed += count;
     } else {
-      state.stats.totalOverridden++;
+      state.stats.totalOverridden += count;
     }
     schedulePersist(tabId);
     runtime(tabId).subscriberPorts.forEach(port => {

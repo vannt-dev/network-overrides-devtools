@@ -14,8 +14,8 @@ namespace NetworkOverridesInjected {
     | { kind: 'deliver'; data: string; delayMs: number };
 
   const INSTALLED = '__networkOverridesWsWrapper';
-  const REDISPATCHED = '__networkOverridesRedispatched';
-  const QUEUES = '__networkOverridesWsQueues';
+  /** How long 'applied' reports are gathered before one report goes out. */
+  const REPORT_INTERVAL_MS = 250;
 
   const regexCache = new Map<string, RegExp | null>();
 
@@ -137,6 +137,9 @@ namespace NetworkOverridesInjected {
 
     let rules: OverrideRule[] = Array.isArray(initialRules) ? initialRules : [];
     const reportedErrors = new Set<string>();
+    // Kept off the sockets and events themselves so the page cannot see them.
+    const sendQueues = new WeakMap<object, FrameQueue>();
+    const redispatched = new WeakSet<object>();
     const report = (payload: object) => {
       try {
         if (typeof win.__nowsReport === 'function') win.__nowsReport(JSON.stringify(payload));
@@ -148,11 +151,21 @@ namespace NetworkOverridesInjected {
       reportedErrors.add(key);
       report({ event: 'error', pattern: rule.pattern, message });
     };
+    let applied = 0;
+    const countApplied = () => {
+      applied++;
+      if (applied > 1) return;
+      win.setTimeout(() => {
+        const count = applied;
+        applied = 0;
+        report({ event: 'applied', count });
+      }, REPORT_INTERVAL_MS);
+    };
     const decide = (url: string, direction: Direction, data: unknown): Outcome => {
       if (typeof data !== 'string' || rules.length === 0) return { kind: 'pass' };
       try {
         const outcome = applyRules(rules, url, direction, data, onRegexError);
-        if (outcome.kind !== 'pass') report({ event: 'applied' });
+        if (outcome.kind !== 'pass') countApplied();
         return outcome;
       } catch {
         // Fail open: a broken rule must never break the page's socket.
@@ -170,13 +183,13 @@ namespace NetworkOverridesInjected {
         const socket = this as any;
         const receiveQueue = new FrameQueue();
         const sendQueue = new FrameQueue();
-        socket[QUEUES] = { sendQueue };
+        sendQueues.set(socket, sendQueue);
 
         nativeAddEventListener.call(
           socket,
           'message',
           (event: any) => {
-            if (event[REDISPATCHED]) return;
+            if (redispatched.has(event)) return;
             const outcome = decide(socket.url, 'receive', event.data);
             if (outcome.kind === 'pass' && receiveQueue.idle) return;
             event.stopImmediatePropagation();
@@ -189,23 +202,45 @@ namespace NetworkOverridesInjected {
                 origin: event.origin,
                 lastEventId: event.lastEventId,
               });
-              replay[REDISPATCHED] = true;
+              redispatched.add(replay);
               socket.dispatchEvent(replay);
             });
           },
           true
         );
-        nativeAddEventListener.call(socket, 'close', () => {
-          receiveQueue.close();
-          sendQueue.close();
-        });
+        nativeAddEventListener.call(
+          socket,
+          'close',
+          (event: any) => {
+            if (redispatched.has(event)) return;
+            sendQueue.close();
+            if (receiveQueue.idle || typeof win.CloseEvent !== 'function') {
+              receiveQueue.close();
+              return;
+            }
+            // Frames still waiting were received before the close: hand them
+            // to the page first, then the close.
+            event.stopImmediatePropagation();
+            receiveQueue.push(0, () => {
+              receiveQueue.close();
+              const replay = new win.CloseEvent('close', {
+                code: event.code,
+                reason: event.reason,
+                wasClean: event.wasClean,
+              });
+              redispatched.add(replay);
+              socket.dispatchEvent(replay);
+            });
+          },
+          true
+        );
       }
 
       send(data: any): void {
         const socket = this as any;
-        const sendQueue: FrameQueue = socket[QUEUES].sendQueue;
+        const sendQueue = sendQueues.get(socket);
         const outcome = decide(socket.url, 'send', data);
-        if (outcome.kind === 'pass' && sendQueue.idle) {
+        if (!sendQueue || (outcome.kind === 'pass' && sendQueue.idle)) {
           nativeSend.call(socket, data);
           return;
         }
@@ -219,11 +254,14 @@ namespace NetworkOverridesInjected {
     }
 
     Object.defineProperty(WebSocket, 'name', { value: 'WebSocket' });
-    win[INSTALLED] = {
-      setRules(next: OverrideRule[]) {
-        rules = Array.isArray(next) ? next : [];
+    // Not enumerable, so the page does not meet it when listing `window`.
+    Object.defineProperty(win, INSTALLED, {
+      value: {
+        setRules(next: OverrideRule[]) {
+          rules = Array.isArray(next) ? next : [];
+        },
       },
-    };
+    });
     win.WebSocket = WebSocket;
   }
 }

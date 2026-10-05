@@ -118,6 +118,24 @@ test('an applied report raises the Overridden counter', async () => {
   assert.equal(harness.context.NetworkOverridesTabState.get(7).stats.totalOverridden, 1);
 });
 
+test('an applied report counts every frame it stands for, within bounds', async () => {
+  const harness = createBackgroundHarness();
+  await update(harness, [wsRule]);
+  const applied = count =>
+    harness.emitDebuggerEvent('Runtime.bindingCalled', {
+      name: '__nowsReport',
+      payload: JSON.stringify({ event: 'applied', count }),
+    });
+  const total = () => harness.context.NetworkOverridesTabState.get(7).stats.totalOverridden;
+  applied(3);
+  assert.equal(total(), 3);
+  applied(-5);
+  applied('many');
+  assert.equal(total(), 5);
+  applied(1e9);
+  assert.equal(total(), 1005);
+});
+
 test('a WebSocket handshake is recorded as a websocket API', async () => {
   const harness = createBackgroundHarness();
   await update(harness, [wsRule]);

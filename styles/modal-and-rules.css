@@ -453,3 +453,15 @@
   color: #888;
   transition: transform 0.15s ease;
 }
+
+.modal-script-help {
+  margin: 4px 0 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.modal-script-help code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}

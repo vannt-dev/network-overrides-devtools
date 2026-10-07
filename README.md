@@ -158,6 +158,30 @@ Limits: only text frames are changed (binary frames pass untouched); sockets ope
 
 The wrapper is installed through the debugger session the extension already holds (`Page.addScriptToEvaluateOnNewDocument` and `Runtime.evaluate`), so it needs no extra permission. Turning interception off empties the rules in the page. If the debugger is detached another way (the "Cancel" button on Chrome's debugging bar, or DevTools taking over the tab), the page keeps its last rules until it reloads or interception is turned on again. Rule changes reach iframes that are already open only after they reload.
 
+## Script responses
+
+A body rule whose mode is **Script (JavaScript)** computes its response instead of holding one. The rule's body is the body of an async function that receives `request` and returns the response:
+
+```js
+// Keep the real response, but only its first three items.
+const data = JSON.parse(request.response.body);
+return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
+```
+
+`request` holds `url`, `method`, `headers` (names in lower case), `query` (the first value of each parameter), `params` (what each `*` of the pattern matched), `body` (the request payload, or `null`) and `response`: the original `status`, `headers` and `body` (`null` when it has none, such as a redirect).
+
+| Returned value                            | Response                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| a string                                  | That string as the body.                                                                          |
+| `{ status, headers, body }` (any of them) | `body` as it is when a string, as JSON otherwise; `headers` is a `{ name: value }` object.        |
+| any other object, array, number, boolean  | The value as JSON. To send JSON with a top-level `body` key of its own, wrap it: `{ body: {…} }`. |
+
+A status or header the script returns wins over the rule's own Status and Response headers; the rule's delay still applies. Templates such as `{{now}}` are not processed in a script.
+
+The script runs in the inspected page, through the debugger session the extension already holds (`Runtime.evaluate`), so it can use `fetch`, `localStorage` and the page's own globals, and it needs no extra permission. It is given 5 seconds. A script that throws, returns nothing, returns a status outside 100–599, or runs out of time does not fall back to the real response: the request is answered with status `500`, the error as its text and the header `x-network-overrides-error: script`.
+
+Limits: the request stays paused while the script runs; a script on a request made by a Web Worker or a cross-origin iframe still runs in the top page; a binary original response reaches the script as garbled text. Rules imported from a file may contain scripts, which run in the pages they match — import only files you trust, as with any rule that replaces a page's JavaScript.
+
 ## Pattern Reference
 
 Override rules are evaluated in order; the first matching rule for a URL is used. Domain rules come before global rules; within each group the order is the one shown in the Rules tab, which you can change by dragging.

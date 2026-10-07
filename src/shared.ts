@@ -1,13 +1,13 @@
 /// <reference types="chrome" />
 
 declare namespace NetworkOverridesShared {
-  type OverrideMode = 'text' | 'file';
+  type OverrideMode = 'text' | 'file' | 'script';
   type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
   type WsDirection = 'send' | 'receive' | 'both';
   type WsAction = 'replace' | 'substitute' | 'block' | 'delay';
   interface OverrideRule {
     pattern: string;
-    body: string;
+    body: string; // the response body; for mode 'script', the source of the function that returns it
     mode: OverrideMode;
     redirectUrl?: string;
     enabled?: boolean; // undefined/true = enabled, false = disabled

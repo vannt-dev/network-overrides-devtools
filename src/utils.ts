@@ -121,6 +121,173 @@ namespace NetworkOverridesUtils {
     return postData.toLowerCase().includes(target);
   }
 
+  type FetchHeader = { name: string; value: string };
+
+  /** What a response script receives as `request`. */
+  export interface ScriptRequest {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    query: Record<string, string>;
+    params: string[];
+    body: string | null;
+    response: { status: number | null; headers: Record<string, string>; body: string | null };
+  }
+
+  function headersToRecord(headers: unknown): Record<string, string> {
+    const record: Record<string, string> = {};
+    if (Array.isArray(headers)) {
+      for (const header of headers) {
+        if (header && typeof header.name === 'string') {
+          record[header.name.toLowerCase()] = String(header.value ?? '');
+        }
+      }
+    } else if (headers && typeof headers === 'object') {
+      for (const [name, value] of Object.entries(headers as Record<string, unknown>)) {
+        record[name.toLowerCase()] = String(value ?? '');
+      }
+    }
+    return record;
+  }
+
+  export function buildScriptRequest(source: {
+    url: string;
+    method?: string;
+    headers?: unknown;
+    postData?: string;
+    captures?: string[];
+    responseStatus?: number;
+    responseHeaders?: unknown;
+    responseBody?: string | null;
+  }): ScriptRequest {
+    const query: Record<string, string> = {};
+    try {
+      new URL(source.url).searchParams.forEach((value, key) => {
+        if (!(key in query)) query[key] = value;
+      });
+    } catch {}
+    return {
+      url: source.url,
+      method: (source.method || 'GET').toUpperCase(),
+      headers: headersToRecord(source.headers),
+      query,
+      params: Array.isArray(source.captures) ? [...source.captures] : [],
+      body: typeof source.postData === 'string' ? source.postData : null,
+      response: {
+        status: typeof source.responseStatus === 'number' ? source.responseStatus : null,
+        headers: headersToRecord(source.responseHeaders),
+        body: typeof source.responseBody === 'string' ? source.responseBody : null,
+      },
+    };
+  }
+
+  /**
+   * Wraps a rule's script as the body of an async function called with the
+   * request. The newlines keep a trailing `//` comment in the script from
+   * swallowing the closing brace.
+   *
+   * The result comes back as JSON text made in the page, read again by
+   * `parseScriptEnvelope`: handed over as a value, the debugger protocol
+   * returns an object's keys in alphabetical order, and a mocked body should
+   * keep the order its author wrote.
+   */
+  export function buildResponseScriptExpression(script: string, request: ScriptRequest): string {
+    return (
+      `(async (request) => {\n${script}\n})(${JSON.stringify(request)})` +
+      `.then((value) => JSON.stringify({ value }))`
+    );
+  }
+
+  /** The value a script returned, or undefined when it returned nothing usable. */
+  export function parseScriptEnvelope(raw: unknown): unknown {
+    if (typeof raw !== 'string') return undefined;
+    try {
+      return (JSON.parse(raw) as { value?: unknown }).value;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function scriptHeaders(value: unknown): FetchHeader[] | null {
+    if (value === undefined || value === null) return [];
+    const headers: FetchHeader[] = [];
+    const add = (name: unknown, headerValue: unknown): boolean => {
+      if (typeof name !== 'string' || !name.trim()) return false;
+      if (headerValue === undefined || headerValue === null || typeof headerValue === 'object') {
+        return false;
+      }
+      headers.push({ name: name.trim(), value: String(headerValue) });
+      return true;
+    };
+    if (Array.isArray(value)) {
+      for (const header of value) {
+        if (!header || typeof header !== 'object' || !add(header.name, header.value)) return null;
+      }
+      return headers;
+    }
+    if (typeof value !== 'object') return null;
+    for (const [name, headerValue] of Object.entries(value as Record<string, unknown>)) {
+      if (!add(name, headerValue)) return null;
+    }
+    return headers;
+  }
+
+  /**
+   * Turns what a response script returned into a response.
+   *
+   * A string is the body. An object with a `body` key is a description of the
+   * response: `{ status, headers, body }`, where a non-string body is sent as
+   * JSON. Any other value is itself sent as JSON, so `return { ok: true }`
+   * does what it looks like.
+   */
+  export function normalizeScriptResult(
+    value: unknown
+  ):
+    | { ok: true; body: string; statusCode?: number; headers?: FetchHeader[] }
+    | { ok: false; error: string } {
+    if (value === undefined || value === null) {
+      return {
+        ok: false,
+        error: 'The script returned nothing. Return a string or { status, headers, body }.',
+      };
+    }
+    if (typeof value === 'string') return { ok: true, body: value };
+    if (typeof value !== 'object' || Array.isArray(value)) {
+      return { ok: true, body: JSON.stringify(value) };
+    }
+
+    const described = value as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(described, 'body')) {
+      return { ok: true, body: JSON.stringify(value) };
+    }
+
+    const result: { ok: true; body: string; statusCode?: number; headers?: FetchHeader[] } = {
+      ok: true,
+      body:
+        typeof described.body === 'string'
+          ? described.body
+          : described.body === undefined || described.body === null
+            ? ''
+            : JSON.stringify(described.body),
+    };
+    if (described.status !== undefined && described.status !== null) {
+      const status = described.status;
+      if (typeof status !== 'number' || !Number.isInteger(status) || status < 100 || status > 599) {
+        return { ok: false, error: 'The script returned a status that is not 100–599.' };
+      }
+      result.statusCode = status;
+    }
+    const headers = scriptHeaders(described.headers);
+    if (headers === null) {
+      return {
+        ok: false,
+        error: 'The script returned headers that are not a { name: value } object.',
+      };
+    }
+    if (headers.length > 0) result.headers = headers;
+    return result;
+  }
+
   export function processResponseTemplate(
     body: string,
     captures: string[] = [],

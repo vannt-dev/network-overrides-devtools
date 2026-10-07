@@ -29,7 +29,7 @@ namespace NetworkOverridesUi {
       !!rule &&
       typeof rule === 'object' &&
       typeof rule.pattern === 'string' &&
-      (rule.mode === 'text' || rule.mode === 'file') &&
+      (rule.mode === 'text' || rule.mode === 'file' || rule.mode === 'script') &&
       (rule.method === undefined ||
         (typeof rule.method === 'string' && KNOWN_METHODS.includes(rule.method.toUpperCase()))) &&
       (rule.body === undefined ||

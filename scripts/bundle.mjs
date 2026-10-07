@@ -10,6 +10,7 @@ const backgroundFiles = [
   'tab-state.js',
   'background/encoding.js',
   'background/api-capture.js',
+  'background/response-script.js',
   'background/interceptor.js',
   'background/websocket-bridge.js',
   'background/debugger-controller.js',

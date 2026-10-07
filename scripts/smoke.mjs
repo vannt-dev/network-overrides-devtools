@@ -26,7 +26,7 @@ function report(name, ok, detail = '') {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/api/users')) {
+  if (req.url.startsWith('/api/users') || req.url.startsWith('/api/script')) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end('{"real":true}');
     return;
@@ -211,6 +211,63 @@ try {
       'fail rule makes fetch reject at the network layer',
       failOutcome === 'rejected',
       failOutcome
+    );
+
+    // ---- 3d. script rule: the response is computed in the page, from the
+    // request and the real response, while the request is held.
+    async function addScriptRule(pattern, script) {
+      await popup.click('#add-api-btn');
+      await popup.waitForSelector('#override-modal', { state: 'visible' });
+      await popup.fill('#modal-pattern', pattern);
+      await popup.check('input[name="modal-override-type"][value="body"]');
+      await popup.selectOption('#modal-mode', 'script');
+      await popup.fill('#modal-body', script);
+      await popup.click('#save-override');
+      await popup.waitForSelector('#override-modal', { state: 'hidden' });
+      await popup.waitForTimeout(1000);
+    }
+    await addScriptRule(
+      'api/script',
+      `const original = JSON.parse(request.response.body);
+return {
+  status: 201,
+  headers: { 'X-Script': document.title },
+  body: { real: original.real, q: request.query.q, method: request.method },
+};`
+    );
+    const scripted = await site.evaluate(
+      u =>
+        fetch(u, { method: 'POST', body: 'x' }).then(async r => ({
+          status: r.status,
+          header: r.headers.get('x-script'),
+          body: await r.text(),
+        })),
+      `http://127.0.0.1:${PORT}/api/script?q=hello`
+    );
+    report(
+      'script rule answers with what the script returned',
+      scripted.status === 201 &&
+        scripted.header === 'smoke' &&
+        scripted.body === '{"real":true,"q":"hello","method":"POST"}',
+      JSON.stringify(scripted)
+    );
+
+    await addScriptRule('api/boom', `throw new Error('boom');`);
+    const failedScript = await site.evaluate(
+      u =>
+        fetch(u).then(async r => ({
+          status: r.status,
+          header: r.headers.get('x-network-overrides-error'),
+          body: await r.text(),
+        })),
+      `http://127.0.0.1:${PORT}/api/boom`
+    );
+    report(
+      'a script that throws is answered with a 500 naming the error',
+      failedScript.status === 500 &&
+        failedScript.header === 'script' &&
+        failedScript.body.includes('Error: boom'),
+      JSON.stringify(failedScript)
     );
   }
 

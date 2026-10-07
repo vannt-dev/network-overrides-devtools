@@ -64,6 +64,7 @@ namespace NetworkOverridesUi {
       }
     });
     elements.modalMode?.addEventListener('change', () => {
+      updateScriptHelp(elements);
       updateImagePreview(elements, elements.modalBody.value);
     });
     elements.modalBody?.addEventListener('input', () => {

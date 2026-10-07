@@ -131,7 +131,15 @@
               <select id="modal-mode">
                 <option value="text">Text</option>
                 <option value="file">Raw base64</option>
+                <option value="script">Script (JavaScript)</option>
               </select>
+              <p id="modal-script-help" class="modal-script-help" style="display: none">
+                The body of an async function that receives <code>request</code> and returns the
+                response: a string, or <code>{ status, headers, body }</code>. It runs in the page.
+                <code>request</code> has <code>url</code>, <code>method</code>,
+                <code>headers</code>, <code>query</code>, <code>params</code>, <code>body</code> and
+                the original <code>response</code>.
+              </p>
               <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
               <label
                 class="type-radio"

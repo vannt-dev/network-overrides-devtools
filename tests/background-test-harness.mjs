@@ -27,6 +27,10 @@ export function createBackgroundHarness({
   const detachedTabs = [];
   const responseBodies = new Map();
   const errors = [];
+  // What a script evaluated "in the page" can see, and whether the page answers.
+  const page = { globals: {}, hang: false, release: null };
+  // returnByValue hands back what survives JSON, as the protocol does.
+  const structuredCloneJson = value => JSON.parse(JSON.stringify(value));
   let attachError = null;
   let scriptCounter = 0;
   // Browser-side attachment state: chrome.debugger sessions belong to the
@@ -121,6 +125,47 @@ export function createBackgroundHarness({
           callback?.();
         } else if (method === 'Fetch.getResponseBody') {
           callback?.(responseBodies.get(params.requestId) || {});
+        } else if (method === 'Runtime.evaluate') {
+          // Runs the expression for real, in a context of its own standing in
+          // for the page, and answers the way the protocol does: a value, or
+          // the details of what was thrown. `page.hang` leaves it unanswered
+          // until `page.release()` is called.
+          const answer = response => {
+            const prior = chrome.runtime.lastError;
+            chrome.runtime.lastError = null;
+            callback?.(response);
+            chrome.runtime.lastError = prior;
+          };
+          if (page.hang) {
+            page.release = () => answer({ result: { value: 'late' } });
+            chrome.runtime.lastError = priorLastError;
+            return;
+          }
+          // Chrome describes an exception as "Name: message" followed by its stack.
+          const thrown = error => ({
+            exceptionDetails: {
+              text: 'Uncaught',
+              exception: {
+                description: `${String(error)}
+    at <anonymous>:1:1`,
+              },
+            },
+          });
+          let pending;
+          try {
+            pending = vm.runInNewContext(params.expression, { ...page.globals });
+          } catch (error) {
+            answer(thrown(error));
+            chrome.runtime.lastError = priorLastError;
+            return;
+          }
+          Promise.resolve(pending).then(
+            value =>
+              answer({
+                result: { value: value === undefined ? undefined : structuredCloneJson(value) },
+              }),
+            error => answer(thrown(error))
+          );
         } else if (method === 'Page.addScriptToEvaluateOnNewDocument') {
           scriptCounter += 1;
           callback?.({ identifier: String(scriptCounter) });
@@ -219,6 +264,7 @@ export function createBackgroundHarness({
     detachedTabs,
     responseBodies,
     errors,
+    page,
     callMessage(message) {
       const result = { keepAlive: undefined, response: undefined };
       result.keepAlive = listeners.onMessage?.(message, {}, value => {

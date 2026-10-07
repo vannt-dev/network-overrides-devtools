@@ -175,9 +175,11 @@ function buildUiHtml() {
           <select id="modal-mode">
             <option value="text">Text</option>
             <option value="file">Raw base64</option>
+            <option value="script">Script (JavaScript)</option>
           </select>
+          <p id="modal-script-help" style="display: none"></p>
           <textarea id="modal-body"></textarea>
-          <input id="modal-process-templates" type="checkbox" checked>
+          <label><input id="modal-process-templates" type="checkbox" checked></label>
           <div class="modal-body-footer">
             <button id="format-json-btn" type="button" style="display:none">Format JSON</button>
           </div>

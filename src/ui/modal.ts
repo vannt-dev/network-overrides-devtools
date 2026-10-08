@@ -49,6 +49,26 @@ namespace NetworkOverridesUi {
     show(elements.modalGraphqlOp?.closest('label'), !isWs);
     show(elements.modalMode, !isWs);
     elements.modalPattern.disabled = type === 'body';
+    updateScriptHelp(elements);
+  }
+
+  // A script body is code, not a response: it gets its own explanation, and
+  // the template option, which only rewrites literal bodies, is put away.
+  export function updateScriptHelp(elements: Elements): void {
+    const checked = elements.modal?.querySelector(
+      'input[name="modal-override-type"]:checked'
+    ) as HTMLInputElement | null;
+    const isScript =
+      (checked?.value || 'body') === 'body' && elements.modalMode?.value === 'script';
+    const help = elements.modal?.querySelector('#modal-script-help') as HTMLElement | null;
+    if (help) help.style.display = isScript ? '' : 'none';
+    const templates = elements.modalProcessTemplates?.closest('label') as HTMLElement | null;
+    if (templates) templates.style.display = isScript ? 'none' : '';
+    if (elements.modalBody) {
+      elements.modalBody.placeholder = isScript
+        ? 'return { status: 200, body: { ok: true } };'
+        : 'Custom response body';
+    }
   }
 
   export function updateImagePreview(elements: Elements, body: string): void {

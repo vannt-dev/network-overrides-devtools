@@ -329,6 +329,7 @@ namespace NetworkOverridesUi {
       prefillWebSocketFields(elements, rule);
       updateModalVisibility(elements, type);
       elements.modalMode.value = rule.mode || 'text';
+      updateScriptHelp(elements);
       elements.modalBody.value = formatJsonIfPossible(rule.body || '');
       elements.modalRedirectUrl.value = rule.redirectUrl || '';
 
@@ -396,6 +397,7 @@ namespace NetworkOverridesUi {
 
       updateModalVisibility(elements, 'body');
       elements.modalMode.value = 'text';
+      updateScriptHelp(elements);
       elements.modalBody.value = formatJsonIfPossible(api.body || '');
       elements.modalRedirectUrl.value = '';
 

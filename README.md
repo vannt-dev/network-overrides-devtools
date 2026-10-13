@@ -327,3 +327,7 @@ Produces a ZIP in `release/` containing only the runtime files (`manifest.json`,
 - Recent API bodies are only stored for XHR and Fetch resource types by default. Configure `CAPTURED_BODY_TYPES` in `src/background.ts` to add more types.
 - Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
 - The extension is designed for developer debugging only, not for end-user production use.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE).

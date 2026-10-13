@@ -1,6 +1,7 @@
 {
   "name": "network-overrides-devtools",
   "version": "2.5.0",
+  "license": "MIT",
   "private": true,
   "engines": {
     "node": ">=22"

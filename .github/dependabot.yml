@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # The CLI and its config only work at the same major.
+      commitlint:
+        patterns:
+          - '@commitlint/*'
       npm-minor-and-patch:
         update-types:
           - minor
@@ -17,15 +21,23 @@ updates:
       # Remove this once typescript-eslint supports TypeScript 7.
       - dependency-name: typescript
         versions: ['>=6.1.0']
+      # 17 needs Node.js 22.22.1, above the >=22 this repository declares.
+      - dependency-name: lint-staged
+        versions: ['>=17.0.0']
+      # 0.3 changes the types the extension compiles against (TS2345, TS2322 on 0.3.5):
+      # a change of its own, not part of a grouped update.
+      - dependency-name: '@types/chrome'
+        versions: ['>=0.1.0']
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     groups:
-      github-actions-minor-and-patch:
-        update-types:
-          - minor
-          - patch
+      # Majors too: an action's major is usually a new runtime, and one pull request per action
+      # was five at once on the first run.
+      github-actions:
+        patterns:
+          - '*'
     commit-message:
       prefix: chore
       include: scope

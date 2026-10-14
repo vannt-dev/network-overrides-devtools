@@ -1,5 +1,14 @@
 export default {
   extends: ['@commitlint/config-conventional'],
+  // The squash merge of #29 (5355258) reached develop with a body line over 100
+  // characters. Only a rewrite of develop could change it, so that one message is
+  // let through; every other commit is still checked.
+  ignores: [
+    message =>
+      message.startsWith(
+        'chore(deps): clear the tooling advisories and add a Dependabot config (#29)'
+      ),
+  ],
   rules: {
     'header-max-length': [2, 'always', 100],
     // Off: a subject may start with a name that is spelled with capitals

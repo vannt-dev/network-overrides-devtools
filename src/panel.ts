@@ -1,3 +1,4 @@
+/*! SPDX-License-Identifier: MIT | Copyright (c) 2025 Van Nguyen | github.com/vannt-dev/network-overrides-devtools */
 /// <reference types="chrome" />
 // Runtime typing relies on ambient NetworkOverridesShared declarations; use inline shape for runtime casts
 

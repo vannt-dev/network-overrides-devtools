@@ -1,3 +1,4 @@
+/*! SPDX-License-Identifier: MIT | Copyright (c) 2025 Van Nguyen | github.com/vannt-dev/network-overrides-devtools */
 /* Shared UI primitives. Static markup is upgraded in ui/primitives.ts and
    dynamically-created controls use the same factories. */
 .ui-field {

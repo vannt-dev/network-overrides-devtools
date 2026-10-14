@@ -34,15 +34,15 @@
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@eslint/js": "^10.0.1",
-    "@types/chrome": "^0.0.178",
+    "@types/chrome": "^0.3.5",
     "c8": "^11.0.0",
-    "eslint": "^10.6.0",
+    "eslint": "^10.12.0",
     "husky": "^9.1.5",
     "jsdom": "^29.0.1",
     "lint-staged": "^16.4.0",
-    "playwright": "^1.61.1",
-    "prettier": "^3.3.3",
+    "playwright": "^1.64.0",
+    "prettier": "^3.9.10",
     "typescript": "^5.5.0",
-    "typescript-eslint": "^8.63.0"
+    "typescript-eslint": "^8.71.1"
   }
 }

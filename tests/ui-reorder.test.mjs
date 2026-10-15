@@ -12,6 +12,12 @@ const patterns = rules => rules.map(item => item.pattern);
 async function createHarness(storageState) {
   const harness = createUiHarness({ storageState });
   await flushUi(harness.window);
+  // Open the Rules tab, as a user would: jsdom 30 does not focus an element
+  // inside a hidden section, and the handles live there.
+  harness.document
+    .querySelector('[data-tab="overrides"]')
+    .dispatchEvent(new harness.window.MouseEvent('click', { bubbles: true }));
+  await flushUi(harness.window);
   return harness;
 }
 

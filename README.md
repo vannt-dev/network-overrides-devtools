@@ -1,6 +1,7 @@
 # Network Overrides DevTools
 
 [![Chrome Web Store users](https://img.shields.io/chrome-web-store/users/holdjgmcnpelgclhopiejilhhkfcmpba?label=Chrome%20users)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+[![Official vannt-dev build](https://vannt-dev.github.io/badges/official.svg)](https://vannt-dev.github.io/official.html)
 
 A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
 

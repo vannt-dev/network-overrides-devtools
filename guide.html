@@ -212,8 +212,7 @@ Pattern:  /api/users
 Matches:  https://example.com/api/users
           https://example.com/api/users/123
           https://example.com/v2/api/users/list
-No match: https://example.com/api/admin</pre
-      >
+No match: https://example.com/api/admin</pre>
 
       <h3>5.2. Wildcard <code>*</code></h3>
       <p>
@@ -223,8 +222,7 @@ No match: https://example.com/api/admin</pre
       <pre>
 Pattern:  /api/*/users/*
 Matches:  /api/v1/users/123  → captures: ["v1", "123"]
-          /api/v2/users/abc  → captures: ["v2", "abc"]</pre
-      >
+          /api/v2/users/abc  → captures: ["v2", "abc"]</pre>
 
       <h3>5.3. Regex <code>/pattern/flags</code></h3>
       <p>
@@ -235,19 +233,16 @@ Matches:  /api/v1/users/123  → captures: ["v1", "123"]
 Pattern:  /\/api\/v\d+\/users/i
 Matches:  /api/v1/users (case-insensitive)
           /API/V2/Users
-No match: /api/admin/users</pre
-      >
+No match: /api/admin/users</pre>
 
       <pre>
 Pattern:  /\/api\/user\/(\d+)/
-Matches:  /api/user/42 (captures: ["42"])</pre
-      >
+Matches:  /api/user/42 (captures: ["42"])</pre>
 
       <h3>5.4. Match everything</h3>
       <pre>
 Pattern: *
-Pattern: all</pre
-      >
+Pattern: all</pre>
       <p>Matches <strong>every request</strong>.</p>
 
       <h3>5.5. Rule order</h3>

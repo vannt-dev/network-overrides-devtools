@@ -322,9 +322,7 @@ Click **Export** trong tab **Rules** để tải xuống các rule của **domai
   "version": 1,
   "domain": "https://example.com",
   "exportedAt": "2026-07-07T00:00:00.000Z",
-  "overrides": [
-    /* OverrideRule[] */
-  ]
+  "overrides": [/* OverrideRule[] */]
 }
 ```
 

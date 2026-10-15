@@ -1,5 +1,22 @@
 export default {
   extends: ['@commitlint/config-conventional'],
+  // The squash merges of #29 (5355258) and #46 (bc6d346) reached develop with a body
+  // line over 100 characters. Only a rewrite of develop could change them, so those
+  // two messages are let through; every other commit is still checked.
+  // Dependabot writes release notes into its commit bodies, with lines well over 100
+  // characters. Its commits never reach develop as they are (a squash merge writes a
+  // new message), so they are let through too.
+  ignores: [
+    message =>
+      message.startsWith(
+        'chore(deps): clear the tooling advisories and add a Dependabot config (#29)'
+      ),
+    message =>
+      message.startsWith(
+        'chore(deps-dev): bump the npm-minor-and-patch group with 4 updates (#46)'
+      ),
+    message => message.includes('Signed-off-by: dependabot[bot] <support@github.com>'),
+  ],
   rules: {
     'header-max-length': [2, 'always', 100],
     // Off: a subject may start with a name that is spelled with capitals

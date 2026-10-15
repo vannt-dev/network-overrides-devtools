@@ -1,3 +1,4 @@
+/*! SPDX-License-Identifier: MIT | Copyright (c) 2025 Van Nguyen | github.com/vannt-dev/network-overrides-devtools */
 namespace NetworkOverridesUi {
   export type UiButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
   export type UiControlSize = 'small' | 'medium';
@@ -73,9 +74,9 @@ namespace NetworkOverridesUi {
     });
 
     root
-      .querySelectorAll<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >('input:not([type="checkbox"]):not([type="radio"]), select, textarea')
+      .querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        'input:not([type="checkbox"]):not([type="radio"]), select, textarea'
+      )
       .forEach(control => {
         control.classList.add('ui-control');
         if (control instanceof HTMLInputElement && control.type === 'file') {

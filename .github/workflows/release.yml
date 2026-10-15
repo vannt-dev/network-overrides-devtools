@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
       CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
@@ -18,12 +20,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -51,9 +53,15 @@ jobs:
         if: steps.check_tag.outputs.EXISTS != 'true'
         run: npm run package:store
 
+      - name: Attest store package
+        if: steps.check_tag.outputs.EXISTS != 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/*.zip
+
       - name: Create GitHub Release
         if: steps.check_tag.outputs.EXISTS != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: Network Overrides DevTools ${{ env.TAG_NAME }}
@@ -63,6 +71,7 @@ jobs:
             ### 🚀 Automatic Build & Store Package
             - **Zip Package**: `network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip`
             - **Chrome Web Store**: [Link](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+            - **Verify**: `gh attestation verify network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip --owner vannt-dev`
 
             *Refer to `README.md` and `USE.md` for installation and usage instructions.*
           files: release/*.zip

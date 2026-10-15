@@ -35,7 +35,7 @@
     "@commitlint/config-conventional": "^19.5.0",
     "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.0.178",
-    "c8": "^11.0.0",
+    "c8": "^12.0.0",
     "eslint": "^10.12.0",
     "husky": "^9.1.5",
     "jsdom": "^30.1.2",

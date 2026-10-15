@@ -3,11 +3,15 @@ export default {
   // The squash merge of #29 (5355258) reached develop with a body line over 100
   // characters. Only a rewrite of develop could change it, so that one message is
   // let through; every other commit is still checked.
+  // Dependabot writes release notes into its commit bodies, with lines well over 100
+  // characters. Its commits never reach develop as they are (a squash merge writes a
+  // new message), so they are let through too.
   ignores: [
     message =>
       message.startsWith(
         'chore(deps): clear the tooling advisories and add a Dependabot config (#29)'
       ),
+    message => message.includes('Signed-off-by: dependabot[bot] <support@github.com>'),
   ],
   rules: {
     'header-max-length': [2, 'always', 100],

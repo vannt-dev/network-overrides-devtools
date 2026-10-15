@@ -6,6 +6,9 @@ A Chrome/Edge DevTools extension that intercepts network responses and replaces 
 
 🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 
+Official builds are listed at [vannt-dev.github.io/official.html](https://vannt-dev.github.io/official.html);
+anything else is not published by vannt-dev.
+
 ## Screenshots
 
 | Live API capture                                           | Override editor                                                |

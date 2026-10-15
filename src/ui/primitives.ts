@@ -1,3 +1,4 @@
+/*! SPDX-License-Identifier: MIT | Copyright (c) 2025 Van Nguyen | github.com/vannt-dev/network-overrides-devtools */
 namespace NetworkOverridesUi {
   export type UiButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
   export type UiControlSize = 'small' | 'medium';

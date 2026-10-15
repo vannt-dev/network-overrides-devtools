@@ -10,9 +10,7 @@ namespace NetworkOverridesInjected {
   type Direction = 'send' | 'receive';
 
   export type Outcome =
-    | { kind: 'pass' }
-    | { kind: 'drop' }
-    | { kind: 'deliver'; data: string; delayMs: number };
+    { kind: 'pass' } | { kind: 'drop' } | { kind: 'deliver'; data: string; delayMs: number };
 
   const INSTALLED = '__networkOverridesWsWrapper';
   /** How long 'applied' reports are gathered before one report goes out. */

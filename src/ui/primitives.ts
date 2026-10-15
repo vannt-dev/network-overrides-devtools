@@ -74,9 +74,9 @@ namespace NetworkOverridesUi {
     });
 
     root
-      .querySelectorAll<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >('input:not([type="checkbox"]):not([type="radio"]), select, textarea')
+      .querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        'input:not([type="checkbox"]):not([type="radio"]), select, textarea'
+      )
       .forEach(control => {
         control.classList.add('ui-control');
         if (control instanceof HTMLInputElement && control.type === 'file') {

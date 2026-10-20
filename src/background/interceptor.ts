@@ -31,7 +31,11 @@ namespace NetworkOverridesBackground {
   }
 
   export function handleRequestPaused(tabId: number, params: any): void {
-    const isRequestStage = typeof params.responseStatusCode !== 'number';
+    // The response stage carries a status code, or an error reason when the
+    // request failed at the network level (DNS, refused connection, ...).
+    const isRequestStage =
+      typeof params.responseStatusCode !== 'number' &&
+      typeof params.responseErrorReason !== 'string';
     const url = params.request?.url || '';
     const state = TabState.get(tabId);
 

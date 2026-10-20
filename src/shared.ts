@@ -22,6 +22,7 @@ declare namespace NetworkOverridesShared {
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
     isGlobal?: boolean; // applies across all domains if true
     requestBody?: string; // override outgoing request payload
+    respondAtRequest?: boolean; // body rules: answer at the request stage, the server is never called
     kind?: 'http' | 'websocket'; // undefined = 'http'
     wsDirection?: WsDirection; // websocket rules; undefined = 'receive'
     wsMatch?: string; // websocket rules; empty/undefined = every text frame

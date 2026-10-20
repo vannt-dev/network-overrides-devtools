@@ -238,6 +238,9 @@ namespace NetworkOverridesUi {
       if (overrideType === 'body' && elements.modalProcessTemplates?.checked === false) {
         rule.processTemplates = false;
       }
+      if (overrideType === 'body' && elements.modalRespondAtRequest?.checked) {
+        rule.respondAtRequest = true;
+      }
       if (elements.modalGlobalRule?.checked) {
         rule.isGlobal = true;
       }

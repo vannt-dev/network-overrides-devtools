@@ -180,6 +180,7 @@ function buildUiHtml() {
           <p id="modal-script-help" style="display: none"></p>
           <textarea id="modal-body"></textarea>
           <label><input id="modal-process-templates" type="checkbox" checked></label>
+          <label><input id="modal-respond-at-request" type="checkbox"></label>
           <div class="modal-body-footer">
             <button id="format-json-btn" type="button" style="display:none">Format JSON</button>
           </div>

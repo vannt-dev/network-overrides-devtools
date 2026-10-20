@@ -148,6 +148,13 @@
                 <input id="modal-process-templates" type="checkbox" checked />
                 <span>Process dynamic templates</span>
               </label>
+              <label
+                class="type-radio"
+                title="Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
+              >
+                <input id="modal-respond-at-request" type="checkbox" />
+                <span>Answer without calling the server</span>
+              </label>
               <div class="modal-body-footer">
                 <button
                   id="format-json-btn"

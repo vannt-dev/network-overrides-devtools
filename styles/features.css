@@ -102,6 +102,7 @@
 }
 .override-status-badge,
 .override-delay-badge,
+.override-offline-badge,
 .override-fail-badge {
   font-size: 10px;
   padding: 1px 5px;
@@ -115,6 +116,10 @@
 .override-delay-badge {
   background: #e3f2fd;
   color: #0a4f9c;
+}
+.override-offline-badge {
+  background: #e8f5e9;
+  color: #1b5e20;
 }
 .override-fail-badge {
   background: #ffebee;

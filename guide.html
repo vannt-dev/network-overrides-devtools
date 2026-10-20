@@ -140,8 +140,8 @@
         <li>
           <strong>Answer without calling the server</strong> (body rules): the request is answered
           in the browser before it is sent, so the server is never called and unreachable hosts
-          still get the mock. The rule alone makes the response (blank status = 200); a cross-origin
-          mock needs <code>Access-Control-Allow-*</code> headers.
+          still get the mock. The rule alone makes the response (blank status = 200); CORS
+          preflights are answered for you.
         </li>
         <li><strong>Redirect URL</strong>: Target URL with wildcard substitution support.</li>
         <li><strong>Format JSON</strong>: Pretty-print JSON body.</li>

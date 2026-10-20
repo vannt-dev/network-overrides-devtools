@@ -256,11 +256,11 @@ Tick **Answer without calling the server** để trả lời request ngay trong 
 
 Khác với rule override body thường:
 
-- Không có response gốc. Status để trống nghĩa là `200`, và chỉ có những header bạn thêm (kèm `Content-Type: application/json; charset=utf-8` nếu bạn không đặt).
+- Không có response gốc. Status để trống nghĩa là `200`, và chỉ có những header bạn thêm (kèm `Content-Type: application/json; charset=utf-8` nếu bạn không đặt, và các header CORS bên dưới).
 - Template như `{{now}}`, `{{uuid}}`, `{{$queryParam(name)}}` vẫn chạy, vì chúng không cần server.
 - Ở chế độ Script, `request.response` là `{ status: null, headers: {}, body: null }`.
 - Phần sửa request header và request body của rule không được dùng, vì không có request nào được gửi.
-- Trình duyệt vẫn kiểm tra CORS với mock khác origin. Thêm `Access-Control-Allow-Origin: *` (hoặc origin của trang) vào response header. Request cần preflight (method khác `GET`/`POST`/`HEAD`, `Content-Type` JSON, header tự đặt) cần thêm `Access-Control-Allow-Methods: *` và `Access-Control-Allow-Headers: *`, và method của rule phải là `Any` để rule trả lời cả request preflight `OPTIONS`. Preflight nhận status của rule và cần status 2xx: muốn mock status lỗi như `500` cho request có preflight, đặt method của rule đúng method của request (ví dụ `PUT`) và thêm một rule thứ hai bên dưới với cùng pattern và header, method `Any`, status `204` và tick tùy chọn này. Preflight bỏ qua rule đầu và nhận 204. Với request gửi kèm credentials, dùng origin của trang thay cho `*` và thêm `Access-Control-Allow-Credentials: true`.
+- Request khác origin chạy được mà không cần thêm header: preflight CORS được trả lời sẵn, và mock cho phép origin của trang trừ khi bạn tự đặt header `Access-Control-Allow-*`.
 
 ---
 

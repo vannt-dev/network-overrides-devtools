@@ -30,6 +30,72 @@ namespace NetworkOverridesBackground {
     return null;
   }
 
+  /** Reads a request header whatever the case of its name. */
+  function headerValue(headers: any, name: string): string | undefined {
+    if (!headers || typeof headers !== 'object') return undefined;
+    const wanted = name.toLowerCase();
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === wanted) return String(headers[key]);
+    }
+    return undefined;
+  }
+
+  /** The method a CORS preflight asks about, or null when the request is not one. */
+  function preflightMethod(request: any): string | null {
+    if (String(request?.method || '').toUpperCase() !== 'OPTIONS') return null;
+    const asked = headerValue(request?.headers, 'access-control-request-method');
+    return asked && asked.trim() ? asked.trim().toUpperCase() : null;
+  }
+
+  /**
+   * The rule the request behind a preflight will meet first. A preflight
+   * carries no body, so a GraphQL operation filter cannot be checked here.
+   */
+  function findPreflightTarget(
+    url: string,
+    method: string,
+    overrides: OverrideRule[]
+  ): OverrideRule | null {
+    for (const rule of overrides) {
+      if (rule.kind === 'websocket' || rule.enabled === false) continue;
+      if (!NetworkOverridesUtils.matchesMethod(rule.method, method)) continue;
+      if (matchPattern(rule.pattern, url) !== null) return rule;
+    }
+    return null;
+  }
+
+  /**
+   * Answers the CORS preflight of a request that will itself be answered
+   * without the server, allowing exactly what the page asks for.
+   */
+  function answerPreflight(tabId: number, params: any, method: string, proceed: () => void): void {
+    const requestHeaders = params.request?.headers;
+    const origin = headerValue(requestHeaders, 'origin');
+    const askedHeaders = headerValue(requestHeaders, 'access-control-request-headers');
+    const headers: FetchHeader[] = [
+      { name: 'Access-Control-Allow-Origin', value: origin || '*' },
+      { name: 'Access-Control-Allow-Methods', value: method },
+    ];
+    if (askedHeaders) headers.push({ name: 'Access-Control-Allow-Headers', value: askedHeaders });
+    if (origin) {
+      headers.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
+      headers.push({ name: 'Vary', value: 'Origin' });
+    }
+    headers.push({ name: 'Access-Control-Max-Age', value: '60' });
+    headers.push({ name: 'x-network-overrides', value: 'true' });
+    chrome.debugger.sendCommand(
+      { tabId },
+      'Fetch.fulfillRequest',
+      { requestId: params.requestId, responseCode: 204, responseHeaders: headers, body: '' },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error('fulfillRequest (preflight) failed:', chrome.runtime.lastError.message);
+          proceed();
+        }
+      }
+    );
+  }
+
   /**
    * Answers a request with a body rule: the rule's body (text, base64 or the
    * result of its script), status, headers and delay. At the response stage
@@ -40,7 +106,8 @@ namespace NetworkOverridesBackground {
     tabId: number,
     params: any,
     match: { override: OverrideRule; captures: string[] },
-    proceed: () => void
+    proceed: () => void,
+    atRequestStage = false
   ): void {
     const url = params.request?.url || '';
     console.log('[NetworkOverrides] Fulfill body:', match.override.pattern, '→', url);
@@ -120,6 +187,17 @@ namespace NetworkOverridesBackground {
       // What a script returns is the most specific word on the response, so
       // it is applied over the rule's own headers and status.
       mergeHeaders(scripted?.headers);
+      // An early answer has no server headers, so a cross-origin page could
+      // not read it: allow the page's origin unless the rule says otherwise.
+      const origin = atRequestStage ? headerValue(params.request?.headers, 'origin') : undefined;
+      const hasHeader = (name: string) =>
+        headers.some(header => header.name.toLowerCase() === name);
+      if (origin && !hasHeader('access-control-allow-origin')) {
+        headers.push({ name: 'Access-Control-Allow-Origin', value: origin });
+        if (!hasHeader('access-control-allow-credentials')) {
+          headers.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
+        }
+      }
       if (!headers.find(h => h.name.toLowerCase() === 'content-type')) {
         headers.push({ name: 'Content-Type', value: 'application/json; charset=utf-8' });
       }
@@ -237,6 +315,17 @@ namespace NetworkOverridesBackground {
       try {
         const postData = params.request?.postData || state.recentApis.get(url)?.postData;
         const match = findOverride(url, params.request?.method, state.overrides, postData);
+        // The preflight of a request that will be answered without the server
+        // is answered too, unless a rule is written for OPTIONS itself.
+        const askedMethod = preflightMethod(params.request);
+        const optionsRule = match?.override.method?.toUpperCase() === 'OPTIONS';
+        if (askedMethod && !optionsRule) {
+          const target = findPreflightTarget(url, askedMethod, state.overrides);
+          if (target?.respondAtRequest && !target.failReason && !target.redirectUrl) {
+            answerPreflight(tabId, params, askedMethod, proceed);
+            return;
+          }
+        }
         if (match && match.override.failReason) {
           TabState.recordOverrideStat(tabId, true);
           const errorReason = match.override.failReason;
@@ -283,8 +372,8 @@ namespace NetworkOverridesBackground {
         }
         // A body rule set to answer without calling the server is answered
         // now, so the request never leaves the browser.
-        if (match && match.override.respondAtRequest) {
-          answerWithBody(tabId, params, match, proceed);
+        if (match && match.override.respondAtRequest && (!askedMethod || optionsRule)) {
+          answerWithBody(tabId, params, match, proceed, true);
           return;
         }
         const hasReqHeaders =

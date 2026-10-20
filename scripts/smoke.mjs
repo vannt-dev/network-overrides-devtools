@@ -279,10 +279,6 @@ return {
     await popup.selectOption('#modal-mode', 'text');
     await popup.fill('#modal-body', '{"offline":"{{$queryParam(q)}}"}');
     await popup.fill('#modal-status', '201');
-    await popup.evaluate(() => {
-      document.getElementById('modal-headers').value =
-        'Access-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: *\nAccess-Control-Allow-Headers: *';
-    });
     await popup.check('#modal-respond-at-request');
     await popup.click('#save-override');
     await popup.waitForSelector('#override-modal', { state: 'hidden' });
@@ -313,9 +309,40 @@ return {
       'http://127.0.0.1:1/api/offline?q=pre'
     );
     report(
-      'with CORS headers on the rule, a preflighted cross-origin request is mocked too',
+      'a preflighted cross-origin request is mocked with no CORS headers on the rule',
       preflighted.status === 201 && preflighted.body === '{"offline":"pre"}',
       JSON.stringify(preflighted)
+    );
+
+    // An error status works on a preflighted request too: the preflight gets
+    // its own 204, the request gets the 500.
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', '127.0.0.1:1/api/broken');
+    await popup.check('input[name="modal-override-type"][value="body"]');
+    await popup.selectOption('#modal-mode', 'text');
+    await popup.fill('#modal-body', '{"error":"down"}');
+    await popup.fill('#modal-status', '500');
+    await popup.check('#modal-respond-at-request');
+    await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    await popup.waitForTimeout(1000);
+    const broken = await site.evaluate(
+      u =>
+        fetch(u, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Trace': '1' },
+          body: '{}',
+        }).then(
+          async r => ({ status: r.status, body: await r.text() }),
+          error => ({ error: String(error) })
+        ),
+      'http://127.0.0.1:1/api/broken'
+    );
+    report(
+      'a 500 mock reaches the page on a preflighted cross-origin request',
+      broken.status === 500 && broken.body === '{"error":"down"}',
+      JSON.stringify(broken)
     );
   }
 

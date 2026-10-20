@@ -151,3 +151,135 @@ test('The option does nothing on fail and redirect rules', async () => {
     ['Fetch.failRequest']
   );
 });
+
+// Chrome pauses the CORS preflight of a cross-origin request too. When the
+// request itself will be answered without the server, the preflight is
+// answered for it, so cross-origin mocks need no hand-written CORS headers.
+const ORIGIN = 'https://page.test';
+
+function headerMap(command) {
+  return Object.fromEntries(
+    command.params.responseHeaders.map(({ name, value }) => [name.toLowerCase(), value])
+  );
+}
+
+function preflight(harness, requestId, headers) {
+  return requestStage(harness, requestId, { method: 'OPTIONS', headers });
+}
+
+test('The preflight of a request answered without the server is answered with 204', async () => {
+  const harness = await attachWith([
+    {
+      pattern: '/users$/',
+      body: '{"err":1}',
+      mode: 'text',
+      method: 'PUT',
+      statusCode: 500,
+      respondAtRequest: true,
+    },
+  ]);
+
+  const [answer] = preflight(harness, 'req-preflight', {
+    Origin: ORIGIN,
+    'Access-Control-Request-Method': 'PUT',
+    'Access-Control-Request-Headers': 'content-type,x-trace',
+  });
+
+  assert.equal(answer.method, 'Fetch.fulfillRequest');
+  assert.equal(answer.params.responseCode, 204);
+  assert.equal(answer.params.body, '');
+  const headers = headerMap(answer);
+  assert.equal(headers['access-control-allow-origin'], ORIGIN);
+  assert.equal(headers['access-control-allow-methods'], 'PUT');
+  assert.equal(headers['access-control-allow-headers'], 'content-type,x-trace');
+  assert.equal(headers['access-control-allow-credentials'], 'true');
+  assert.equal(headers['access-control-max-age'], '60');
+
+  // The request itself then gets the mocked error status, readable cross-origin.
+  const [mock] = requestStage(harness, 'req-after-preflight', {
+    method: 'PUT',
+    headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+  });
+  assert.equal(mock.method, 'Fetch.fulfillRequest');
+  assert.equal(mock.params.responseCode, 500);
+  const mockHeaders = headerMap(mock);
+  assert.equal(mockHeaders['access-control-allow-origin'], ORIGIN);
+  assert.equal(mockHeaders['access-control-allow-credentials'], 'true');
+});
+
+test('A preflight without an Origin is allowed for any origin, without credentials', async () => {
+  const harness = await attachWith([
+    { pattern: '/users$/', body: '{}', mode: 'text', respondAtRequest: true },
+  ]);
+
+  const [answer] = preflight(harness, 'req-preflight-no-origin', {
+    'access-control-request-method': 'DELETE',
+  });
+
+  assert.equal(answer.params.responseCode, 204);
+  const headers = headerMap(answer);
+  assert.equal(headers['access-control-allow-origin'], '*');
+  assert.equal(headers['access-control-allow-methods'], 'DELETE');
+  assert.equal('access-control-allow-headers' in headers, false);
+  assert.equal('access-control-allow-credentials' in headers, false);
+});
+
+test('CORS headers set on the rule win over the automatic ones', async () => {
+  const harness = await attachWith([
+    {
+      pattern: '/users$/',
+      body: '{}',
+      mode: 'text',
+      respondAtRequest: true,
+      responseHeaders: [{ name: 'Access-Control-Allow-Origin', value: '*' }],
+    },
+  ]);
+
+  const [mock] = requestStage(harness, 'req-rule-cors', { headers: { Origin: ORIGIN } });
+
+  const allowOrigin = mock.params.responseHeaders.filter(
+    ({ name }) => name.toLowerCase() === 'access-control-allow-origin'
+  );
+  assert.deepEqual(normalize(allowOrigin), [{ name: 'Access-Control-Allow-Origin', value: '*' }]);
+  assert.equal('access-control-allow-credentials' in headerMap(mock), false);
+});
+
+test('A preflight goes to the server when the request would not be answered early', async () => {
+  const harness = await attachWith([
+    { pattern: '/users$/', body: 'late', mode: 'text', method: 'PUT' },
+    { pattern: '/users$/', body: 'early', mode: 'text', respondAtRequest: true },
+  ]);
+
+  // The first matching rule for PUT reaches the server, so its preflight must too.
+  const put = preflight(harness, 'req-preflight-late', {
+    Origin: ORIGIN,
+    'Access-Control-Request-Method': 'PUT',
+  });
+  assert.deepEqual(
+    put.map(({ method }) => method),
+    ['Fetch.continueRequest']
+  );
+});
+
+test('A rule that explicitly matches OPTIONS keeps control of the preflight', async () => {
+  const harness = await attachWith([
+    {
+      pattern: '/users$/',
+      body: 'options',
+      mode: 'text',
+      method: 'OPTIONS',
+      statusCode: 200,
+      respondAtRequest: true,
+    },
+    { pattern: '/users$/', body: 'early', mode: 'text', respondAtRequest: true },
+  ]);
+
+  const [answer] = preflight(harness, 'req-preflight-options-rule', {
+    Origin: ORIGIN,
+    'Access-Control-Request-Method': 'PUT',
+  });
+
+  assert.equal(answer.method, 'Fetch.fulfillRequest');
+  assert.equal(answer.params.responseCode, 200);
+  assert.equal(decode(answer.params.body), 'options');
+});

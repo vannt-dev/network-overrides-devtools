@@ -169,6 +169,14 @@ namespace NetworkOverridesUi {
         span.appendChild(statusBadge);
       }
 
+      if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
+        const offlineBadge = document.createElement('span');
+        offlineBadge.className = 'override-offline-badge';
+        offlineBadge.textContent = 'NO SERVER';
+        offlineBadge.title = 'Answered in the browser; the server is never called';
+        span.appendChild(offlineBadge);
+      }
+
       if (rule.kind !== 'websocket' && typeof rule.delayMs === 'number' && rule.delayMs > 0) {
         const delayBadge = document.createElement('span');
         delayBadge.className = 'delay-badge override-delay-badge';

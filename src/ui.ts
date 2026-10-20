@@ -100,6 +100,9 @@ namespace NetworkOverridesUi {
       modalRequestBody: document.getElementById('modal-request-body') as HTMLTextAreaElement,
       modalRequestBodyField: document.getElementById('modal-request-body-field') as HTMLElement,
       modalProcessTemplates: document.getElementById('modal-process-templates') as HTMLInputElement,
+      modalRespondAtRequest: document.getElementById(
+        'modal-respond-at-request'
+      ) as HTMLInputElement,
       modalGlobalRule: document.getElementById('modal-global-rule') as HTMLInputElement,
       modalGraphqlOp: document.getElementById('modal-graphql-op') as HTMLInputElement,
       modalPreviewContainer: document.getElementById('modal-preview-container') as HTMLDivElement,

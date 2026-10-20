@@ -563,3 +563,72 @@ test('Background overrides outgoing request payload when requestBody is set', as
   assert.ok(continueCmd);
   assert.ok(continueCmd.params.postData);
 });
+
+// Chrome pauses a request a second time when it fails at the network level:
+// that pause carries `responseErrorReason` instead of `responseStatusCode`.
+// It is the response stage, so request-stage rules must not run again.
+async function pauseThenNetworkError(overrides, requestId) {
+  const harness = createBackgroundHarness();
+  harness.callMessage({
+    type: 'update',
+    tabId: 7,
+    tabUrl: `${TEST_DOMAIN}/`,
+    enabled: true,
+    overrides,
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const request = { url: TEST_API_URL, method: 'GET', headers: { Accept: '*/*' } };
+  harness.emitDebuggerEvent('Fetch.requestPaused', { requestId, request, resourceType: 'Fetch' });
+  harness.emitDebuggerEvent('Fetch.requestPaused', {
+    requestId,
+    request,
+    resourceType: 'Fetch',
+    responseErrorReason: 'NameNotResolved',
+  });
+  return harness.commandLog.filter(({ params }) => params?.requestId === requestId);
+}
+
+test('A network-error pause does not apply request headers a second time', async () => {
+  const commands = await pauseThenNetworkError(
+    [
+      {
+        pattern: '/users$/',
+        body: '',
+        mode: 'text',
+        requestHeaders: [{ name: 'X-Debug', value: '1' }],
+      },
+    ],
+    'req-neterr-headers'
+  );
+
+  const withHeaders = commands.filter(
+    ({ method, params }) => method === 'Fetch.continueRequest' && params.headers
+  );
+  assert.equal(withHeaders.length, 1);
+});
+
+test('A network-error pause does not redirect a second time', async () => {
+  const commands = await pauseThenNetworkError(
+    [{ pattern: '/users$/', body: '', mode: 'text', redirectUrl: 'https://other.test/users' }],
+    'req-neterr-redirect'
+  );
+
+  const redirects = commands.filter(
+    ({ method, params }) => method === 'Fetch.continueRequest' && params.url
+  );
+  assert.equal(redirects.length, 1);
+  assert.equal(commands.at(-1).method, 'Fetch.continueRequest');
+  assert.equal(commands.at(-1).params.url, undefined);
+});
+
+test('A network-error pause is answered by a matching body rule', async () => {
+  const commands = await pauseThenNetworkError(
+    [{ pattern: '/users$/', body: '{"offline":true}', mode: 'text' }],
+    'req-neterr-body'
+  );
+
+  const fulfil = commands.find(({ method }) => method === 'Fetch.fulfillRequest');
+  assert.ok(fulfil, 'the body rule answers the failed request');
+  assert.equal(fulfil.params.responseCode, 200);
+  assert.equal(Buffer.from(fulfil.params.body, 'base64').toString('utf8'), '{"offline":true}');
+});

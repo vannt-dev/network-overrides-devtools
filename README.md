@@ -1,6 +1,7 @@
 # Network Overrides DevTools
 
 [![Chrome Web Store users](https://img.shields.io/chrome-web-store/users/holdjgmcnpelgclhopiejilhhkfcmpba?label=Chrome%20users)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
+[![Official vannt-dev build](https://vannt-dev.github.io/badges/official.svg)](https://vannt-dev.github.io/official.html)
 
 A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
 
@@ -125,7 +126,7 @@ manifest.json                # Chrome Manifest V3 configuration
 2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, enables `Network`, applies the selected throttling preset, and enables `Fetch` for both Request and Response stages. Detachment happens on disable, tab close, or debugger disconnect.
 
 3. **Request interception** (`Fetch.requestPaused`):
-   - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match.
+   - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match. A body rule with `respondAtRequest` is answered here with `Fetch.fulfillRequest`, so the request is never sent.
    - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with the original status and headers — unless the rule overrides them via `statusCode`/`responseHeaders` (same-name headers overwritten case-insensitively) — plus the `x-network-overrides: true` and `x-network-overrides-pattern` markers, delayed by `delayMs` if set. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
 
 4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
@@ -208,12 +209,24 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 
 Optional fields on an override rule:
 
-| Field             | Type                       | Description                                                                                           |
-| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `statusCode`      | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
-| `responseHeaders` | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
-| `delayMs`         | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
-| `failReason`      | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
+| Field              | Type                       | Description                                                                                           |
+| ------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`       | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders`  | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`          | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`       | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
+| `respondAtRequest` | optional boolean           | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `graphqlOperation` | optional string            | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+
+### Answer without calling the server
+
+A body rule normally answers at the response stage: the request reaches the server first, and its response is replaced. With **Answer without calling the server** (`respondAtRequest: true`) the rule is fulfilled at the request stage with `Fetch.fulfillRequest`, so the server is never contacted: no side effects on `POST`, and unreachable hosts or endpoints that do not exist yet still get the mock.
+
+The response is built from the rule alone: a blank status means `200`, and the headers are the rule's own (plus the CORS headers below). Templates work (they read the request, not the response); a script sees `request.response` as `{ status: null, headers: {}, body: null }`. Cross-origin requests work with no extra headers: the CORS preflight is answered for you, and the mock allows the page's origin unless the rule sets its own `Access-Control-Allow-*` headers.
+
+### GraphQL operation
+
+`graphqlOperation` narrows a rule to one GraphQL operation sent to a shared URL such as `/graphql`. It matches when the JSON request body's `operationName` equals the value (case-insensitive), failing that when its `query` contains the value, failing that when the raw body contains it. Requests without a body do not match.
 
 ## Usage
 

@@ -209,12 +209,24 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 
 Optional fields on an override rule:
 
-| Field             | Type                       | Description                                                                                           |
-| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `statusCode`      | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
-| `responseHeaders` | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
-| `delayMs`         | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
-| `failReason`      | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
+| Field              | Type                       | Description                                                                                           |
+| ------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`       | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders`  | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`          | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`       | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
+| `respondAtRequest` | optional boolean           | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `graphqlOperation` | optional string            | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+
+### Answer without calling the server
+
+A body rule normally answers at the response stage: the request reaches the server first, and its response is replaced. With **Answer without calling the server** (`respondAtRequest: true`) the rule is fulfilled at the request stage with `Fetch.fulfillRequest`, so the server is never contacted: no side effects on `POST`, and unreachable hosts or endpoints that do not exist yet still get the mock.
+
+The response is built from the rule alone: a blank status means `200`, and only the rule's headers are sent. Templates work (they read the request, not the response); a script sees `request.response` as `{ status: null, headers: {}, body: null }`. The browser still applies CORS, so a cross-origin mock needs `Access-Control-Allow-Origin` in its headers, and a preflighted request also needs `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` with the rule's method left at `Any` (the preflight `OPTIONS` request is answered by the same rule).
+
+### GraphQL operation
+
+`graphqlOperation` narrows a rule to one GraphQL operation sent to a shared URL such as `/graphql`. It matches when the JSON request body's `operationName` equals the value (case-insensitive), failing that when its `query` contains the value, failing that when the raw body contains it. Requests without a body do not match.
 
 ## Usage
 

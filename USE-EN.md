@@ -88,6 +88,8 @@ Click an API to open the modal with:
 - **HTTP Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method (same as before this field existed). Pre-filled from the captured request's method when opening the modal from a captured API.
 - **Override body / Redirect to URL**: Choose the override type.
 - **Response body**: Custom response content (for body override).
+- **Answer without calling the server** (body override): answer the request in the browser, before it is sent. See [6.6](#66-answer-without-calling-the-server).
+- **GraphQL Operation** (optional): apply the rule to one GraphQL operation only. See [5.7](#57-graphql-operation).
 - **Redirect URL**: Target URL (for redirect).
 - **Format JSON**: Pretty-print JSON body.
 - **Body type badge**: Auto-detects `text` or `json`.
@@ -202,6 +204,10 @@ Domain rules always run before global rules, so a rule can only be moved within 
 
 Besides the URL pattern, a rule can also be scoped to a specific HTTP method via the **Method** field in the override modal (see [3.3](#33-override-modal) and [4](#4-basic-usage)). A rule with a specific method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) only applies to requests using that method; `Any` (the default) matches every method, regardless of pattern type.
 
+### 5.7. GraphQL operation
+
+GraphQL apps usually send every query to one URL, such as `/graphql`. Fill **GraphQL Operation** in the modal to apply the rule to one operation only. The rule matches when the request body is JSON whose `operationName` equals the value (case does not matter); failing that, when its `query` text contains the value; failing that, when the raw request body contains it. A request without a body does not match. Leave the field empty to match every request to the URL.
+
 ---
 
 ## 6. Override Body
@@ -241,6 +247,20 @@ When creating a new override from an API:
 - If the API has a stored response body (in `recentApiBodies`), it is pre-filled automatically.
 - Otherwise, the extension sends a `getApiData` message to the background worker to retrieve the stored body.
 - This feature only works when **Auto-fill on open** is enabled (default: on).
+
+### 6.6. Answer without calling the server
+
+A body rule normally waits for the real response and then replaces it, so the server is always called first: a `POST` still has its side effects, and the mock fails when the host is down or the endpoint does not exist yet.
+
+Tick **Answer without calling the server** to answer the request in the browser instead, before it is sent. The body, **Status** and **Extra Response Headers** of the rule make the whole response, and the delay still applies. A host that cannot be reached gets the mock too. The rule shows a `NO SERVER` badge in the Rules tab.
+
+Compared with a normal body rule:
+
+- There is no original response. A blank status means `200`, and the only headers are the ones you add (plus `Content-Type: application/json; charset=utf-8` when you set none).
+- Templates such as `{{now}}`, `{{uuid}}` and `{{$queryParam(name)}}` work, since they do not need the server.
+- In Script mode, `request.response` is `{ status: null, headers: {}, body: null }`.
+- The rule's request header and request body changes are not used, since no request is sent.
+- The browser still checks CORS on a cross-origin mock. Add `Access-Control-Allow-Origin: *` (or the page's origin) to the response headers. A request that needs a preflight (a method other than `GET`/`POST`/`HEAD`, a JSON `Content-Type`, custom headers) also needs `Access-Control-Allow-Methods: *` and `Access-Control-Allow-Headers: *`, and the rule's method must be `Any` so it answers the preflight `OPTIONS` request too. For requests sent with credentials, use the page's origin instead of `*` and add `Access-Control-Allow-Credentials: true`.
 
 ---
 
@@ -289,6 +309,7 @@ Go to the **Rules** tab. Each rule displays:
 - **Method badge** (if set to something other than `Any`): a small badge (e.g. `POST`) next to the body preview.
 - **Redirect URL** (if set): Arrow → followed by the URL.
 - **Body preview**: First 80 characters + mode label (`text`/`file`).
+- **`NO SERVER` badge**: the rule answers without calling the server (see [6.6](#66-answer-without-calling-the-server)).
 
 ### 8.2. Edit a rule
 

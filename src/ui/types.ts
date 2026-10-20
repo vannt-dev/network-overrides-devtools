@@ -76,6 +76,7 @@ namespace NetworkOverridesUi {
     modalRequestBody?: HTMLTextAreaElement;
     modalRequestBodyField?: HTMLElement;
     modalProcessTemplates?: HTMLInputElement;
+    modalRespondAtRequest?: HTMLInputElement;
     modalGlobalRule?: HTMLInputElement;
     modalGraphqlOp?: HTMLInputElement;
     modalPreviewContainer?: HTMLDivElement;

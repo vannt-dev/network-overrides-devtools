@@ -42,6 +42,7 @@ namespace NetworkOverridesUi {
     show(elements.modalWsFields, isWs);
     show(elements.modalAdvancedFields, type !== 'redirect');
     show(elements.modalStatusField, type === 'body');
+    show(elements.modalRespondAtRequest?.closest('label'), type === 'body');
     show(elements.modalHeadersField, type === 'body');
     show(elements.modalRequestHeadersField, type !== 'fail' && !isWs);
     show(elements.modalRequestBodyField, type !== 'fail' && !isWs);
@@ -133,6 +134,9 @@ namespace NetworkOverridesUi {
     }
     if (elements.modalGlobalRule) {
       elements.modalGlobalRule.checked = existing?.isGlobal === true;
+    }
+    if (elements.modalRespondAtRequest) {
+      elements.modalRespondAtRequest.checked = existing?.respondAtRequest === true;
     }
     elements.modalFailReason.value =
       existing?.failReason && FAIL_REASONS.includes(existing.failReason)

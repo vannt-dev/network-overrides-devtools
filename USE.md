@@ -88,6 +88,8 @@ Khi click vào một API, modal hiện ra với:
 - **HTTP Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method (giống như hành vi trước khi có field này). Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
 - **Override body / Redirect to URL**: Chọn loại override.
 - **Response body**: Nội dung response ghi đè (nếu chọn Override body).
+- **Answer without calling the server** (Override body): trả lời request ngay trong trình duyệt, trước khi gửi đi. Xem mục 6.6.
+- **GraphQL Operation** (tùy chọn): chỉ áp dụng rule cho một GraphQL operation. Xem mục 5.7.
 - **Redirect URL**: URL chuyển hướng (nếu chọn Redirect to URL).
 - **Format JSON**: Làm đẹp JSON body.
 - **Body type badge**: Nhãn tự động phát hiện `text` hoặc `json`.
@@ -202,6 +204,10 @@ Rule theo domain luôn chạy trước rule global, nên mỗi rule chỉ di chu
 
 Bên cạnh URL pattern, một rule còn có thể được giới hạn theo HTTP method cụ thể thông qua field **Method** trong modal (xem mục 3.3 và 4 ở trên). Rule có method cụ thể (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) chỉ áp dụng cho request dùng đúng method đó; `Any` (mặc định) khớp với mọi method, không phân biệt loại pattern.
 
+### 5.7. GraphQL operation
+
+Ứng dụng GraphQL thường gửi mọi query tới cùng một URL, ví dụ `/graphql`. Điền **GraphQL Operation** trong modal để rule chỉ áp dụng cho một operation. Rule khớp khi body của request là JSON có `operationName` bằng giá trị đã điền (không phân biệt hoa thường); nếu không, khi đoạn `query` chứa giá trị đó; nếu vẫn không, khi body thô của request chứa giá trị đó. Request không có body thì không khớp. Để trống field này để khớp mọi request tới URL.
+
 ---
 
 ## 6. Override Body
@@ -241,6 +247,20 @@ Khi tạo override mới từ một API:
 - Nếu API có response body trong bộ nhớ (`recentApiBodies`), nó sẽ được tự động điền vào.
 - Nếu không, extension sẽ gửi message `getApiData` đến background worker để lấy body đã lưu.
 - Tính năng này chỉ hoạt động nếu toggle **Auto-fill on open** được bật (mặc định: có).
+
+### 6.6. Answer without calling the server (trả lời mà không gọi server)
+
+Bình thường rule override body đợi response thật rồi mới thay nó, nên server luôn bị gọi trước: `POST` vẫn gây tác dụng phụ, và mock hỏng khi host chết hoặc endpoint chưa có.
+
+Tick **Answer without calling the server** để trả lời request ngay trong trình duyệt, trước khi gửi đi. Body, **Status** và **Extra Response Headers** của rule tạo nên toàn bộ response; delay vẫn áp dụng. Host không truy cập được cũng nhận được mock. Rule có badge `NO SERVER` trong tab Rules.
+
+Khác với rule override body thường:
+
+- Không có response gốc. Status để trống nghĩa là `200`, và chỉ có những header bạn thêm (kèm `Content-Type: application/json; charset=utf-8` nếu bạn không đặt).
+- Template như `{{now}}`, `{{uuid}}`, `{{$queryParam(name)}}` vẫn chạy, vì chúng không cần server.
+- Ở chế độ Script, `request.response` là `{ status: null, headers: {}, body: null }`.
+- Phần sửa request header và request body của rule không được dùng, vì không có request nào được gửi.
+- Trình duyệt vẫn kiểm tra CORS với mock khác origin. Thêm `Access-Control-Allow-Origin: *` (hoặc origin của trang) vào response header. Request cần preflight (method khác `GET`/`POST`/`HEAD`, `Content-Type` JSON, header tự đặt) cần thêm `Access-Control-Allow-Methods: *` và `Access-Control-Allow-Headers: *`, và method của rule phải là `Any` để rule trả lời cả request preflight `OPTIONS`. Với request gửi kèm credentials, dùng origin của trang thay cho `*` và thêm `Access-Control-Allow-Credentials: true`.
 
 ---
 
@@ -289,6 +309,7 @@ Vào tab **Rules**. Mỗi rule hiển thị:
 - **Method badge** (nếu khác `Any`): một badge nhỏ (ví dụ `POST`) cạnh phần preview body.
 - **Redirect URL** (nếu có): Mũi tên → kèm URL.
 - **Body preview**: 80 ký tự đầu của body, kèm mode (`text`/`file`).
+- **Badge `NO SERVER`**: rule trả lời mà không gọi server (xem mục 6.6).
 
 ### 8.2. Sửa rule
 

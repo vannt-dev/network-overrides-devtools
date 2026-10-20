@@ -269,6 +269,54 @@ return {
         failedScript.body.includes('Error: boom'),
       JSON.stringify(failedScript)
     );
+    // ---- 3e. a body rule set to answer without calling the server is
+    // fulfilled before the request leaves the browser, so a host nothing
+    // listens on still gets the mock.
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', '127.0.0.1:1/api/offline');
+    await popup.check('input[name="modal-override-type"][value="body"]');
+    await popup.selectOption('#modal-mode', 'text');
+    await popup.fill('#modal-body', '{"offline":"{{$queryParam(q)}}"}');
+    await popup.fill('#modal-status', '201');
+    await popup.evaluate(() => {
+      document.getElementById('modal-headers').value =
+        'Access-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: *\nAccess-Control-Allow-Headers: *';
+    });
+    await popup.check('#modal-respond-at-request');
+    await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    await popup.waitForTimeout(1000);
+    const offline = await site.evaluate(
+      u =>
+        fetch(u, { method: 'POST', body: 'x' }).then(
+          async r => ({ status: r.status, body: await r.text() }),
+          error => ({ error: String(error) })
+        ),
+      'http://127.0.0.1:1/api/offline?q=hi'
+    );
+    report(
+      'a rule answering without the server mocks a host nothing listens on',
+      offline.status === 201 && offline.body === '{"offline":"hi"}',
+      JSON.stringify(offline)
+    );
+    const preflighted = await site.evaluate(
+      u =>
+        fetch(u, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        }).then(
+          async r => ({ status: r.status, body: await r.text() }),
+          error => ({ error: String(error) })
+        ),
+      'http://127.0.0.1:1/api/offline?q=pre'
+    );
+    report(
+      'with CORS headers on the rule, a preflighted cross-origin request is mocked too',
+      preflighted.status === 201 && preflighted.body === '{"offline":"pre"}',
+      JSON.stringify(preflighted)
+    );
   }
 
   // ---- 4. force-stop the service worker, wake it, confirm re-attach + rules survive

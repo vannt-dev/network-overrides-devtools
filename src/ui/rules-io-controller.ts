@@ -49,6 +49,7 @@ namespace NetworkOverridesUi {
       (rule.processTemplates === undefined || typeof rule.processTemplates === 'boolean') &&
       (rule.isGlobal === undefined || typeof rule.isGlobal === 'boolean') &&
       (rule.requestBody === undefined || typeof rule.requestBody === 'string') &&
+      (rule.respondAtRequest === undefined || typeof rule.respondAtRequest === 'boolean') &&
       (rule.failReason === undefined ||
         (typeof rule.failReason === 'string' &&
           FAIL_REASONS.includes(rule.failReason) &&
@@ -74,6 +75,7 @@ namespace NetworkOverridesUi {
     if (source.processTemplates !== undefined) clean.processTemplates = source.processTemplates;
     if (source.isGlobal !== undefined) clean.isGlobal = source.isGlobal;
     if (source.requestBody !== undefined) clean.requestBody = source.requestBody;
+    if (source.respondAtRequest !== undefined) clean.respondAtRequest = source.respondAtRequest;
     if (source.statusCode !== undefined) clean.statusCode = source.statusCode;
     if (source.delayMs !== undefined) clean.delayMs = source.delayMs;
     if (source.responseHeaders !== undefined) {

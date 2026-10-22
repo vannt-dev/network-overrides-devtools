@@ -80,6 +80,36 @@ jobs:
           name: coverage-report
           path: coverage/
 
+  store-package:
+    name: Store Package Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the Store ZIP
+        run: npm run package:store
+
+      # Reads the ZIP the way the Chrome Web Store review does: no remotely hosted code (MV3).
+      - name: Find the Store ZIP
+        id: zip
+        run: echo "path=$(ls release/*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the Store ZIP for remotely hosted code
+        uses: vannt-dev/mv3-remote-code-check@v0
+        with:
+          path: ${{ steps.zip.outputs.path }}
+
   smoke-test:
     name: Playwright Smoke Test
     runs-on: ubuntu-latest

@@ -90,6 +90,7 @@ Khi click vào một API, modal hiện ra với:
 - **Response body**: Nội dung response ghi đè (nếu chọn Override body).
 - **Answer without calling the server** (Override body): trả lời request ngay trong trình duyệt, trước khi gửi đi. Xem mục 6.6.
 - **GraphQL Operation** (tùy chọn): chỉ áp dụng rule cho một GraphQL operation. Xem mục 5.7.
+- **Only when the request has…** (tùy chọn, mặc định thu gọn): query parameter, request header và đoạn text mà body của request phải chứa. Xem mục 5.8.
 - **Redirect URL**: URL chuyển hướng (nếu chọn Redirect to URL).
 - **Format JSON**: Làm đẹp JSON body.
 - **Body type badge**: Nhãn tự động phát hiện `text` hoặc `json`.
@@ -207,6 +208,16 @@ Bên cạnh URL pattern, một rule còn có thể được giới hạn theo HT
 ### 5.7. GraphQL operation
 
 Ứng dụng GraphQL thường gửi mọi query tới cùng một URL, ví dụ `/graphql`. Điền **GraphQL Operation** trong modal để rule chỉ áp dụng cho một operation. Rule khớp khi body của request là JSON có `operationName` bằng giá trị đã điền (không phân biệt hoa thường); nếu không, khi đoạn `query` chứa giá trị đó; nếu vẫn không, khi body thô của request chứa giá trị đó. Request không có body thì không khớp. Để trống field này để khớp mọi request tới URL.
+
+### 5.8. Điều kiện theo query, header và body
+
+Mở mục **Only when the request has…** trong modal để rule chỉ áp dụng cho một số request tới cùng URL. Mọi điều kiện đã điền đều phải đúng, cùng với pattern, method và GraphQL operation. Để trống thì rule khớp như trước.
+
+- **Query parameters**: viết như trong URL, ví dụ `page=2&debug`. `page=2` yêu cầu `page` bằng `2` (chỉ cần một trong các giá trị nếu tham số lặp lại; so sánh sau khi giải mã URL). `debug` đứng riêng yêu cầu có tham số `debug`, giá trị nào cũng được. Tên tham số phân biệt hoa thường.
+- **Request headers**: mỗi dòng một header. `X-Tenant: acme` yêu cầu header đó có đúng giá trị này; `Authorization` đứng riêng chỉ yêu cầu có header. Tên header không phân biệt hoa thường.
+- **Request body contains**: body của request phải chứa đoạn text này, ví dụ `"plan":"pro"`. Có phân biệt hoa thường. Nếu trình duyệt không đưa body cho extension (ví dụ upload dạng stream) thì điều kiện không khớp.
+
+Rule có điều kiện hiện nhãn **IF** trong danh sách rule; rê chuột lên nhãn để xem các điều kiện. Request preflight CORS không mang header và body của request thật, nên với preflight chỉ điều kiện query được kiểm tra.
 
 ---
 
@@ -358,6 +369,7 @@ Click **Import** trong tab **Rules** và chọn một file JSON đã export trư
 - Nếu domain hiện tại **chưa có rule nào**, import sẽ được áp dụng ngay, không hỏi.
 - File không hợp lệ (không phải JSON hợp lệ, thiếu mảng `overrides`, hoặc có rule thiếu field bắt buộc) sẽ bị từ chối kèm cảnh báo (alert), và không có gì thay đổi.
 - Chỉ các field hợp lệ của rule (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) được giữ lại từ mỗi rule import; các property khác trong file sẽ bị bỏ qua.
+- Các điều kiện `matchQuery`, `matchHeaders` và `matchBody` (xem mục 5.8) cũng được giữ lại. File export từ trước khi có các field này vẫn import bình thường.
 
 Giống Export, Import luôn thao tác trên domain đang active trong panel — không bao giờ áp dụng cho tất cả domain cùng lúc.
 

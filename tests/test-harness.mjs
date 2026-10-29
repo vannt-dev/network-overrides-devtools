@@ -152,6 +152,11 @@ function buildUiHtml() {
           <option value="DELETE">DELETE</option>
         </select></label>
         <label><input id="modal-graphql-op" type="text"></label>
+        <details id="modal-match-fields">
+          <input id="modal-match-query" type="text">
+          <textarea id="modal-match-headers"></textarea>
+          <input id="modal-match-body" type="text">
+        </details>
         <input id="modal-global-rule" type="checkbox">
         <div class="override-type-selector">
           <label class="type-radio">

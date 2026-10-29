@@ -17,6 +17,9 @@ declare namespace NetworkOverridesShared {
     responseHeaders?: FetchHeader[]; // extra/override response headers; body rules only
     requestHeaders?: FetchHeader[]; // extra/override request headers; applied at request stage
     graphqlOperation?: string; // optional GraphQL operationName to match against request payload
+    matchQuery?: MatchCondition[]; // every query parameter must be present (and equal, with a value)
+    matchHeaders?: MatchCondition[]; // every request header must be present (and equal); names ignore case
+    matchBody?: string; // the request body must contain this text; no body sent = no match
     processTemplates?: boolean; // whether to process dynamic template tokens {{now}}, {{uuid}}, etc.
     delayMs?: number; // 0–120000 ms; body and fail rules
     failReason?: string; // presence makes this a fail rule (CDP Network.ErrorReason)
@@ -51,5 +54,10 @@ declare namespace NetworkOverridesShared {
   interface FetchHeader {
     name: string;
     value: string;
+  }
+  /** A request condition: a name alone asks for presence, a value asks for equality. */
+  interface MatchCondition {
+    name: string;
+    value?: string;
   }
 }

@@ -90,6 +90,7 @@ Click an API to open the modal with:
 - **Response body**: Custom response content (for body override).
 - **Answer without calling the server** (body override): answer the request in the browser, before it is sent. See [6.6](#66-answer-without-calling-the-server).
 - **GraphQL Operation** (optional): apply the rule to one GraphQL operation only. See [5.7](#57-graphql-operation).
+- **Only when the request has…** (optional, folded): query parameters, request headers and a text the request body must contain. See [5.8](#58-query-header-and-body-conditions).
 - **Redirect URL**: Target URL (for redirect).
 - **Format JSON**: Pretty-print JSON body.
 - **Body type badge**: Auto-detects `text` or `json`.
@@ -207,6 +208,16 @@ Besides the URL pattern, a rule can also be scoped to a specific HTTP method via
 ### 5.7. GraphQL operation
 
 GraphQL apps usually send every query to one URL, such as `/graphql`. Fill **GraphQL Operation** in the modal to apply the rule to one operation only. The rule matches when the request body is JSON whose `operationName` equals the value (case does not matter); failing that, when its `query` text contains the value; failing that, when the raw request body contains it. A request without a body does not match. Leave the field empty to match every request to the URL.
+
+### 5.8. Query, header and body conditions
+
+Open **Only when the request has…** in the modal to narrow a rule to some requests of the same URL. Every condition you fill in must hold, together with the pattern, method and GraphQL operation. Leave them empty and the rule matches as before.
+
+- **Query parameters**: write them as in a URL, for example `page=2&debug`. `page=2` needs `page` to equal `2` (one of its values, if it repeats; values are compared after URL decoding). `debug` alone needs `debug` to be present, with any value. Names are case-sensitive.
+- **Request headers**: one per line. `X-Tenant: acme` needs that header with that exact value; `Authorization` alone needs the header to be present. Header names ignore case.
+- **Request body contains**: the request body must contain this text, for example `"plan":"pro"`. Case matters. If the browser does not hand the body to the extension (for example a streamed upload), the condition does not match.
+
+A rule with conditions shows an **IF** badge in the rules list; hover it to see them. A CORS preflight carries neither the headers nor the body of the request behind it, so only the query conditions are checked for the preflight.
 
 ---
 
@@ -358,6 +369,7 @@ Click **Import** in the **Rules** tab and pick a previously exported (or hand-cr
 - If the current domain **has no rules yet**, the import is applied directly with no prompt.
 - Invalid files (not valid JSON, missing the `overrides` array, or a rule missing required fields) are rejected with an alert, and nothing is changed.
 - Only known rule fields (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) are kept from each imported rule; any other properties in the file are dropped.
+- The match conditions `matchQuery`, `matchHeaders` and `matchBody` (see [5.8](#58-query-header-and-body-conditions)) are kept too. Files exported before they existed import unchanged.
 
 Like Export, Import always operates on the domain currently active in the panel — never all domains at once.
 

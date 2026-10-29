@@ -6,6 +6,23 @@
 /// <reference path="./websocket-rule.ts" />
 
 namespace NetworkOverridesUi {
+  /** One line per query, header and body condition of a rule, for the list's tooltip. */
+  export function describeMatchConditions(rule: OverrideRule): string[] {
+    const lines: string[] = [];
+    if (rule.matchQuery?.length) {
+      lines.push(`query ${NetworkOverridesUtils.formatQueryConditions(rule.matchQuery)}`);
+    }
+    for (const header of rule.matchHeaders || []) {
+      lines.push(
+        typeof header.value === 'string'
+          ? `header ${header.name}: ${header.value}`
+          : `header ${header.name}`
+      );
+    }
+    if (rule.matchBody) lines.push(`body contains ${rule.matchBody}`);
+    return lines;
+  }
+
   export function renderRulesList(
     elements: Elements,
     state: UiState,
@@ -130,6 +147,15 @@ namespace NetworkOverridesUi {
         gqlBadge.className = 'graphql-badge';
         gqlBadge.textContent = `GQL: ${rule.graphqlOperation}`;
         span.appendChild(gqlBadge);
+      }
+
+      const conditions = describeMatchConditions(rule);
+      if (conditions.length > 0) {
+        const matchBadge = document.createElement('span');
+        matchBadge.className = 'match-badge';
+        matchBadge.textContent = 'IF';
+        matchBadge.title = ['Only when the request has:', ...conditions].join('\n');
+        span.appendChild(matchBadge);
       }
 
       if (rule.kind === 'websocket') {

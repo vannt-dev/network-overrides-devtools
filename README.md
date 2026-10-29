@@ -3,7 +3,16 @@
 [![Chrome Web Store users](https://img.shields.io/chrome-web-store/users/holdjgmcnpelgclhopiejilhhkfcmpba?label=Chrome%20users)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 [![Official vannt-dev build](https://vannt-dev.github.io/badges/official.svg)](https://vannt-dev.github.io/official.html)
 
-A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
+A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method or GraphQL operation, and then replaces the response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
+
+### Compared with DevTools Local Overrides
+
+Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/overrides) serve a local file in place of a response and change response headers. This extension also does the following:
+
+- **Status and per-rule delay**: a body rule can set the response status (100–599) and hold the response for up to 120 s, for that rule's requests only.
+- **Request changes**: add or overwrite request headers, replace the request payload, or redirect the request to another URL before it is sent.
+- **Narrower matching**: limit a rule to one HTTP method or one GraphQL `operationName`, or match URLs with a regular expression.
+- **Computed responses and WebSocket frames**: a script rule builds the response in JavaScript from the request and the real response; WebSocket rules replace, substitute, block or delay text frames.
 
 🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 

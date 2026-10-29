@@ -79,6 +79,10 @@ namespace NetworkOverridesUi {
     modalRespondAtRequest?: HTMLInputElement;
     modalGlobalRule?: HTMLInputElement;
     modalGraphqlOp?: HTMLInputElement;
+    modalMatchFields?: HTMLDetailsElement;
+    modalMatchQuery?: HTMLInputElement;
+    modalMatchHeaders?: HTMLTextAreaElement;
+    modalMatchBody?: HTMLInputElement;
     modalPreviewContainer?: HTMLDivElement;
     profilesSelect?: HTMLSelectElement;
     saveProfileBtn?: HTMLButtonElement;

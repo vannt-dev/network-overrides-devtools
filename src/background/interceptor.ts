@@ -11,17 +11,45 @@ namespace NetworkOverridesBackground {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
 
+  /**
+   * The request body as text: `postData`, failing that the bytes of
+   * `postDataEntries`. Chrome leaves both out for some large or binary
+   * bodies; a body condition then does not match.
+   */
+  function requestBodyText(request: any): string | undefined {
+    if (typeof request?.postData === 'string') return request.postData;
+    const entries = request?.postDataEntries;
+    if (!Array.isArray(entries) || entries.length === 0) return undefined;
+    try {
+      // Decoded together, so a character split across two entries survives.
+      const binary = entries
+        .map(entry => (typeof entry?.bytes === 'string' ? atob(entry.bytes) : ''))
+        .join('');
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch {
+      return undefined;
+    }
+  }
+
   function findOverride(
-    url: string,
-    method: string | undefined,
+    request: any,
     overrides: OverrideRule[],
     postData?: string
   ): { override: OverrideRule; captures: string[] } | null {
+    const url = request?.url || '';
+    const method = request?.method;
+    const conditionRequest = {
+      url,
+      headers: request?.headers,
+      body: requestBodyText(request),
+    };
     for (const test of overrides) {
       if (test.kind === 'websocket') continue;
       if (test.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;
+      if (!NetworkOverridesUtils.matchesRequestConditions(test, conditionRequest)) continue;
       const captures = matchPattern(test.pattern, url);
       if (captures !== null) {
         return { override: test, captures };
@@ -49,7 +77,8 @@ namespace NetworkOverridesBackground {
 
   /**
    * The rule the request behind a preflight will meet first. A preflight
-   * carries no body, so a GraphQL operation filter cannot be checked here.
+   * carries neither the body nor the headers of that request, so only the
+   * query conditions are checked here, not GraphQL, header or body ones.
    */
   function findPreflightTarget(
     url: string,
@@ -59,6 +88,7 @@ namespace NetworkOverridesBackground {
     for (const rule of overrides) {
       if (rule.kind === 'websocket' || rule.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(rule.method, method)) continue;
+      if (!NetworkOverridesUtils.matchesQuery(rule.matchQuery, url)) continue;
       if (matchPattern(rule.pattern, url) !== null) return rule;
     }
     return null;
@@ -318,7 +348,7 @@ namespace NetworkOverridesBackground {
 
       try {
         const postData = params.request?.postData || state.recentApis.get(url)?.postData;
-        const match = findOverride(url, params.request?.method, state.overrides, postData);
+        const match = findOverride(params.request, state.overrides, postData);
         // The preflight of a request that will be answered without the server
         // is answered too, unless a rule is written for OPTIONS itself.
         const askedMethod = preflightMethod(params.request);
@@ -450,7 +480,7 @@ namespace NetworkOverridesBackground {
       });
 
       const postData = params.request?.postData || state.recentApis.get(url)?.postData;
-      const match = findOverride(url, params.request?.method, state.overrides, postData);
+      const match = findOverride(params.request, state.overrides, postData);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (shouldCaptureBody(resourceType)) {

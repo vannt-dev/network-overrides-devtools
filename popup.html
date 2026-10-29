@@ -103,6 +103,37 @@
               placeholder="e.g. GetUserProfile or query name"
             />
           </label>
+          <details id="modal-match-fields" class="modal-match-fields">
+            <summary>Only when the request has… (optional)</summary>
+            <p class="modal-field-help">
+              Every condition you fill in must hold, together with the pattern, method and GraphQL
+              operation. A rule with none of them matches as before.
+            </p>
+            <label class="modal-field">
+              <span>Query parameters</span>
+              <input
+                id="modal-match-query"
+                type="text"
+                placeholder="e.g. page=2&amp;debug (a name alone: present with any value)"
+              />
+            </label>
+            <label class="modal-field">
+              <span>Request headers (one per line; names ignore case)</span>
+              <textarea
+                id="modal-match-headers"
+                rows="2"
+                placeholder="X-Tenant: acme&#10;Authorization"
+              ></textarea>
+            </label>
+            <label class="modal-field">
+              <span>Request body contains</span>
+              <input
+                id="modal-match-body"
+                type="text"
+                placeholder='e.g. "plan":"pro" (no match when the browser sends no body text)'
+              />
+            </label>
+          </details>
           <label class="type-radio" title="Apply this rule on every domain">
             <input id="modal-global-rule" type="checkbox" />
             <span>Global rule (all domains)</span>

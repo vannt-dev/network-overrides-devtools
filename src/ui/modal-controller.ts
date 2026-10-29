@@ -232,6 +232,15 @@ namespace NetworkOverridesUi {
       if (elements.modalGraphqlOp?.value.trim()) {
         rule.graphqlOperation = elements.modalGraphqlOp.value.trim();
       }
+      const matchQuery = NetworkOverridesUtils.parseQueryConditions(
+        elements.modalMatchQuery?.value || ''
+      );
+      if (matchQuery.length > 0) rule.matchQuery = matchQuery;
+      const matchHeaders = NetworkOverridesUtils.parseHeaderConditions(
+        elements.modalMatchHeaders?.value || ''
+      );
+      if (matchHeaders.length > 0) rule.matchHeaders = matchHeaders;
+      if (elements.modalMatchBody?.value) rule.matchBody = elements.modalMatchBody.value;
       if (elements.modalRequestBody?.value.trim()) {
         rule.requestBody = elements.modalRequestBody.value;
       }

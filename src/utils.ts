@@ -122,6 +122,135 @@ namespace NetworkOverridesUtils {
     return postData.toLowerCase().includes(target);
   }
 
+  type MatchCondition = NetworkOverridesShared.MatchCondition;
+
+  /** Decodes a query-string part the way URLSearchParams does (`+` is a space). */
+  function decodeQueryPart(part: string): string {
+    const spaced = part.replace(/\+/g, ' ');
+    try {
+      return decodeURIComponent(spaced);
+    } catch {
+      return spaced;
+    }
+  }
+
+  /**
+   * True when every query condition holds for the URL: a name alone needs the
+   * parameter to be present, a name with a value needs one of its values to
+   * equal it. Names are case-sensitive, as servers read them.
+   */
+  export function matchesQuery(conditions: MatchCondition[] | undefined, url: string): boolean {
+    if (!Array.isArray(conditions) || conditions.length === 0) return true;
+    let params: URLSearchParams;
+    try {
+      params = new URL(url).searchParams;
+    } catch {
+      return false;
+    }
+    return conditions.every(condition =>
+      typeof condition.value === 'string'
+        ? params.getAll(condition.name).includes(condition.value)
+        : params.has(condition.name)
+    );
+  }
+
+  /** Reads the request headers as a case-insensitive map from both shapes the extension sees. */
+  function headerMap(headers: unknown): Map<string, string> {
+    const map = new Map<string, string>();
+    if (Array.isArray(headers)) {
+      for (const header of headers) {
+        if (header && typeof header.name === 'string') {
+          map.set(header.name.toLowerCase(), String(header.value ?? ''));
+        }
+      }
+    } else if (headers && typeof headers === 'object') {
+      for (const [name, value] of Object.entries(headers as Record<string, unknown>)) {
+        map.set(name.toLowerCase(), String(value ?? ''));
+      }
+    }
+    return map;
+  }
+
+  /**
+   * True when every header condition holds: names ignore case, a value must
+   * equal the header's value exactly.
+   */
+  export function matchesHeaders(
+    conditions: MatchCondition[] | undefined,
+    headers: unknown
+  ): boolean {
+    if (!Array.isArray(conditions) || conditions.length === 0) return true;
+    const map = headerMap(headers);
+    return conditions.every(condition => {
+      const actual = map.get(condition.name.trim().toLowerCase());
+      if (actual === undefined) return false;
+      return typeof condition.value === 'string' ? actual.trim() === condition.value.trim() : true;
+    });
+  }
+
+  /** True when the request body contains the text; a request without a body never does. */
+  export function matchesBody(contains: string | undefined, body: string | undefined): boolean {
+    if (!contains) return true;
+    if (typeof body !== 'string' || !body) return false;
+    return body.includes(contains);
+  }
+
+  /** The query, header and body conditions of a rule, all of which must hold. */
+  export function matchesRequestConditions(
+    rule: NetworkOverridesShared.OverrideRule,
+    request: { url: string; headers?: unknown; body?: string }
+  ): boolean {
+    return (
+      matchesQuery(rule.matchQuery, request.url) &&
+      matchesHeaders(rule.matchHeaders, request.headers) &&
+      matchesBody(rule.matchBody, request.body)
+    );
+  }
+
+  /** Reads `page=2&debug` into conditions; a part without `=` asks only for presence. */
+  export function parseQueryConditions(text: string): MatchCondition[] {
+    const conditions: MatchCondition[] = [];
+    for (const raw of text.trim().replace(/^\?/, '').split('&')) {
+      const part = raw.trim();
+      if (!part) continue;
+      const eq = part.indexOf('=');
+      const name = decodeQueryPart(eq < 0 ? part : part.slice(0, eq)).trim();
+      if (!name) continue;
+      conditions.push(eq < 0 ? { name } : { name, value: decodeQueryPart(part.slice(eq + 1)) });
+    }
+    return conditions;
+  }
+
+  /** Writes conditions back as text that parseQueryConditions reads the same way. */
+  export function formatQueryConditions(conditions: MatchCondition[] | undefined): string {
+    const encode = (part: string) => part.replace(/[%&+#=]/g, c => encodeURIComponent(c));
+    return (conditions || [])
+      .map(c =>
+        typeof c.value === 'string' ? `${encode(c.name)}=${encode(c.value)}` : encode(c.name)
+      )
+      .join('&');
+  }
+
+  /** Reads one `Name: value` or bare `Name` per line into header conditions. */
+  export function parseHeaderConditions(text: string): MatchCondition[] {
+    const conditions: MatchCondition[] = [];
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const colon = line.indexOf(':');
+      const name = (colon < 0 ? line : line.slice(0, colon)).trim();
+      if (!name) continue;
+      conditions.push(colon < 0 ? { name } : { name, value: line.slice(colon + 1).trim() });
+    }
+    return conditions;
+  }
+
+  export function formatHeaderConditions(conditions: MatchCondition[] | undefined): string {
+    return (conditions || [])
+      .map(c => (typeof c.value === 'string' ? `${c.name}: ${c.value}` : c.name))
+      .join('\n');
+  }
+
   type FetchHeader = { name: string; value: string };
 
   /** What a response script receives as `request`. */

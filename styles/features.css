@@ -214,6 +214,33 @@
   margin-left: 4px;
 }
 
+.match-badge {
+  background-color: #56b6c2;
+  color: #1e1e1e;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  cursor: help;
+}
+
+.modal-match-fields {
+  margin: 4px 0 8px;
+}
+
+.modal-match-fields > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.modal-match-fields .modal-field-help {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
 /* Visual Header Table Editor */
 .modal-headers-table {
   margin-top: 6px;

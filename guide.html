@@ -117,6 +117,10 @@
           when opening the modal from a captured API.
         </li>
         <li>
+          <strong>Only when the request has…</strong> (optional, folded): query parameters, request
+          headers and a text the request body must contain. See <a href="#match-conditions">5.7</a>.
+        </li>
+        <li>
           <strong>Override body / Redirect to URL / Fail request</strong>: Choose the override type
           via radio buttons.
         </li>
@@ -266,6 +270,37 @@ Pattern: all</pre>
         <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) only applies
         to requests using that method; <code>Any</code> (the default) matches every method,
         regardless of pattern type.
+      </p>
+
+      <h3 id="match-conditions">5.7. Query, header and body conditions</h3>
+      <p>
+        Open <strong>Only when the request has…</strong> in the modal to narrow a rule to some
+        requests of the same URL. Every condition you fill in must hold, together with the pattern
+        and method. Leave them empty and the rule matches as before.
+      </p>
+      <ul>
+        <li>
+          <strong>Query parameters</strong>: write them as in a URL, for example
+          <code>page=2&amp;debug</code>. <code>page=2</code> needs <code>page</code> to equal
+          <code>2</code> (one of its values, if it repeats; compared after URL decoding).
+          <code>debug</code> alone needs <code>debug</code> to be present, with any value. Names are
+          case-sensitive.
+        </li>
+        <li>
+          <strong>Request headers</strong>: one per line. <code>X-Tenant: acme</code> needs that
+          header with that exact value; <code>Authorization</code> alone needs the header to be
+          present. Header names ignore case.
+        </li>
+        <li>
+          <strong>Request body contains</strong>: the request body must contain this text, for
+          example <code>"plan":"pro"</code>. Case matters. If the browser does not hand the body to
+          the extension (for example a streamed upload), the condition does not match.
+        </li>
+      </ul>
+      <p>
+        A rule with conditions shows an <strong>IF</strong> badge in the rules list; hover it to see
+        them. A CORS preflight carries neither the headers nor the body of the request behind it, so
+        only the query conditions are checked for the preflight.
       </p>
 
       <!-- ============ 6 ============ -->
@@ -495,6 +530,11 @@ Pattern: all</pre>
           Only known rule fields (<code>pattern</code>, <code>mode</code>, <code>body</code>,
           <code>redirectUrl</code>, <code>method</code>, <code>enabled</code>) are kept from each
           imported rule; any other properties in the file are dropped.
+        </li>
+        <li>
+          The match conditions <code>matchQuery</code>, <code>matchHeaders</code> and
+          <code>matchBody</code> (see <a href="#match-conditions">5.7</a>) are kept too. Files
+          exported before they existed import unchanged.
         </li>
       </ul>
       <p>

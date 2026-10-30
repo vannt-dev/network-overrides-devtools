@@ -49,6 +49,7 @@ namespace NetworkOverridesUi {
     show(elements.modalDelay.closest('label'), !isWs || wsAction === 'delay');
     show(elements.modalMethod.closest('label'), !isWs);
     show(elements.modalGraphqlOp?.closest('label'), !isWs);
+    show(elements.modalMatchFields, !isWs);
     show(elements.modalMode, !isWs);
     elements.modalPattern.disabled = type === 'body';
     updateScriptHelp(elements);
@@ -113,6 +114,25 @@ namespace NetworkOverridesUi {
   export function prefillAdvancedFields(elements: Elements, existing: OverrideRule | null): void {
     if (elements.modalGraphqlOp) {
       elements.modalGraphqlOp.value = existing?.graphqlOperation || '';
+    }
+    if (elements.modalMatchQuery) {
+      elements.modalMatchQuery.value = NetworkOverridesUtils.formatQueryConditions(
+        existing?.matchQuery
+      );
+    }
+    if (elements.modalMatchHeaders) {
+      elements.modalMatchHeaders.value = NetworkOverridesUtils.formatHeaderConditions(
+        existing?.matchHeaders
+      );
+    }
+    if (elements.modalMatchBody) {
+      elements.modalMatchBody.value = existing?.matchBody || '';
+    }
+    // Open the section when the rule has conditions, so they are not missed.
+    if (elements.modalMatchFields) {
+      elements.modalMatchFields.open = Boolean(
+        existing?.matchQuery?.length || existing?.matchHeaders?.length || existing?.matchBody
+      );
     }
     elements.modalStatus.value =
       existing && typeof existing.statusCode === 'number' ? String(existing.statusCode) : '';

@@ -25,6 +25,28 @@ namespace NetworkOverridesUi {
     );
   }
 
+  function isValidMatchConditions(conditions: any): boolean {
+    return (
+      conditions === undefined ||
+      (Array.isArray(conditions) &&
+        conditions.every(
+          (condition: any) =>
+            !!condition &&
+            typeof condition.name === 'string' &&
+            condition.name.trim() !== '' &&
+            (condition.value === undefined || typeof condition.value === 'string')
+        ))
+    );
+  }
+
+  function cleanMatchConditions(conditions: any[]): NetworkOverridesShared.MatchCondition[] {
+    return conditions.map(condition =>
+      condition.value === undefined
+        ? { name: condition.name }
+        : { name: condition.name, value: condition.value }
+    );
+  }
+
   function isValidImportedRule(rule: any): boolean {
     return (
       !!rule &&
@@ -46,6 +68,9 @@ namespace NetworkOverridesUi {
       (rule.requestHeaders === undefined ||
         (Array.isArray(rule.requestHeaders) && rule.requestHeaders.every(isValidImportHeader))) &&
       (rule.graphqlOperation === undefined || typeof rule.graphqlOperation === 'string') &&
+      isValidMatchConditions(rule.matchQuery) &&
+      isValidMatchConditions(rule.matchHeaders) &&
+      (rule.matchBody === undefined || typeof rule.matchBody === 'string') &&
       (rule.processTemplates === undefined || typeof rule.processTemplates === 'boolean') &&
       (rule.isGlobal === undefined || typeof rule.isGlobal === 'boolean') &&
       (rule.requestBody === undefined || typeof rule.requestBody === 'string') &&
@@ -72,6 +97,11 @@ namespace NetworkOverridesUi {
     if (source.enabled !== undefined) clean.enabled = source.enabled;
     if (source.method !== undefined) clean.method = source.method.toUpperCase();
     if (source.graphqlOperation !== undefined) clean.graphqlOperation = source.graphqlOperation;
+    if (source.matchQuery !== undefined) clean.matchQuery = cleanMatchConditions(source.matchQuery);
+    if (source.matchHeaders !== undefined) {
+      clean.matchHeaders = cleanMatchConditions(source.matchHeaders);
+    }
+    if (source.matchBody !== undefined) clean.matchBody = source.matchBody;
     if (source.processTemplates !== undefined) clean.processTemplates = source.processTemplates;
     if (source.isGlobal !== undefined) clean.isGlobal = source.isGlobal;
     if (source.requestBody !== undefined) clean.requestBody = source.requestBody;

@@ -3,7 +3,16 @@
 [![Chrome Web Store users](https://img.shields.io/chrome-web-store/users/holdjgmcnpelgclhopiejilhhkfcmpba?label=Chrome%20users)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 [![Official vannt-dev build](https://vannt-dev.github.io/badges/official.svg)](https://vannt-dev.github.io/official.html)
 
-A Chrome/Edge DevTools extension that intercepts network responses and replaces their content during debugging. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests, then returns a mocked body or redirects to a different URL based on configured rules.
+A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method, GraphQL operation, query parameter, request header or request body text, and then replaces the response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
+
+### Compared with DevTools Local Overrides
+
+Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/overrides) serve a local file in place of a response and change response headers. This extension also does the following:
+
+- **Status and per-rule delay**: a body rule can set the response status (100–599) and hold the response for up to 120 s, for that rule's requests only.
+- **Request changes**: add or overwrite request headers, replace the request payload, or redirect the request to another URL before it is sent.
+- **Narrower matching**: limit a rule to one HTTP method, one GraphQL `operationName`, given query parameters, request headers or a text in the request body, or match URLs with a regular expression.
+- **Computed responses and WebSocket frames**: a script rule builds the response in JavaScript from the request and the real response; WebSocket rules replace, substitute, block or delay text frames.
 
 🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 
@@ -209,14 +218,17 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 
 Optional fields on an override rule:
 
-| Field              | Type                       | Description                                                                                           |
-| ------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `statusCode`       | optional integer 100–599   | Forces the mocked response status (body rules only).                                                  |
-| `responseHeaders`  | optional `{name, value}[]` | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
-| `delayMs`          | optional number 0–120000   | Delays the response/failure by N ms (body and fail rules).                                            |
-| `failReason`       | optional enum              | Makes the rule fail the request at the network layer instead of answering.                            |
-| `respondAtRequest` | optional boolean           | Body rules: answer before the request is sent, so the server is never called (see below).             |
-| `graphqlOperation` | optional string            | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+| Field              | Type                        | Description                                                                                           |
+| ------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`       | optional integer 100–599    | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders`  | optional `{name, value}[]`  | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`          | optional number 0–120000    | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`       | optional enum               | Makes the rule fail the request at the network layer instead of answering.                            |
+| `respondAtRequest` | optional boolean            | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `graphqlOperation` | optional string             | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+| `matchQuery`       | optional `{name, value?}[]` | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
+| `matchHeaders`     | optional `{name, value?}[]` | Applies the rule only when every request header is present (and equal); names ignore case.            |
+| `matchBody`        | optional string             | Applies the rule only when the request body contains this text.                                       |
 
 ### Answer without calling the server
 
@@ -227,6 +239,29 @@ The response is built from the rule alone: a blank status means `200`, and the h
 ### GraphQL operation
 
 `graphqlOperation` narrows a rule to one GraphQL operation sent to a shared URL such as `/graphql`. It matches when the JSON request body's `operationName` equals the value (case-insensitive), failing that when its `query` contains the value, failing that when the raw body contains it. Requests without a body do not match.
+
+### Query, header and body conditions
+
+`matchQuery`, `matchHeaders` and `matchBody` narrow a rule further. Each one you set must hold, together with the pattern, method and GraphQL operation; a rule without them matches exactly as before. In the editor they sit under **Only when the request has…**.
+
+- **Query parameters** (`page=2&debug`): a name with a value needs one of that parameter's values to equal it, after URL decoding; a name alone needs the parameter to be present with any value. Names are case-sensitive.
+- **Request headers** (one `Name: value` or `Name` per line): names ignore case, values must be equal.
+- **Request body contains**: the request body must contain the text (case-sensitive). When the browser does not hand the body to the extension, for example a streamed upload, the condition does not match.
+
+A CORS preflight carries neither the request's headers nor its body, so only the query conditions decide whether a rule answering without the server also answers the preflight.
+
+```json
+{
+  "pattern": "/api/orders",
+  "mode": "text",
+  "body": "{\"items\":[]}",
+  "matchQuery": [{ "name": "page", "value": "2" }, { "name": "debug" }],
+  "matchHeaders": [{ "name": "X-Tenant", "value": "acme" }],
+  "matchBody": "\"plan\":\"pro\""
+}
+```
+
+Rule files exported before these fields existed import unchanged.
 
 ## Usage
 

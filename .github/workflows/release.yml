@@ -53,6 +53,18 @@ jobs:
         if: steps.check_tag.outputs.EXISTS != 'true'
         run: npm run package:store
 
+      # Reads the ZIP the way the Chrome Web Store review does: no remotely hosted code (MV3).
+      - name: Find the Store ZIP
+        if: steps.check_tag.outputs.EXISTS != 'true'
+        id: zip
+        run: echo "path=$(ls release/*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the Store ZIP for remotely hosted code
+        if: steps.check_tag.outputs.EXISTS != 'true'
+        uses: vannt-dev/mv3-remote-code-check@v0
+        with:
+          path: ${{ steps.zip.outputs.path }}
+
       - name: Attest store package
         if: steps.check_tag.outputs.EXISTS != 'true'
         uses: actions/attest-build-provenance@v4

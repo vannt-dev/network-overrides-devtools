@@ -26,7 +26,11 @@ function report(name, ok, detail = '') {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/api/users') || req.url.startsWith('/api/script')) {
+  if (
+    req.url.startsWith('/api/users') ||
+    req.url.startsWith('/api/script') ||
+    req.url.startsWith('/api/cond')
+  ) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end('{"real":true}');
     return;
@@ -343,6 +347,43 @@ return {
       'a 500 mock reaches the page on a preflighted cross-origin request',
       broken.status === 500 && broken.body === '{"error":"down"}',
       JSON.stringify(broken)
+    );
+
+    // ---- 3f. query, header and body conditions narrow a rule: it applies
+    // (at the response stage) only when all of them hold.
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', 'api/cond');
+    await popup.check('input[name="modal-override-type"][value="body"]');
+    await popup.selectOption('#modal-mode', 'text');
+    await popup.fill('#modal-body', '{"cond":true}');
+    await popup.click('#modal-match-fields > summary');
+    await popup.fill('#modal-match-query', 'page=2&debug');
+    await popup.fill('#modal-match-headers', 'X-Tenant: acme');
+    await popup.fill('#modal-match-body', '"plan":"pro"');
+    await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    await popup.waitForTimeout(1000);
+    const condFetch = (query, headers, body) =>
+      site.evaluate(
+        ([u, h, b]) => fetch(u, { method: 'POST', headers: h, body: b }).then(r => r.text()),
+        [`http://127.0.0.1:${PORT}/api/cond${query}`, headers, body]
+      );
+    const tenant = { 'X-Tenant': 'acme' };
+    const pro = '{"plan":"pro"}';
+    const conditional = {
+      allHold: await condFetch('?page=2&debug', tenant, pro),
+      wrongQuery: await condFetch('?page=3&debug', tenant, pro),
+      noHeader: await condFetch('?page=2&debug', {}, pro),
+      wrongBody: await condFetch('?page=2&debug', tenant, '{"plan":"free"}'),
+    };
+    report(
+      'a rule with query, header and body conditions applies only when all hold',
+      conditional.allHold === '{"cond":true}' &&
+        conditional.wrongQuery === '{"real":true}' &&
+        conditional.noHeader === '{"real":true}' &&
+        conditional.wrongBody === '{"real":true}',
+      JSON.stringify(conditional)
     );
   }
 

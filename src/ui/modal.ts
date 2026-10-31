@@ -55,22 +55,31 @@ namespace NetworkOverridesUi {
     updateScriptHelp(elements);
   }
 
-  // A script body is code, not a response: it gets its own explanation, and
-  // the template option, which only rewrites literal bodies, is put away.
+  // A script body is code and a patch body is a list of changes, not a
+  // response: each gets its own explanation, and the template option, which
+  // only rewrites literal bodies, is put away. A patch needs the real
+  // response, so it cannot answer without calling the server.
   export function updateScriptHelp(elements: Elements): void {
     const checked = elements.modal?.querySelector(
       'input[name="modal-override-type"]:checked'
     ) as HTMLInputElement | null;
-    const isScript =
-      (checked?.value || 'body') === 'body' && elements.modalMode?.value === 'script';
+    const isBody = (checked?.value || 'body') === 'body';
+    const isScript = isBody && elements.modalMode?.value === 'script';
+    const isPatch = isBody && elements.modalMode?.value === 'patch';
     const help = elements.modal?.querySelector('#modal-script-help') as HTMLElement | null;
     if (help) help.style.display = isScript ? '' : 'none';
+    const patchHelp = elements.modal?.querySelector('#modal-patch-help') as HTMLElement | null;
+    if (patchHelp) patchHelp.style.display = isPatch ? '' : 'none';
     const templates = elements.modalProcessTemplates?.closest('label') as HTMLElement | null;
-    if (templates) templates.style.display = isScript ? 'none' : '';
+    if (templates) templates.style.display = isScript || isPatch ? 'none' : '';
+    const respondAtRequest = elements.modalRespondAtRequest?.closest('label') as HTMLElement | null;
+    if (respondAtRequest) respondAtRequest.style.display = isBody && !isPatch ? '' : 'none';
     if (elements.modalBody) {
       elements.modalBody.placeholder = isScript
         ? 'return { status: 200, body: { ok: true } };'
-        : 'Custom response body';
+        : isPatch
+          ? 'set data.user.plan = "pro"\nremove data.ads'
+          : 'Custom response body';
     }
   }
 

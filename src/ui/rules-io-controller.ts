@@ -52,7 +52,14 @@ namespace NetworkOverridesUi {
       !!rule &&
       typeof rule === 'object' &&
       typeof rule.pattern === 'string' &&
-      (rule.mode === 'text' || rule.mode === 'file' || rule.mode === 'script') &&
+      (rule.mode === 'text' ||
+        rule.mode === 'file' ||
+        rule.mode === 'script' ||
+        rule.mode === 'patch') &&
+      // A patch rule carries its operations; no other rule may.
+      (rule.mode === 'patch'
+        ? NetworkOverridesUtils.validatePatchOperations(rule.patch) === null
+        : rule.patch === undefined) &&
       (rule.method === undefined ||
         (typeof rule.method === 'string' && KNOWN_METHODS.includes(rule.method.toUpperCase()))) &&
       (rule.body === undefined ||
@@ -105,7 +112,17 @@ namespace NetworkOverridesUi {
     if (source.processTemplates !== undefined) clean.processTemplates = source.processTemplates;
     if (source.isGlobal !== undefined) clean.isGlobal = source.isGlobal;
     if (source.requestBody !== undefined) clean.requestBody = source.requestBody;
-    if (source.respondAtRequest !== undefined) clean.respondAtRequest = source.respondAtRequest;
+    if (source.mode === 'patch') {
+      clean.body = '';
+      clean.patch = source.patch.map((operation: any) =>
+        operation.op === 'set'
+          ? { op: 'set', path: operation.path, value: operation.value }
+          : { op: 'remove', path: operation.path }
+      );
+    } else if (source.respondAtRequest !== undefined) {
+      // A patch needs the real response, so it never answers without the server.
+      clean.respondAtRequest = source.respondAtRequest;
+    }
     if (source.statusCode !== undefined) clean.statusCode = source.statusCode;
     if (source.delayMs !== undefined) clean.delayMs = source.delayMs;
     if (source.responseHeaders !== undefined) {

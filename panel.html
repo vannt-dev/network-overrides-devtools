@@ -163,6 +163,7 @@
                 <option value="text">Text</option>
                 <option value="file">Raw base64</option>
                 <option value="script">Script (JavaScript)</option>
+                <option value="patch">Patch the real JSON response</option>
               </select>
               <p id="modal-script-help" class="modal-script-help" style="display: none">
                 The body of an async function that receives <code>request</code> and returns the
@@ -170,6 +171,13 @@
                 <code>request</code> has <code>url</code>, <code>method</code>,
                 <code>headers</code>, <code>query</code>, <code>params</code>, <code>body</code> and
                 the original <code>response</code>.
+              </p>
+              <p id="modal-patch-help" class="modal-script-help" style="display: none">
+                The request goes to the server and only these fields of its JSON response change.
+                One change per line: <code>set data.user.plan = "pro"</code> (the value is JSON) or
+                <code>remove data.ads</code>. Paths use dots and <code>[0]</code> for array items,
+                or a JSON Pointer such as <code>/data/items/0</code>. A response that is not JSON
+                passes through unchanged.
               </p>
               <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
               <label

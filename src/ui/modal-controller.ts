@@ -145,9 +145,19 @@ namespace NetworkOverridesUi {
       let body = '';
       let mode: OverrideMode = 'text';
       let redirectUrl: string | undefined;
+      let patch: NetworkOverridesShared.PatchOperation[] | undefined;
       if (overrideType === 'body') {
         body = elements.modalBody.value;
         mode = elements.modalMode.value as OverrideMode;
+        if (mode === 'patch') {
+          const parsed = NetworkOverridesUtils.parsePatchText(body);
+          if (!parsed.operations) {
+            showModalFeedback(elements, parsed.error, 'error', elements.modalBody);
+            return;
+          }
+          patch = parsed.operations;
+          body = '';
+        }
       } else if (overrideType === 'redirect') {
         redirectUrl = elements.modalRedirectUrl.value.trim();
         if (!redirectUrl) {
@@ -227,6 +237,7 @@ namespace NetworkOverridesUi {
         ? parseHeadersText(elements.modalRequestHeaders.value)
         : undefined;
       const rule: OverrideRule = { pattern, body, mode };
+      if (patch) rule.patch = patch;
       if (redirectUrl) rule.redirectUrl = redirectUrl;
       if (method && method !== 'ANY') rule.method = method;
       if (elements.modalGraphqlOp?.value.trim()) {
@@ -244,10 +255,11 @@ namespace NetworkOverridesUi {
       if (elements.modalRequestBody?.value.trim()) {
         rule.requestBody = elements.modalRequestBody.value;
       }
-      if (overrideType === 'body' && elements.modalProcessTemplates?.checked === false) {
+      if (overrideType === 'body' && !patch && elements.modalProcessTemplates?.checked === false) {
         rule.processTemplates = false;
       }
-      if (overrideType === 'body' && elements.modalRespondAtRequest?.checked) {
+      // A patch needs the real response, so it never answers without the server.
+      if (overrideType === 'body' && !patch && elements.modalRespondAtRequest?.checked) {
         rule.respondAtRequest = true;
       }
       if (elements.modalGlobalRule?.checked) {

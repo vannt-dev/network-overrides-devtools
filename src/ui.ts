@@ -338,7 +338,10 @@ namespace NetworkOverridesUi {
       updateModalVisibility(elements, type);
       elements.modalMode.value = rule.mode || 'text';
       updateScriptHelp(elements);
-      elements.modalBody.value = formatJsonIfPossible(rule.body || '');
+      elements.modalBody.value =
+        rule.mode === 'patch'
+          ? NetworkOverridesUtils.formatPatchOperations(rule.patch)
+          : formatJsonIfPossible(rule.body || '');
       elements.modalRedirectUrl.value = rule.redirectUrl || '';
 
       prefillAdvancedFields(elements, rule);
@@ -349,6 +352,9 @@ namespace NetworkOverridesUi {
 
     async function fillModalBody(url: string): Promise<void> {
       if (!options.autoFillOnOpen || activeTabId === null) return;
+      // A script or a patch is not a response body: keep what the rule holds.
+      const mode = elements.modalMode.value;
+      if (mode === 'script' || mode === 'patch') return;
       const response = await new Promise<any>(resolve => {
         chrome.runtime.sendMessage({ type: 'getApiData', tabId: activeTabId, url }, resolve);
       });
@@ -593,6 +599,8 @@ namespace NetworkOverridesUi {
               `WebSocket rule "${msg.pattern}" was skipped: ${msg.message}`,
               'error'
             );
+          } else if (msg.type === 'patchRuleSkipped') {
+            showNotification(`Patch rule "${msg.pattern}": ${msg.message}`, 'warning');
           } else if (msg.type === 'throttle') {
             updateRuntimeState(msg);
           } else if (msg.type === 'status') {

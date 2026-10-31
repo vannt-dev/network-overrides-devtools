@@ -89,6 +89,7 @@ Khi click vào một API, modal hiện ra với:
 - **Override body / Redirect to URL**: Chọn loại override.
 - **Response body**: Nội dung response ghi đè (nếu chọn Override body).
 - **Answer without calling the server** (Override body): trả lời request ngay trong trình duyệt, trước khi gửi đi. Xem mục 6.6.
+- **Patch the real JSON response** (trong danh sách chế độ của Response body): giữ response của server và chỉ sửa vài field JSON của nó. Xem mục 6.7.
 - **GraphQL Operation** (tùy chọn): chỉ áp dụng rule cho một GraphQL operation. Xem mục 5.7.
 - **Only when the request has…** (tùy chọn, mặc định thu gọn): query parameter, request header và đoạn text mà body của request phải chứa. Xem mục 5.8.
 - **Redirect URL**: URL chuyển hướng (nếu chọn Redirect to URL).
@@ -273,6 +274,29 @@ Khác với rule override body thường:
 - Phần sửa request header và request body của rule không được dùng, vì không có request nào được gửi.
 - Request khác origin chạy được mà không cần thêm header: preflight CORS được trả lời sẵn, và mock cho phép origin của trang trừ khi bạn tự đặt header `Access-Control-Allow-*`.
 
+### 6.7. Patch the real JSON response (sửa field của response JSON thật)
+
+Chọn **Patch the real JSON response** trong danh sách chế độ của Response body khi bạn cần dữ liệu thật nhưng đổi vài field, ví dụ bật gói trả phí hay ẩn một banner, thay vì chép cả response vào rule. Request vẫn đi tới server; rule chỉ sửa những field bạn liệt kê trong response JSON của nó.
+
+Mỗi dòng một thay đổi:
+
+```text
+set data.user.plan = "pro"
+remove data.ads
+set data.items[0].price = 0
+set data.flags = {"beta": true}
+```
+
+- `set <path> = <value>` đặt giá trị tại path. Giá trị là JSON: chuỗi viết trong ngoặc kép (`"pro"`); số, `true`, `false`, `null`, object và mảng viết như bình thường.
+- `remove <path>` xóa một field, hoặc một phần tử mảng (các phần tử sau nó dồn lên).
+- Path dùng dấu chấm cho field và `[0]` cho phần tử mảng: `data.items[0].name`. Key có dấu chấm, khoảng trắng hoặc `=` thì đặt trong ngoặc kép: `data["user.name"]`. Path bắt đầu bằng `/` là JSON Pointer: `/data/items/0/name`.
+- `[-]` (hoặc `-` trong JSON Pointer) là cuối mảng: `set data.items[-] = {"id": 99}` thêm một phần tử.
+- Khi path của `set` chưa tồn tại, các object còn thiếu được tạo ra (là mảng nếu phần tiếp theo là `[0]` hoặc `[-]`). `remove` một thứ không có thì không làm gì.
+
+Status và header thật được giữ nguyên; **Status**, **Extra Response Headers** và **Delay** vẫn áp dụng nếu bạn điền. `Content-Length` được tính lại theo body mới. JSON được gửi lại ở dạng gọn, không giữ khoảng trắng của server. Template như `{{now}}` không được xử lý trong giá trị của patch, và không có tùy chọn **Answer without calling the server**, vì patch cần response thật.
+
+Khi response không phải JSON hoặc không có body (trang HTML, `204`, redirect), nó được cho qua nguyên vẹn và panel hiện một cảnh báo. Thay đổi nào không áp dụng được, như path đi qua một field dạng chuỗi hay chỉ số mảng vượt quá cuối mảng, sẽ bị bỏ qua và được nêu trong cùng cảnh báo đó; các thay đổi khác vẫn áp dụng. Rule có badge `PATCH` kèm số thay đổi trong tab Rules; rê chuột lên để xem chúng.
+
 ---
 
 ## 7. Redirect URL
@@ -370,6 +394,7 @@ Click **Import** trong tab **Rules** và chọn một file JSON đã export trư
 - File không hợp lệ (không phải JSON hợp lệ, thiếu mảng `overrides`, hoặc có rule thiếu field bắt buộc) sẽ bị từ chối kèm cảnh báo (alert), và không có gì thay đổi.
 - Chỉ các field hợp lệ của rule (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) được giữ lại từ mỗi rule import; các property khác trong file sẽ bị bỏ qua.
 - Các điều kiện `matchQuery`, `matchHeaders` và `matchBody` (xem mục 5.8) cũng được giữ lại. File export từ trước khi có các field này vẫn import bình thường.
+- Rule patch (`"mode": "patch"`, xem mục 6.7) giữ danh sách `patch` gồm các thao tác `{ "op": "set" | "remove", "path": "...", "value": ... }`. File có thao tác patch sai định dạng bị từ chối như mọi file không hợp lệ khác.
 
 Giống Export, Import luôn thao tác trên domain đang active trong panel — không bao giờ áp dụng cho tất cả domain cùng lúc.
 

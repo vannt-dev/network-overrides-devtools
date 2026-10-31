@@ -345,6 +345,15 @@ namespace NetworkOverridesUtils {
       .join('');
   }
 
+  /**
+   * A fresh copy of a JSON value. A set writes a copy, so a later operation
+   * that writes inside it cannot change the rule, and through it every later
+   * response.
+   */
+  function copyJson(value: unknown): unknown {
+    return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  }
+
   function kindOf(value: unknown): string {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'an array';
@@ -445,12 +454,12 @@ namespace NetworkOverridesUtils {
         } else if (index > container.length) {
           skipped.push(`${label}: ${describeSegments(segments)} is past the end of the array`);
         } else {
-          container[index] = operation.value;
+          container[index] = copyJson(operation.value);
         }
       } else if (operation.op === 'remove') {
         if (hasOwn(container, String(last))) delete container[String(last)];
       } else {
-        container[String(last)] = operation.value;
+        container[String(last)] = copyJson(operation.value);
       }
     }
     return { value: root, skipped };

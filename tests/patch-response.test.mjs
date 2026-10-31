@@ -130,6 +130,22 @@ test('applyJsonPatch works on a top-level array and refuses a top-level primitiv
   assert.equal(primitive.skipped.length, 1);
 });
 
+test('applyJsonPatch writes copies, so the operations stay the same for the next response', () => {
+  const { NetworkOverridesUtils: u } = createUiContext();
+  const ops = [
+    { op: 'set', path: 'data.items', value: [] },
+    { op: 'set', path: 'data.items[-]', value: 1 },
+    { op: 'set', path: 'data.flags', value: { beta: true } },
+    { op: 'set', path: 'data.flags.gamma', value: false },
+  ];
+  const first = plain(u.applyJsonPatch({ data: {} }, ops).value);
+  const second = plain(u.applyJsonPatch({ data: {} }, ops).value);
+  assert.deepEqual(first, { data: { items: [1], flags: { beta: true, gamma: false } } });
+  assert.deepEqual(second, first);
+  assert.deepEqual(ops[0].value, []);
+  assert.deepEqual(ops[2].value, { beta: true });
+});
+
 test('applyJsonPatch does not follow inherited properties', () => {
   const { NetworkOverridesUtils: u } = createUiContext();
   const root = JSON.parse('{"a":{}}');

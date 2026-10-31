@@ -214,6 +214,17 @@
   margin-left: 4px;
 }
 
+.patch-badge {
+  background-color: #c678dd;
+  color: #1e1e1e;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  cursor: help;
+}
+
 .match-badge {
   background-color: #56b6c2;
   color: #1e1e1e;

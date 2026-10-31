@@ -2,14 +2,15 @@
 /// <reference types="chrome" />
 
 declare namespace NetworkOverridesShared {
-  type OverrideMode = 'text' | 'file' | 'script';
+  type OverrideMode = 'text' | 'file' | 'script' | 'patch';
   type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
   type WsDirection = 'send' | 'receive' | 'both';
   type WsAction = 'replace' | 'substitute' | 'block' | 'delay';
   interface OverrideRule {
     pattern: string;
     body: string; // the response body; for mode 'script', the source of the function that returns it
-    mode: OverrideMode;
+    mode: OverrideMode; // 'patch' edits the real JSON response with `patch`; body stays ''
+    patch?: PatchOperation[]; // mode 'patch': applied in order to the parsed real response
     redirectUrl?: string;
     enabled?: boolean; // undefined/true = enabled, false = disabled
     method?: string; // undefined/'ANY' = any method, or 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
@@ -54,6 +55,12 @@ declare namespace NetworkOverridesShared {
   interface FetchHeader {
     name: string;
     value: string;
+  }
+  /** One change to the real JSON response; `path` is dot/bracket (`a.b[0]`) or a JSON Pointer. */
+  interface PatchOperation {
+    op: 'set' | 'remove';
+    path: string;
+    value?: unknown; // 'set' only: any JSON value
   }
   /** A request condition: a name alone asks for presence, a value asks for equality. */
   interface MatchCondition {

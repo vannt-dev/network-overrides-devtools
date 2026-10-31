@@ -3,12 +3,13 @@
 [![Chrome Web Store users](https://img.shields.io/chrome-web-store/users/holdjgmcnpelgclhopiejilhhkfcmpba?label=Chrome%20users)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 [![Official vannt-dev build](https://vannt-dev.github.io/badges/official.svg)](https://vannt-dev.github.io/official.html)
 
-A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method, GraphQL operation, query parameter, request header or request body text, and then replaces the response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
+A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method, GraphQL operation, query parameter, request header or request body text, and then replaces the response, changes some fields of the real JSON response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
 
 ### Compared with DevTools Local Overrides
 
 Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/overrides) serve a local file in place of a response and change response headers. This extension also does the following:
 
+- **Patch the real response**: keep what the server sends and change only some JSON fields, with no code: `set data.user.plan = "pro"`, `remove data.ads`, `set data.items[0].price = 0`. Local Overrides serve a saved copy instead, which goes stale as the real data changes. See [Patch the real JSON response](#patch-the-real-json-response).
 - **Status and per-rule delay**: a body rule can set the response status (100–599) and hold the response for up to 120 s, for that rule's requests only.
 - **Request changes**: add or overwrite request headers, replace the request payload, or redirect the request to another URL before it is sent.
 - **Narrower matching**: limit a rule to one HTTP method, one GraphQL `operationName`, given query parameters, request headers or a text in the request body, or match URLs with a regular expression.
@@ -50,7 +51,7 @@ anything else is not published by vannt-dev.
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
 - **Four override types:**
-  - **Override body**: Replace the response body with custom text or raw base64 content.
+  - **Override body**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response.
   - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
   - **Fail request**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
   - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket frames" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
@@ -171,6 +172,39 @@ Limits: only text frames are changed (binary frames pass untouched); sockets ope
 
 The wrapper is installed through the debugger session the extension already holds (`Page.addScriptToEvaluateOnNewDocument` and `Runtime.evaluate`), so it needs no extra permission. Turning interception off empties the rules in the page. If the debugger is detached another way (the "Cancel" button on Chrome's debugging bar, or DevTools taking over the tab), the page keeps its last rules until it reloads or interception is turned on again. Rule changes reach iframes that are already open only after they reload.
 
+## Patch the real JSON response
+
+A body rule whose mode is **Patch the real JSON response** (`"mode": "patch"`) lets the request reach the server and changes only the fields you list in its JSON response. The rest of the data stays live, so the rule does not go stale the way a saved copy of the response does. In the editor, write one change per line:
+
+```text
+set data.user.plan = "pro"
+remove data.ads
+set data.items[0].price = 0
+set data.items[-] = {"id": 99}
+```
+
+- `set <path> = <value>`: the value is JSON (text in double quotes). `remove <path>` deletes a field or an array item.
+- Paths use dots and `[n]` (`data.items[0].name`), quoted keys for keys with dots, spaces or `=` (`data["user.name"]`), or a JSON Pointer when they start with `/` (`/data/items/0/name`). `[-]`, or `-` in a JSON Pointer, is the end of an array.
+- A `set` creates the objects its path is missing (an array when the next part is `[n]` or `[-]`). A `remove` of a missing path does nothing.
+
+The operations are saved, exported and imported as a `patch` list:
+
+```json
+{
+  "pattern": "/api/me",
+  "mode": "patch",
+  "body": "",
+  "patch": [
+    { "op": "set", "path": "data.user.plan", "value": "pro" },
+    { "op": "remove", "path": "/data/ads" }
+  ]
+}
+```
+
+The real status and headers are kept, except that the body is re-sent without its old `Content-Length` and `Content-Encoding`; the rule's own Status, Response headers and delay still apply. The JSON goes back compact. Templates are not processed in patch values, and a patch rule never answers without calling the server.
+
+A response that is not JSON or has no body (HTML, `204`, a redirect) passes through unchanged, and the panel shows a warning naming the rule; an operation that cannot apply (a path through a string, an index past the end of an array) is skipped and named in the same warning, while the others apply. Warnings for one rule are shown at most every 10 s. Patch rules run in the extension's worker, not in the page, so unlike [script responses](#script-responses) they need no JavaScript, and an imported patch rule cannot run code.
+
 ## Script responses
 
 A body rule whose mode is **Script (JavaScript)** computes its response instead of holding one. The rule's body is the body of an async function that receives `request` and returns the response:
@@ -225,6 +259,7 @@ Optional fields on an override rule:
 | `delayMs`          | optional number 0–120000    | Delays the response/failure by N ms (body and fail rules).                                            |
 | `failReason`       | optional enum               | Makes the rule fail the request at the network layer instead of answering.                            |
 | `respondAtRequest` | optional boolean            | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `patch`            | `{op, path, value?}[]`      | With `"mode": "patch"`: changes applied to the real JSON response (see above).                        |
 | `graphqlOperation` | optional string             | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
 | `matchQuery`       | optional `{name, value?}[]` | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
 | `matchHeaders`     | optional `{name, value?}[]` | Applies the rule only when every request header is present (and equal); names ignore case.            |
@@ -288,7 +323,7 @@ Click any API in the list to open the override modal. You can also add a rule ma
 
 In the modal, choose:
 
-- **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content. The **Format JSON** action appears when the body contains valid JSON.
+- **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content, or `Patch the real JSON response` to change only some fields of what the server sends. The **Format JSON** action appears when the body contains valid JSON.
 - **Redirect to URL**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
 - **Fail request**: Pick a fail reason (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`) — the request fails at the network layer instead of receiving a response.
 

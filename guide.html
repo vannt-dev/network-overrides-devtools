@@ -125,6 +125,11 @@
           via radio buttons.
         </li>
         <li>
+          <strong>Patch the real JSON response</strong> (in the Response body mode list): keep the
+          server's response and change only some of its JSON fields. See
+          <a href="#patch-response">6.6</a>.
+        </li>
+        <li>
           <strong>Fail request</strong>: The request never receives a response — it fails at the
           network layer with the chosen reason (<code>Failed</code>, <code>TimedOut</code>,
           <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
@@ -353,6 +358,60 @@ Pattern: all</pre>
         </li>
       </ul>
 
+      <h3 id="patch-response">6.6. Patch the real JSON response</h3>
+      <p>
+        Pick <strong>Patch the real JSON response</strong> in the Response body mode list when you
+        want the real data with a few fields changed, for example to turn on a paid plan or hide a
+        banner. The request goes to the server; the rule changes only the fields you list in its
+        JSON response. Write one change per line:
+      </p>
+      <pre>
+set data.user.plan = "pro"
+remove data.ads
+set data.items[0].price = 0
+set data.flags = {"beta": true}</pre>
+      <ul>
+        <li>
+          <code>set &lt;path&gt; = &lt;value&gt;</code> puts a value at the path. The value is JSON:
+          write text in double quotes (<code>"pro"</code>), and numbers, <code>true</code>,
+          <code>false</code>, <code>null</code>, objects and arrays as they are.
+        </li>
+        <li>
+          <code>remove &lt;path&gt;</code> deletes a field, or an array item (the items after it
+          move up).
+        </li>
+        <li>
+          A path uses dots for fields and <code>[0]</code> for array items:
+          <code>data.items[0].name</code>. A key with dots, spaces or <code>=</code> goes in quotes:
+          <code>data["user.name"]</code>. A path that starts with <code>/</code> is a JSON Pointer:
+          <code>/data/items/0/name</code>.
+        </li>
+        <li>
+          <code>[-]</code> (or <code>-</code> in a JSON Pointer) means the end of an array:
+          <code>set data.items[-] = {"id": 99}</code> appends an item.
+        </li>
+        <li>
+          When a <code>set</code> path does not exist yet, the missing objects are created (an array
+          when the next part is <code>[0]</code> or <code>[-]</code>). A <code>remove</code> of
+          something that is not there does nothing.
+        </li>
+      </ul>
+      <p>
+        The real status and headers are kept; <strong>Status</strong>,
+        <strong>Extra Response Headers</strong> and <strong>Delay</strong> still apply when you fill
+        them. <code>Content-Length</code> is worked out again for the new body. The JSON is sent
+        back compact. Templates are not processed in patch values, and
+        <strong>Answer without calling the server</strong> is not offered, since a patch needs the
+        real response.
+      </p>
+      <p>
+        When the response is not JSON or has no body (an HTML page, a <code>204</code>, a redirect),
+        it passes through unchanged and the panel shows a warning. A change that cannot apply, such
+        as a path through a text field or an array index past the end, is skipped and named in the
+        same warning; the other changes still apply. The rule shows a <code>PATCH</code> badge with
+        the number of changes in the Rules tab; hover it to see them.
+      </p>
+
       <!-- ============ 7 ============ -->
       <h2 id="redirect">7. Redirect URL</h2>
 
@@ -535,6 +594,12 @@ Pattern: all</pre>
           The match conditions <code>matchQuery</code>, <code>matchHeaders</code> and
           <code>matchBody</code> (see <a href="#match-conditions">5.7</a>) are kept too. Files
           exported before they existed import unchanged.
+        </li>
+        <li>
+          A patch rule (<code>"mode": "patch"</code>, see <a href="#patch-response">6.6</a>) keeps
+          its <code>patch</code> list of
+          <code>{ "op": "set" | "remove", "path": "...", "value": ... }</code> operations. A file
+          whose patch operations are malformed is rejected like any other invalid file.
         </li>
       </ul>
       <p>

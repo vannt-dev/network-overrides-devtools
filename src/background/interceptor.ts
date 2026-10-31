@@ -126,6 +126,65 @@ namespace NetworkOverridesBackground {
     );
   }
 
+  /** How long a patch rule stays quiet after telling the panel it skipped something. */
+  const PATCH_NOTICE_INTERVAL_MS = 10000;
+  const lastPatchNotice = new Map<string, number>();
+
+  /** Tells the open panels why a patch rule left a response (partly) unchanged. */
+  function notifyPatchSkipped(tabId: number, pattern: string, url: string, reason: string): void {
+    console.warn('[NetworkOverrides] Patch rule', pattern, 'on', url, '—', reason);
+    // A rule on a busy endpoint would repeat the same notice for every request.
+    const key = `${tabId} ${pattern}`;
+    const now = Date.now();
+    const last = lastPatchNotice.get(key);
+    if (last !== undefined && now - last < PATCH_NOTICE_INTERVAL_MS) return;
+    lastPatchNotice.set(key, now);
+    const message = { type: 'patchRuleSkipped', tabId, pattern, url, message: reason };
+    TabState.runtime(tabId).subscriberPorts.forEach(port => {
+      try {
+        port.postMessage(message);
+      } catch {}
+    });
+  }
+
+  /** The real response body as text, or null when Chrome has none to give. */
+  function readResponseText(
+    tabId: number,
+    requestId: string,
+    done: (text: string | null) => void
+  ): void {
+    chrome.debugger.sendCommand(
+      { tabId },
+      'Fetch.getResponseBody',
+      { requestId },
+      (response: { body?: string; base64Encoded?: boolean } | undefined) => {
+        if (chrome.runtime.lastError || !response || typeof response.body !== 'string') {
+          done(null);
+          return;
+        }
+        done(NetworkOverridesNormalizeBodyLocal(response.body, response.base64Encoded ?? false));
+      }
+    );
+  }
+
+  /** Applies a patch rule's operations to a response body, when it is JSON. */
+  function patchResponseText(
+    text: string | null,
+    operations: NetworkOverridesShared.PatchOperation[]
+  ): { ok: true; body: string; skipped: string[] } | { ok: false; reason: string } {
+    if (text === null || !text.trim()) {
+      return { ok: false, reason: 'the response has no body, so it was passed through unchanged' };
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text.replace(/^\uFEFF/, ''));
+    } catch {
+      return { ok: false, reason: 'the response is not JSON, so it was passed through unchanged' };
+    }
+    const result = NetworkOverridesUtils.applyJsonPatch(parsed, operations);
+    return { ok: true, body: JSON.stringify(result.value), skipped: result.skipped };
+  }
+
   /**
    * Answers a request with a body rule: the rule's body (text, base64 or the
    * result of its script), status, headers and delay. At the response stage
@@ -276,6 +335,28 @@ namespace NetworkOverridesBackground {
       }
     };
 
+    // A patch rule edits the real response, so it waits for its body.
+    if (ov.mode === 'patch') {
+      readResponseText(tabId, params.requestId, text => {
+        try {
+          const outcome = patchResponseText(text, ov.patch || []);
+          if (!outcome.ok) {
+            // Passed through untouched: the rule had nothing it could change.
+            notifyPatchSkipped(tabId, ov.pattern, url, outcome.reason);
+            proceed();
+            return;
+          }
+          if (outcome.skipped.length > 0) {
+            notifyPatchSkipped(tabId, ov.pattern, url, outcome.skipped.join('; '));
+          }
+          fulfill(NetworkOverridesStringToBase64Local(outcome.body));
+        } catch (error) {
+          console.error(error);
+          proceed();
+        }
+      });
+      return;
+    }
     // A script rule works the response out in the page, so it is answered
     // later; every other rule is answered here and now.
     if (ov.mode === 'script') {
@@ -355,7 +436,12 @@ namespace NetworkOverridesBackground {
         const optionsRule = match?.override.method?.toUpperCase() === 'OPTIONS';
         if (askedMethod && !optionsRule) {
           const target = findPreflightTarget(url, askedMethod, state.overrides);
-          if (target?.respondAtRequest && !target.failReason && !target.redirectUrl) {
+          if (
+            target?.respondAtRequest &&
+            target.mode !== 'patch' &&
+            !target.failReason &&
+            !target.redirectUrl
+          ) {
             answerPreflight(tabId, params, askedMethod, proceed);
             return;
           }
@@ -405,8 +491,14 @@ namespace NetworkOverridesBackground {
           return;
         }
         // A body rule set to answer without calling the server is answered
-        // now, so the request never leaves the browser.
-        if (match && match.override.respondAtRequest && (!askedMethod || optionsRule)) {
+        // now, so the request never leaves the browser. A patch rule needs
+        // the real response, so it never answers here.
+        if (
+          match &&
+          match.override.respondAtRequest &&
+          match.override.mode !== 'patch' &&
+          (!askedMethod || optionsRule)
+        ) {
           answerWithBody(tabId, params, match, proceed, true);
           return;
         }

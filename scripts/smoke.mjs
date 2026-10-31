@@ -35,6 +35,18 @@ const server = http.createServer((req, res) => {
     res.end('{"real":true}');
     return;
   }
+  if (req.url.startsWith('/api/patch')) {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'X-Real': 'yes' });
+    res.end(
+      '{"data":{"user":{"plan":"free","name":"Ann"},"ads":[1,2],"items":[{"id":1},{"id":2}]}}'
+    );
+    return;
+  }
+  if (req.url.startsWith('/api/notjson')) {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('plain text, not JSON');
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end('<!doctype html><title>smoke</title><h1>smoke page</h1>');
 });
@@ -384,6 +396,55 @@ return {
         conditional.noHeader === '{"real":true}' &&
         conditional.wrongBody === '{"real":true}',
       JSON.stringify(conditional)
+    );
+
+    // ---- 3g. patch rule: the request reaches the server and only some fields
+    // of its JSON response change; its status and headers stay.
+    async function addPatchRule(pattern, operations) {
+      await popup.click('#add-api-btn');
+      await popup.waitForSelector('#override-modal', { state: 'visible' });
+      await popup.fill('#modal-pattern', pattern);
+      await popup.check('input[name="modal-override-type"][value="body"]');
+      await popup.selectOption('#modal-mode', 'patch');
+      await popup.fill('#modal-body', operations);
+      await popup.click('#save-override');
+      await popup.waitForSelector('#override-modal', { state: 'hidden' });
+      await popup.waitForTimeout(1000);
+    }
+    await addPatchRule(
+      'api/patch',
+      ['set data.user.plan = "pro"', 'remove data.ads', 'set data.items[1].id = 20'].join('\n')
+    );
+    const patched = await site.evaluate(
+      u =>
+        fetch(u).then(async r => ({
+          status: r.status,
+          real: r.headers.get('x-real'),
+          body: await r.text(),
+        })),
+      `http://127.0.0.1:${PORT}/api/patch`
+    );
+    report(
+      'patch rule changes fields of the real JSON response and keeps its status and headers',
+      patched.status === 200 &&
+        patched.real === 'yes' &&
+        patched.body ===
+          '{"data":{"user":{"plan":"pro","name":"Ann"},"items":[{"id":1},{"id":20}]}}',
+      JSON.stringify(patched)
+    );
+
+    await addPatchRule('api/notjson', 'set plan = "pro"');
+    const notJson = await site.evaluate(
+      u => fetch(u).then(r => r.text()),
+      `http://127.0.0.1:${PORT}/api/notjson`
+    );
+    await popup.waitForTimeout(500);
+    const patchNotice =
+      (await popup.locator('.notification-toast--warning').last().textContent())?.trim() || '';
+    report(
+      'patch rule passes a non-JSON response through unchanged and says so in the panel',
+      notJson === 'plain text, not JSON' && /not JSON/.test(patchNotice),
+      JSON.stringify({ notJson, patchNotice })
     );
   }
 

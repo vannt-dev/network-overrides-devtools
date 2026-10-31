@@ -188,6 +188,23 @@ namespace NetworkOverridesUi {
         span.appendChild(redirSpan);
       }
 
+      if (
+        rule.mode === 'patch' &&
+        !rule.failReason &&
+        !rule.redirectUrl &&
+        rule.kind !== 'websocket'
+      ) {
+        const patchBadge = document.createElement('span');
+        patchBadge.className = 'patch-badge';
+        const count = rule.patch?.length || 0;
+        patchBadge.textContent = `PATCH ${count}`;
+        patchBadge.title = [
+          'Changes these fields of the real JSON response:',
+          NetworkOverridesUtils.formatPatchOperations(rule.patch),
+        ].join('\n');
+        span.appendChild(patchBadge);
+      }
+
       if (typeof rule.statusCode === 'number') {
         const statusBadge = document.createElement('span');
         statusBadge.className = 'status-badge override-status-badge';

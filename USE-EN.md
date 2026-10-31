@@ -89,6 +89,7 @@ Click an API to open the modal with:
 - **Override body / Redirect to URL**: Choose the override type.
 - **Response body**: Custom response content (for body override).
 - **Answer without calling the server** (body override): answer the request in the browser, before it is sent. See [6.6](#66-answer-without-calling-the-server).
+- **Patch the real JSON response** (in the Response body mode list): keep the server's response and change only some of its JSON fields. See [6.7](#67-patch-the-real-json-response).
 - **GraphQL Operation** (optional): apply the rule to one GraphQL operation only. See [5.7](#57-graphql-operation).
 - **Only when the request has…** (optional, folded): query parameters, request headers and a text the request body must contain. See [5.8](#58-query-header-and-body-conditions).
 - **Redirect URL**: Target URL (for redirect).
@@ -273,6 +274,29 @@ Compared with a normal body rule:
 - The rule's request header and request body changes are not used, since no request is sent.
 - Cross-origin requests work with no extra headers: the CORS preflight is answered for you, and the mock allows the page's origin unless you set your own `Access-Control-Allow-*` headers.
 
+### 6.7. Patch the real JSON response
+
+Pick **Patch the real JSON response** in the Response body mode list when you want the real data with a few fields changed, for example to turn on a paid plan or hide a banner, instead of copying the whole response into a rule. The request goes to the server; the rule changes only the fields you list in its JSON response.
+
+Write one change per line:
+
+```text
+set data.user.plan = "pro"
+remove data.ads
+set data.items[0].price = 0
+set data.flags = {"beta": true}
+```
+
+- `set <path> = <value>` puts a value at the path. The value is JSON: write text in double quotes (`"pro"`), and numbers, `true`, `false`, `null`, objects and arrays as they are.
+- `remove <path>` deletes a field, or an array item (the items after it move up).
+- A path uses dots for fields and `[0]` for array items: `data.items[0].name`. A key with dots, spaces or `=` goes in quotes: `data["user.name"]`. A path that starts with `/` is a JSON Pointer: `/data/items/0/name`.
+- `[-]` (or `-` in a JSON Pointer) means the end of an array: `set data.items[-] = {"id": 99}` appends an item.
+- When a `set` path does not exist yet, the missing objects are created (an array when the next part is `[0]` or `[-]`). A `remove` of something that is not there does nothing.
+
+The real status and headers are kept; **Status**, **Extra Response Headers** and **Delay** still apply when you fill them. `Content-Length` is worked out again for the new body. The JSON is sent back compact, without the server's spacing. Templates such as `{{now}}` are not processed in patch values, and **Answer without calling the server** is not offered, since a patch needs the real response.
+
+When the response is not JSON or has no body (an HTML page, a `204`, a redirect), it passes through unchanged and the panel shows a warning. A change that cannot apply, such as a path through a text field or an array index past the end, is skipped and named in the same warning; the other changes still apply. The rule shows a `PATCH` badge with the number of changes in the Rules tab; hover it to see them.
+
 ---
 
 ## 7. Redirect URL
@@ -370,6 +394,7 @@ Click **Import** in the **Rules** tab and pick a previously exported (or hand-cr
 - Invalid files (not valid JSON, missing the `overrides` array, or a rule missing required fields) are rejected with an alert, and nothing is changed.
 - Only known rule fields (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) are kept from each imported rule; any other properties in the file are dropped.
 - The match conditions `matchQuery`, `matchHeaders` and `matchBody` (see [5.8](#58-query-header-and-body-conditions)) are kept too. Files exported before they existed import unchanged.
+- A patch rule (`"mode": "patch"`, see [6.7](#67-patch-the-real-json-response)) keeps its `patch` list of `{ "op": "set" | "remove", "path": "...", "value": ... }` operations. A file whose patch operations are malformed is rejected like any other invalid file.
 
 Like Export, Import always operates on the domain currently active in the panel — never all domains at once.
 

@@ -181,8 +181,10 @@ function buildUiHtml() {
             <option value="text">Text</option>
             <option value="file">Raw base64</option>
             <option value="script">Script (JavaScript)</option>
+            <option value="patch">Patch the real JSON response</option>
           </select>
           <p id="modal-script-help" style="display: none"></p>
+          <p id="modal-patch-help" style="display: none"></p>
           <textarea id="modal-body"></textarea>
           <label><input id="modal-process-templates" type="checkbox" checked></label>
           <label><input id="modal-respond-at-request" type="checkbox"></label>

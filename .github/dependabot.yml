@@ -21,9 +21,6 @@ updates:
       # Remove this once typescript-eslint supports TypeScript 7.
       - dependency-name: typescript
         versions: ['>=6.1.0']
-      # 17 needs Node.js 22.22.1, above the >=22 this repository declares.
-      - dependency-name: lint-staged
-        versions: ['>=17.0.0']
       # Every typing after 0.0.178 changes what the extension compiles against (TS2345, TS2451 and
       # TS2322 on 0.0.332 and 0.3.5): moving it is a code change of its own, not a grouped update.
       - dependency-name: '@types/chrome'

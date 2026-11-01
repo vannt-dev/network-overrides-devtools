@@ -339,7 +339,7 @@ Each API entry has a "cURL" button that copies the request as a cURL command (me
 
 ## Setup & Build
 
-Requirements: Node.js 22+, Chrome or Edge.
+Requirements: Node.js 22.22.1+, Chrome or Edge.
 
 ```bash
 npm install

@@ -5,6 +5,25 @@
 
 A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method, GraphQL operation, query parameter, request header or request body text, and then replaces the response, changes some fields of the real JSON response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
 
+```mermaid
+flowchart LR
+  subgraph panel ["DevTools panel or popup"]
+    direction TB
+    list["Captured APIs,<br/>HAR, Swagger"] -- "Create rule" --> editor["Rule editor"]
+    editor -- save --> rules[("Rules per<br/>domain<br/>or global")]
+  end
+  subgraph sw ["Service worker, through chrome.debugger"]
+    direction TB
+    req["Request stage<br/>redirect, fail<br/>or change it,<br/>answer early"]
+    res["Response stage<br/>replace, patch<br/>JSON, script,<br/>status, delay"]
+    ws["WebSocket<br/>text frames<br/>changed in<br/>the page"]
+    req -- "real request<br/>to the server" --> res
+  end
+  tab["Inspected tab<br/>gets changed<br/>responses<br/>and frames"]
+
+  panel -- "rules" --> sw --> tab
+```
+
 ### Compared with DevTools Local Overrides
 
 Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/overrides) serve a local file in place of a response and change response headers. This extension also does the following:

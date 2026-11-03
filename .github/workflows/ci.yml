@@ -7,10 +7,6 @@ on:
       - master
       - develop
   pull_request:
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - LICENSE
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -154,3 +150,21 @@ jobs:
 
       - name: Run Playwright smoke test
         run: xvfb-run --auto-servernum npm run smoke
+
+  # The one check branch protection requires: it passes when every job above passed or was
+  # skipped, and fails on a failure or a cancellation.
+  ci-result:
+    name: CI result
+    if: always()
+    needs: [lint, unit-test, store-package, smoke-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or was skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) exit 1 ;;
+          esac

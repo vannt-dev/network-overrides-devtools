@@ -94,9 +94,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Off unless the repository variable CWS_UPLOAD is "true": the Store ZIP from the release is
+      # uploaded by hand, and the CWS_* secrets alone made every release run fail on invalid_client.
       - name: Upload & Publish to Chrome Web Store
         if: >-
           steps.check_tag.outputs.EXISTS != 'true' &&
+          vars.CWS_UPLOAD == 'true' &&
           env.CWS_CLIENT_ID != '' &&
           env.CWS_CLIENT_SECRET != '' &&
           env.CWS_REFRESH_TOKEN != ''

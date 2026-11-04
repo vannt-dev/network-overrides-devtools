@@ -115,7 +115,7 @@ jobs:
         run: echo "path=$(ls release/*.zip)" >> "$GITHUB_OUTPUT"
 
       - name: Check the Store ZIP for remotely hosted code
-        uses: vannt-dev/mv3-remote-code-check@9e84b492001753fcc2c640c4b7b8ff4445bf0866 # v0.5.0
+        uses: vannt-dev/mv3-remote-code-check@f066757b2c013f4bac44be401727e6742bf4ce64 # v0.6.0
         with:
           path: ${{ steps.zip.outputs.path }}
 

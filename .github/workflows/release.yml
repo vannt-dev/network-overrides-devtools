@@ -75,7 +75,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check_tag.outputs.EXISTS != 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: Network Overrides DevTools ${{ env.TAG_NAME }}
@@ -103,7 +103,7 @@ jobs:
           env.CWS_CLIENT_ID != '' &&
           env.CWS_CLIENT_SECRET != '' &&
           env.CWS_REFRESH_TOKEN != ''
-        uses: browser-actions/release-chrome-extension@bde2f9ad09b20a52d4e71eca4a9daf99d412a8d9 # v0.2.1
+        uses: browser-actions/release-chrome-extension@4bbb44595be4541c96561572b5647223712d89ff # v0.2.2
         with:
           extension-id: 'holdjgmcnpelgclhopiejilhhkfcmpba'
           extension-path: release/network-overrides-api-devtools-${{ env.TAG_NAME }}-store.zip

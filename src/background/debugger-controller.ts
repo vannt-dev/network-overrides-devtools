@@ -192,6 +192,7 @@ namespace NetworkOverridesBackground {
     chrome.storage.local.get([overridesKey, GLOBAL_OVERRIDES_KEY], (data: any) => {
       if (state.origin !== newOrigin) return;
       state.overrides = combineOverrides(data?.[overridesKey], data?.[GLOBAL_OVERRIDES_KEY]);
+      TabState.rulesChanged(tabId);
       TabState.schedulePersist(tabId);
       void syncWebSocketRules(tabId);
     });

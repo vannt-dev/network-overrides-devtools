@@ -344,6 +344,8 @@ namespace NetworkOverridesTabState {
       state.enabled = !!raw.enabled;
       state.origin = typeof raw.origin === 'string' ? raw.origin : '';
       state.overrides = Array.isArray(raw.overrides) ? raw.overrides : [];
+      // Hit keys are worked out here, not while the first request waits.
+      ruleHitKeyMap(state.overrides);
       // The debugger never survives a worker restart.
       state.attached = false;
       state.attachError = undefined;

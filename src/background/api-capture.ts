@@ -118,6 +118,7 @@ namespace NetworkOverridesBackground {
           type: 'apis',
           apis,
           stats: state?.stats || { totalOverridden: 0, totalFailed: 0 },
+          ruleHits: TabState.ruleHitsSnapshot(tabId),
           throttlePreset: state?.throttlePreset || 'none',
         });
       } catch {}

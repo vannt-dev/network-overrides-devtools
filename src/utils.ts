@@ -86,6 +86,43 @@ namespace NetworkOverridesUtils {
     return result;
   }
 
+  /** A 53-bit hash of a text (cyrb53), as base 36. */
+  function hashText(text: string): string {
+    let h1 = 0xdeadbeef;
+    let h2 = 0x41c6ce57;
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      h1 = Math.imul(h1 ^ code, 2654435761);
+      h2 = Math.imul(h2 ^ code, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
+  /**
+   * One key per rule, for counting how often it was applied. Rules carry no
+   * id, so the key comes from what the rule says: it survives reordering and
+   * turning the rule off and on, and changes when the rule is edited. The
+   * background and the panel both derive it, so nothing is added to the rule.
+   * A second identical rule gets its own key; only the first can ever apply.
+   */
+  export function ruleHitKeys(rules: readonly object[]): string[] {
+    const seen = new Map<string, number>();
+    return rules.map(rule => {
+      const fields: Record<string, unknown> = {};
+      for (const name of Object.keys(rule || {}).sort()) {
+        if (name === 'enabled') continue;
+        const value = (rule as Record<string, unknown>)[name];
+        if (value !== undefined) fields[name] = value;
+      }
+      const hash = hashText(JSON.stringify(fields));
+      const earlier = seen.get(hash) || 0;
+      seen.set(hash, earlier + 1);
+      return earlier === 0 ? hash : `${hash}#${earlier}`;
+    });
+  }
+
   export function getOrigin(url: string): string {
     try {
       return new URL(url).origin;

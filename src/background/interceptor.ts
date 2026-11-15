@@ -203,6 +203,9 @@ namespace NetworkOverridesBackground {
 
     const ov = match.override;
     const captures = match.captures;
+    // Looked up now: the rules may be replaced while a delay, a patch or a
+    // script holds the answer back.
+    const hitKey = TabState.ruleHitKey(tabId, ov);
 
     function bodyToValidBase64(): string {
       const rawBody = ov.body || '';
@@ -309,6 +312,7 @@ namespace NetworkOverridesBackground {
         typeof scripted?.statusCode === 'number' ? scripted.statusCode : ruleCode;
 
       TabState.recordOverrideStat(tabId, false);
+      TabState.recordRuleHit(tabId, hitKey, url);
       const doFulfill = () => {
         chrome.debugger.sendCommand(
           { tabId },
@@ -448,6 +452,7 @@ namespace NetworkOverridesBackground {
         }
         if (match && match.override.failReason) {
           TabState.recordOverrideStat(tabId, true);
+          TabState.recordRuleHit(tabId, TabState.ruleHitKey(tabId, match.override), url);
           const errorReason = match.override.failReason;
           const fail = () => {
             chrome.debugger.sendCommand(
@@ -477,6 +482,7 @@ namespace NetworkOverridesBackground {
             return;
           }
           console.log('[NetworkOverrides] Redirect:', url, '→', newUrl);
+          TabState.recordRuleHit(tabId, TabState.ruleHitKey(tabId, match.override), url);
           chrome.debugger.sendCommand(
             { tabId },
             'Fetch.continueRequest',

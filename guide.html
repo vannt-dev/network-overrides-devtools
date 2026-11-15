@@ -505,6 +505,16 @@ set data.flags = {"beta": true}</pre>
           <strong>Body preview</strong>: First 80 characters + mode label
           (<code>text</code>/<code>file</code>).
         </li>
+        <li>
+          <strong>Applied count</strong>: a small number after the rule, the times it was applied in
+          this session. <code>0</code> is grey, a higher number is blue. Hover it (or move to it
+          with Tab) to see when the rule was last applied and to which URL. A request counts when
+          the rule really changes it. An enabled rule still at <code>0</code> after requests went by
+          gets a dashed outline: check its pattern, method and conditions. The count follows the
+          rule when you reorder it or turn it off and on, and starts again when you edit it.
+          <strong>Reset counts</strong> above the list sets every count back to 0, and so does
+          turning interception off. Counts are never saved, exported or imported with the rules.
+        </li>
       </ul>
 
       <h3>8.2. Edit a rule</h3>

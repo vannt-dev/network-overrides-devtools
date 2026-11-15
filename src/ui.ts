@@ -91,6 +91,7 @@ namespace NetworkOverridesUi {
       addApiBtn: document.getElementById('add-api-btn') as HTMLButtonElement,
       exportHarBtn: document.getElementById('export-har-btn') as HTMLButtonElement,
       exportRulesBtn: document.getElementById('export-rules-btn') as HTMLButtonElement,
+      resetRuleHitsBtn: document.getElementById('reset-rule-hits-btn') as HTMLButtonElement,
       importRulesBtn: document.getElementById('import-rules-btn') as HTMLButtonElement,
       importRulesInput: document.getElementById('import-rules-input') as HTMLInputElement,
       modalRequestHeaders: document.getElementById('modal-request-headers') as HTMLTextAreaElement,
@@ -144,6 +145,8 @@ namespace NetworkOverridesUi {
       attachError: null,
       stats: { totalOverridden: 0, totalFailed: 0 },
       throttlePreset: 'none',
+      ruleHits: {},
+      trafficSeen: false,
     };
 
     let activeTabId: number | null = null;
@@ -178,6 +181,14 @@ namespace NetworkOverridesUi {
       elements.throttleSelect.value = state.throttlePreset;
     }
 
+    function setRuleHits(hits: unknown, live = false): void {
+      state.ruleHits = hits && typeof hits === 'object' ? (hits as Record<string, RuleHit>) : {};
+      // A live message with no counts is a reset: the "requests went by"
+      // hint starts over with it.
+      if (live && Object.keys(state.ruleHits).length === 0) state.trafficSeen = false;
+      updateRuleHitBadges(elements, state);
+    }
+
     function updateRuntimeState(message: any): void {
       if (message?.stats && typeof message.stats === 'object') {
         state.stats = {
@@ -199,6 +210,8 @@ namespace NetworkOverridesUi {
       const previousOverrides = state.overrides;
       const snapshot = newOverrides.map(rule => ({ ...rule }));
       state.overrides = snapshot;
+      // Requests seen before this change say nothing about the new rules.
+      state.trafficSeen = false;
 
       const operation = persistenceQueue.then(async () => {
         const overridesKey = getStorageKey('overrides');
@@ -519,6 +532,15 @@ namespace NetworkOverridesUi {
     }
     elements.exportHarBtn?.addEventListener('click', () => void exportHar());
 
+    elements.resetRuleHitsBtn?.addEventListener('click', () => {
+      // Shown at once; the background confirms with an empty 'ruleHits' message.
+      setRuleHits({}, true);
+      if (activeTabId === null) return;
+      chrome.runtime.sendMessage({ type: 'resetRuleHits', tabId: activeTabId }, () => {
+        void chrome.runtime.lastError;
+      });
+    });
+
     async function handleActiveTab(tab: chrome.tabs.Tab | undefined): Promise<void> {
       if (!tab || typeof tab.id !== 'number') return;
       activeTabId = tab.id;
@@ -585,6 +607,7 @@ namespace NetworkOverridesUi {
             }));
             renderApis();
             updateRuntimeState(msg);
+            setRuleHits(msg.ruleHits);
           } else if (msg.type === 'apisDelta' && Array.isArray(msg.apis)) {
             const byUrl = new Map(state.capturedApis.map(api => [api.url, api]));
             msg.apis.forEach((api: ApiEntry) => {
@@ -592,6 +615,12 @@ namespace NetworkOverridesUi {
             });
             state.capturedApis = Array.from(byUrl.values());
             renderApis();
+            if (!state.trafficSeen && msg.apis.length > 0) {
+              state.trafficSeen = true;
+              updateRuleHitBadges(elements, state);
+            }
+          } else if (msg.type === 'ruleHits') {
+            setRuleHits(msg.hits, true);
           } else if (msg.type === 'stats') {
             updateRuntimeState(msg);
           } else if (msg.type === 'wsRuleError') {

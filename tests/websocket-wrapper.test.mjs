@@ -89,7 +89,7 @@ test('replaces a received frame before the page sees it', async () => {
   assert.deepEqual(seen, ['{"price":1}']);
   assert.deepEqual(reports, []);
   await tick(300);
-  assert.deepEqual(reports, [{ event: 'applied', count: 1 }]);
+  assert.deepEqual(reports, [{ event: 'applied', count: 1, rules: { 0: 1 } }]);
 });
 
 test('onmessage assigned after creation sees the rewritten frame once', () => {
@@ -173,10 +173,10 @@ test('reports several changed frames as one count', async () => {
   socket.serverSends('b');
   socket.serverSends('c');
   await tick(300);
-  assert.deepEqual(reports, [{ event: 'applied', count: 3 }]);
+  assert.deepEqual(reports, [{ event: 'applied', count: 3, rules: { 0: 3 } }]);
   socket.serverSends('d');
   await tick(300);
-  assert.deepEqual(reports[1], { event: 'applied', count: 1 });
+  assert.deepEqual(reports[1], { event: 'applied', count: 1, rules: { 0: 1 } });
 });
 
 test('holds the close event behind frames that are still delayed', async () => {

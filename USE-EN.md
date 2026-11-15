@@ -345,6 +345,7 @@ Go to the **Rules** tab. Each rule displays:
 - **Redirect URL** (if set): Arrow → followed by the URL.
 - **Body preview**: First 80 characters + mode label (`text`/`file`).
 - **`NO SERVER` badge**: the rule answers without calling the server (see [6.6](#66-answer-without-calling-the-server)).
+- **Applied count**: a small number after the rule, the times it was applied in this session. `0` is grey, a higher number is blue. Hover it (or move to it with Tab) to see when the rule was last applied and to which URL. A request counts when the rule really changes it: a rule that only matches behind an earlier rule, or a patch rule that lets a non-JSON response through, is not counted. An enabled rule still at `0` after requests went by gets a dashed outline: check its pattern, method and conditions. The count follows the rule when you reorder it or turn it off and on, and starts again when you edit it. **Reset counts** above the list sets every count back to 0, and so does turning interception off. Counts are never saved, exported or imported with the rules.
 
 ### 8.2. Edit a rule
 

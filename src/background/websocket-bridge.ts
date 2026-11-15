@@ -132,6 +132,27 @@ namespace NetworkOverridesBackground {
     return rt.wsSync;
   }
 
+  /**
+   * Per-rule counts of an 'applied' report: places in the list the page was
+   * given, which is the tab's enabled WebSocket rules in order. The page can
+   * call the binding itself, so places and counts are only trusted in bounds.
+   */
+  function recordWebSocketRuleHits(tabId: number, perRule: unknown): void {
+    const state = TabState.get(tabId);
+    if (!state || !state.enabled || !perRule || typeof perRule !== 'object') return;
+    const rules = activeWebSocketRules(state.overrides);
+    rules.forEach((rule, index) => {
+      const count = (perRule as Record<string, unknown>)[String(index)];
+      if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) return;
+      TabState.recordRuleHit(
+        tabId,
+        TabState.ruleHitKey(tabId, rule),
+        undefined,
+        Math.min(count, MAX_APPLIED_PER_REPORT)
+      );
+    });
+  }
+
   export function handleWebSocketBinding(tabId: number, params: any): void {
     if (params?.name !== WS_BINDING || typeof params.payload !== 'string') return;
     let report: any;
@@ -149,6 +170,7 @@ namespace NetworkOverridesBackground {
         false,
         Math.min(Math.max(count, 1), MAX_APPLIED_PER_REPORT)
       );
+      recordWebSocketRuleHits(tabId, report.rules);
     } else if (report?.event === 'error') {
       const message = {
         type: 'wsRuleError',

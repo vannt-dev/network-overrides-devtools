@@ -100,6 +100,35 @@
   opacity: 0.75;
   margin-left: 4px;
 }
+.rule-hits {
+  display: inline-block;
+  min-width: 14px;
+  padding: 1px 5px;
+  margin-right: 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #eef2f6;
+  color: #829ab1;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: help;
+}
+.rule-hits--active {
+  background: #e8f3ff;
+  color: #0a66c2;
+  border-color: #b6d4f2;
+}
+/* An enabled rule that nothing matched while requests went by. */
+.rule-hits--idle {
+  border: 1px dashed #c9a227;
+  color: #8a6d00;
+}
+.rule-hits:focus-visible {
+  outline: 2px solid #007acc;
+  outline-offset: 1px;
+}
 .override-status-badge,
 .override-delay-badge,
 .override-offline-badge,

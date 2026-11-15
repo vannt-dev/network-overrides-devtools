@@ -79,6 +79,7 @@ anything else is not published by vannt-dev.
 - **Search APIs** by URL substring.
 - **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
 - **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
+- **Per-rule hit counter**: every rule in the Rules tab shows how many times it was applied in this session (`0` greyed, a number highlighted), with the time and URL of the last one in its tooltip, so you can tell at a glance whether a rule is being applied at all. **Reset counts** starts over. The counts live in the session only and are never saved, exported or imported with the rules.
 - **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
 - **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.

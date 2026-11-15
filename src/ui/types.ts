@@ -12,6 +12,7 @@ namespace NetworkOverridesUi {
   export type OverrideRule = NetworkOverridesShared.OverrideRule;
   export type ApiEntry = NetworkOverridesShared.ApiEntry;
   export type FetchHeader = NetworkOverridesShared.FetchHeader;
+  export type RuleHit = NetworkOverridesShared.RuleHit;
   export type HeaderField = NetworkOverridesShared.FetchHeader;
 
   export interface PersistenceResult {
@@ -71,6 +72,7 @@ namespace NetworkOverridesUi {
     exportRulesBtn: HTMLButtonElement;
     importRulesBtn: HTMLButtonElement;
     importRulesInput: HTMLInputElement;
+    resetRuleHitsBtn?: HTMLButtonElement;
     modalRequestHeaders?: HTMLTextAreaElement;
     modalRequestHeadersField?: HTMLElement;
     modalRequestBody?: HTMLTextAreaElement;
@@ -127,5 +129,9 @@ namespace NetworkOverridesUi {
     attachError: string | null;
     stats: { totalOverridden: number; totalFailed: number };
     throttlePreset: ThrottlePreset;
+    // Session-only: how often each rule was applied, by ruleHitKeys key.
+    ruleHits: Record<string, RuleHit>;
+    // Requests went through the interceptor since the rules last changed.
+    trafficSeen: boolean;
   }
 }

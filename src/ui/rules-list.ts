@@ -23,6 +23,48 @@ namespace NetworkOverridesUi {
     return lines;
   }
 
+  /** What a rule's hit badge says, in its tooltip and to a screen reader. */
+  export function describeRuleHit(hit: RuleHit | undefined, idle: boolean): string[] {
+    if (!hit || hit.count < 1) {
+      return idle
+        ? [
+            'Not applied yet, although requests went by.',
+            'Check the pattern, the method and the conditions.',
+          ]
+        : ['Not applied yet in this session'];
+    }
+    const lines = [`Applied ${hit.count} ${hit.count === 1 ? 'time' : 'times'} in this session`];
+    if (Number.isFinite(hit.lastAt)) {
+      lines.push(`Last applied at ${new Date(hit.lastAt).toLocaleTimeString()}`);
+    }
+    if (hit.lastUrl) lines.push(hit.lastUrl);
+    return lines;
+  }
+
+  /**
+   * Fills the hit badges of the rendered rules from `state.ruleHits`, in
+   * place: counts arrive while the user may be dragging or tabbing through
+   * the list, so it is not rebuilt for them.
+   */
+  export function updateRuleHitBadges(elements: Elements, state: UiState): void {
+    const mayHint = state.enabled && state.attached && state.trafficSeen;
+    elements.listEl.querySelectorAll<HTMLElement>('.rule-hits').forEach(badge => {
+      const hit = state.ruleHits[badge.dataset.hitKey || ''];
+      const count = hit && hit.count > 0 ? hit.count : 0;
+      const idle = count === 0 && mayHint && badge.dataset.hint === 'true';
+      const text = count > 999 ? '999+' : String(count);
+      const lines = describeRuleHit(hit, idle);
+      const title = lines.join('\n');
+      if (badge.textContent !== text) badge.textContent = text;
+      if (badge.title !== title) {
+        badge.title = title;
+        badge.setAttribute('aria-label', lines.join('. '));
+      }
+      badge.classList.toggle('rule-hits--active', count > 0);
+      badge.classList.toggle('rule-hits--idle', idle);
+    });
+  }
+
   export function renderRulesList(
     elements: Elements,
     state: UiState,
@@ -43,6 +85,8 @@ namespace NetworkOverridesUi {
           item.classList.remove('override-item--drop-before', 'override-item--drop-after')
         );
     };
+
+    const hitKeys = NetworkOverridesUtils.ruleHitKeys(state.overrides);
 
     state.overrides.forEach((rule, index) => {
       const li = document.createElement('li');
@@ -243,6 +287,16 @@ namespace NetworkOverridesUi {
 
       span.addEventListener('click', () => onEdit(index));
 
+      // How often the rule was applied; filled by updateRuleHitBadges.
+      const hitBadge = document.createElement('span');
+      hitBadge.className = 'rule-hits';
+      hitBadge.dataset.hitKey = hitKeys[index];
+      // WebSocket frames are not in the captured traffic, so no hint there.
+      hitBadge.dataset.hint = String(isEnabled && rule.kind !== 'websocket');
+      hitBadge.setAttribute('role', 'note');
+      hitBadge.tabIndex = 0;
+      hitBadge.addEventListener('click', e => e.stopPropagation());
+
       const actionsDiv = document.createElement('div');
       actionsDiv.className = 'rule-actions';
 
@@ -286,9 +340,11 @@ namespace NetworkOverridesUi {
       li.appendChild(handle);
       li.appendChild(cb);
       li.appendChild(span);
+      li.appendChild(hitBadge);
       li.appendChild(actionsDiv);
       fragment.appendChild(li);
     });
     elements.listEl.appendChild(fragment);
+    updateRuleHitBadges(elements, state);
   }
 }

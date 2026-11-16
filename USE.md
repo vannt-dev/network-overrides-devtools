@@ -345,6 +345,7 @@ Vào tab **Rules**. Mỗi rule hiển thị:
 - **Redirect URL** (nếu có): Mũi tên → kèm URL.
 - **Body preview**: 80 ký tự đầu của body, kèm mode (`text`/`file`).
 - **Badge `NO SERVER`**: rule trả lời mà không gọi server (xem mục 6.6).
+- **Số lần áp dụng**: một con số nhỏ sau rule, là số lần rule được áp dụng trong phiên này. `0` màu xám, số lớn hơn màu xanh. Rê chuột lên (hoặc chuyển tới bằng phím Tab) để xem lần áp dụng gần nhất là lúc nào và với URL nào. Một request chỉ được tính khi rule thật sự thay đổi nó: rule chỉ khớp phía sau một rule đứng trước, hoặc rule patch cho qua một response không phải JSON, thì không được tính. Rule đang bật mà vẫn `0` sau khi đã có request đi qua sẽ có viền nét đứt: hãy kiểm tra pattern, method và các điều kiện. Con số đi theo rule khi bạn đổi thứ tự hoặc tắt/bật rule, và đếm lại từ đầu khi bạn sửa rule. Nút **Reset counts** phía trên danh sách đưa mọi con số về 0, tắt chặn request cũng vậy. Số đếm không bao giờ được lưu, export hay import cùng rule.
 
 ### 8.2. Sửa rule
 

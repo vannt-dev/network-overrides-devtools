@@ -5,6 +5,25 @@
 
 A Chrome/Edge DevTools extension that changes network traffic while you debug. A rule matches requests by URL (substring, `*` glob or regular expression), optionally narrowed to one HTTP method, GraphQL operation, query parameter, request header or request body text, and then replaces the response, changes some fields of the real JSON response, redirects the request, fails it, or rewrites WebSocket frames. It uses `chrome.debugger` and the Chrome DevTools Protocol (Fetch domain) to pause requests and apply the first rule that matches.
 
+```mermaid
+flowchart LR
+  subgraph panel ["DevTools panel or popup"]
+    direction TB
+    list["Captured APIs,<br/>HAR, Swagger"] -- "Create rule" --> editor["Rule editor"]
+    editor -- save --> rules[("Rules per<br/>domain<br/>or global")]
+  end
+  subgraph sw ["Service worker, through chrome.debugger"]
+    direction TB
+    req["Request stage<br/>redirect, fail<br/>or change it,<br/>answer early"]
+    res["Response stage<br/>replace, patch<br/>JSON, script,<br/>status, delay"]
+    ws["WebSocket<br/>text frames<br/>changed in<br/>the page"]
+    req -- "real request<br/>to the server" --> res
+  end
+  tab["Inspected tab<br/>gets changed<br/>responses<br/>and frames"]
+
+  panel -- "rules" --> sw --> tab
+```
+
 ### Compared with DevTools Local Overrides
 
 Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/overrides) serve a local file in place of a response and change response headers. This extension also does the following:
@@ -60,6 +79,7 @@ anything else is not published by vannt-dev.
 - **Search APIs** by URL substring.
 - **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
 - **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
+- **Per-rule hit counter**: every rule in the Rules tab shows how many times it was applied in this session (`0` greyed, a number highlighted), with the time and URL of the last one in its tooltip, so you can tell at a glance whether a rule is being applied at all. **Reset counts** starts over. The counts live in the session only and are never saved, exported or imported with the rules.
 - **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
 - **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.
@@ -339,7 +359,7 @@ Each API entry has a "cURL" button that copies the request as a cURL command (me
 
 ## Setup & Build
 
-Requirements: Node.js 22+, Chrome or Edge.
+Requirements: Node.js 22.22.1+, Chrome or Edge.
 
 ```bash
 npm install

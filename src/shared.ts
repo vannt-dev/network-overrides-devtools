@@ -39,6 +39,12 @@ declare namespace NetworkOverridesShared {
     createdAt: number;
     rules: OverrideRule[];
   }
+  /** How often a rule was applied in this session; never stored with the rule. */
+  interface RuleHit {
+    count: number;
+    lastAt: number; // epoch ms of the last time the rule was applied
+    lastUrl?: string; // the request it was last applied to; absent for WebSocket rules
+  }
   interface OverrideState {
     enabled: boolean;
     overrides: OverrideRule[];

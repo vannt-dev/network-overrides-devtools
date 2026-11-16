@@ -7,10 +7,6 @@ on:
       - master
       - develop
   pull_request:
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - LICENSE
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -119,7 +115,7 @@ jobs:
         run: echo "path=$(ls release/*.zip)" >> "$GITHUB_OUTPUT"
 
       - name: Check the Store ZIP for remotely hosted code
-        uses: vannt-dev/mv3-remote-code-check@9e84b492001753fcc2c640c4b7b8ff4445bf0866 # v0.5.0
+        uses: vannt-dev/mv3-remote-code-check@f066757b2c013f4bac44be401727e6742bf4ce64 # v0.6.0
         with:
           path: ${{ steps.zip.outputs.path }}
 
@@ -150,7 +146,27 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright Chromium dependencies
-        run: npx playwright install --with-deps chromium
+        # On a GitHub runner --with-deps only adds font packages. When the runner cannot reach
+        # the Ubuntu mirrors, install the browser alone: the smoke test below still decides.
+        run: npx playwright install --with-deps chromium || npx playwright install chromium
 
       - name: Run Playwright smoke test
         run: xvfb-run --auto-servernum npm run smoke
+
+  # The one check branch protection requires: it passes when every job above passed or was
+  # skipped, and fails on a failure or a cancellation.
+  ci-result:
+    name: CI result
+    if: always()
+    needs: [lint, unit-test, store-package, smoke-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or was skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) exit 1 ;;
+          esac

@@ -94,6 +94,18 @@ try {
       `expected ["mocked"] (ping blocked, echo:hello replaced), got ${JSON.stringify(received)}`
     );
   }
+  // Each rule changed one frame; the page reports that a little later.
+  await tab.waitForTimeout(500);
+  const hits = await worker.evaluate(async url => {
+    const [target] = await chrome.tabs.query({ url: `${url}/*` });
+    const counts = NetworkOverridesTabState.ruleHitsSnapshot(target.id);
+    const rules = NetworkOverridesTabState.get(target.id).overrides;
+    return NetworkOverridesUtils.ruleHitKeys(rules).map(key => counts[key]?.count ?? 0);
+  }, origin);
+  console.log('rule hits:', hits);
+  if (JSON.stringify(hits) !== JSON.stringify([1, 1])) {
+    throw new Error(`expected one hit per rule, got ${JSON.stringify(hits)}`);
+  }
   console.log('WebSocket e2e: OK');
 } finally {
   await context.close();

@@ -22,6 +22,7 @@ namespace NetworkOverridesBackground {
     | { type: 'getApis'; tabId: number; includeBodies?: boolean }
     | { type: 'getApiData'; tabId: number; url?: string }
     | { type: 'clearApis'; tabId: number }
+    | { type: 'resetRuleHits'; tabId: number }
     | { type: 'getStatus'; tabId: number }
     | { type: 'setThrottle'; tabId: number; preset: ThrottlePreset }
     | { type: 'updateCapturedBodyTypes'; types: string[] };
@@ -43,6 +44,7 @@ namespace NetworkOverridesBackground {
         state.enabled = enabled;
         state.overrides = overrides;
         if (tabUrl) state.origin = NetworkOverridesUtils.getOrigin(tabUrl);
+        TabState.rulesChanged(tabId);
         TabState.schedulePersist(tabId);
         // A first attach installs the WebSocket rules itself. A tab that is
         // attached, or still attaching (its sync may have read the old rules
@@ -122,10 +124,19 @@ namespace NetworkOverridesBackground {
                 port.postMessage({ type: 'stats', stats: { ...state.stats } });
               } catch {}
             });
+            TabState.resetRuleHits(clearTabId);
           }
         }
         if (typeof sendResponse === 'function') {
           sendResponse({ type: 'clearApisResponse', success: true });
+        }
+        return;
+      }
+      case 'resetRuleHits': {
+        const tabId = Number(msg.tabId);
+        if (!Number.isNaN(tabId)) TabState.resetRuleHits(tabId);
+        if (typeof sendResponse === 'function') {
+          sendResponse({ type: 'resetRuleHitsResponse', success: true });
         }
         return;
       }

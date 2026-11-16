@@ -174,6 +174,32 @@ try {
       `http://127.0.0.1:${PORT}/api/users`
     );
     report('override rule mocks the response body', mocked === '{"mocked":true}', mocked);
+
+    // ---- 3a. the rule's hit badge counts the request it answered, and a
+    // request no rule matches leaves it alone. The count reaches the popup in
+    // a throttled message, so it is polled for.
+    const hitBadge = popup.locator('#list .rule-hits').first();
+    const hitCount = async () => ((await hitBadge.textContent()) ?? '').trim();
+    let hitsAfterMatch = '';
+    for (let i = 0; i < 20; i++) {
+      hitsAfterMatch = await hitCount();
+      if (hitsAfterMatch === '1') break;
+      await popup.waitForTimeout(250);
+    }
+    const hitTitle = (await hitBadge.getAttribute('title')) ?? '';
+    report(
+      'a matching request raises the hit count of its rule',
+      hitsAfterMatch === '1' && hitTitle.includes('/api/users'),
+      JSON.stringify({ count: hitsAfterMatch, title: hitTitle })
+    );
+    await site.evaluate(u => fetch(u).then(r => r.text()), `http://127.0.0.1:${PORT}/api/other`);
+    await popup.waitForTimeout(1000);
+    const hitsAfterMiss = await hitCount();
+    report(
+      'a request no rule matches leaves the hit count alone',
+      hitsAfterMiss === '1',
+      hitsAfterMiss
+    );
     const header = await site.evaluate(
       u => fetch(u).then(r => r.headers.get('x-network-overrides')),
       `http://127.0.0.1:${PORT}/api/users`

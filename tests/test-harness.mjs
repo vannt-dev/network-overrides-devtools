@@ -269,6 +269,7 @@ function buildUiHtml() {
       </select>
       <div id="overrides-section" style="display:none;">
         <button id="export-rules-btn" type="button">Export</button>
+        <button id="reset-rule-hits-btn" type="button">Reset counts</button>
         <button id="import-rules-btn" type="button">Import</button>
         <button id="import-curl-swagger-btn" type="button">cURL / Swagger</button>
         <input id="import-rules-input" type="file">

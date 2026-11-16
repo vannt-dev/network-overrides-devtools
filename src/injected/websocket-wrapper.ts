@@ -43,9 +43,11 @@ namespace NetworkOverridesInjected {
     url: string,
     direction: Direction,
     data: string,
-    onRegexError: (rule: OverrideRule, message: string) => void
+    onRegexError: (rule: OverrideRule, message: string) => void,
+    onApplied?: (ruleIndex: number) => void
   ): Outcome {
-    for (const rule of rules) {
+    for (let index = 0; index < rules.length; index++) {
+      const rule = rules[index];
       if (rule.kind !== 'websocket' || rule.enabled === false) continue;
       const ruleDirection = rule.wsDirection || 'receive';
       if (ruleDirection !== 'both' && ruleDirection !== direction) continue;
@@ -63,12 +65,15 @@ namespace NetworkOverridesInjected {
 
       switch (rule.wsAction) {
         case 'block':
+          onApplied?.(index);
           return { kind: 'drop' };
         case 'delay':
+          onApplied?.(index);
           return { kind: 'deliver', data, delayMs: Math.max(0, rule.delayMs || 0) };
         case 'substitute': {
           const global = compile(rule, 'g', onRegexError);
           if (!global) continue;
+          onApplied?.(index);
           return {
             kind: 'deliver',
             data: data.replace(global, template(rule.body || '')),
@@ -77,6 +82,7 @@ namespace NetworkOverridesInjected {
         }
         case 'replace':
         default:
+          onApplied?.(index);
           return { kind: 'deliver', data: template(rule.body || ''), delayMs: 0 };
       }
     }
@@ -151,21 +157,24 @@ namespace NetworkOverridesInjected {
       report({ event: 'error', pattern: rule.pattern, message });
     };
     let applied = 0;
-    const countApplied = () => {
+    // Frames changed per rule, by the rule's place in the list the page was given.
+    let appliedByRule: Record<number, number> = {};
+    const countApplied = (ruleIndex: number) => {
+      appliedByRule[ruleIndex] = (appliedByRule[ruleIndex] || 0) + 1;
       applied++;
       if (applied > 1) return;
       win.setTimeout(() => {
         const count = applied;
+        const rulesApplied = appliedByRule;
         applied = 0;
-        report({ event: 'applied', count });
+        appliedByRule = {};
+        report({ event: 'applied', count, rules: rulesApplied });
       }, REPORT_INTERVAL_MS);
     };
     const decide = (url: string, direction: Direction, data: unknown): Outcome => {
       if (typeof data !== 'string' || rules.length === 0) return { kind: 'pass' };
       try {
-        const outcome = applyRules(rules, url, direction, data, onRegexError);
-        if (outcome.kind !== 'pass') countApplied();
-        return outcome;
+        return applyRules(rules, url, direction, data, onRegexError, countApplied);
       } catch {
         // Fail open: a broken rule must never break the page's socket.
         return { kind: 'pass' };
@@ -258,6 +267,8 @@ namespace NetworkOverridesInjected {
       value: {
         setRules(next: OverrideRule[]) {
           rules = Array.isArray(next) ? next : [];
+          // Counts gathered so far belong to the places of the old list.
+          appliedByRule = {};
         },
       },
     });

@@ -17,6 +17,23 @@ namespace NetworkOverridesUi {
     setThrottle: (preset: ThrottlePreset) => Promise<void>;
   }
 
+  /**
+   * The capture-type boxes start as the page has them (XHR and Fetch); the background works with the saved
+   * choice, so the boxes show that one once it is read.
+   */
+  async function restoreCaptureTypes(renderApis: () => void): Promise<void> {
+    try {
+      const data: any = await Promise.resolve(chrome.storage.local.get(['capturedBodyTypes']));
+      const saved = data?.capturedBodyTypes;
+      if (!Array.isArray(saved)) return;
+      const types = saved.map((type: unknown) => String(type).toLowerCase());
+      document.querySelectorAll<HTMLInputElement>('.capture-type-cb').forEach(input => {
+        input.checked = types.includes(input.value.toLowerCase());
+      });
+      renderApis();
+    } catch {}
+  }
+
   export function bindToolbarController(options: ToolbarControllerOptions): void {
     const {
       elements,
@@ -57,6 +74,7 @@ namespace NetworkOverridesUi {
         renderApis();
       });
     });
+    void restoreCaptureTypes(renderApis);
     elements.throttleSelect?.addEventListener('change', async () => {
       const previousPreset = state.throttlePreset;
       const preset = elements.throttleSelect.value as ThrottlePreset;

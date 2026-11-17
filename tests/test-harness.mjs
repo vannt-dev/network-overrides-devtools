@@ -95,10 +95,20 @@ export function createBackgroundContext() {
   return context;
 }
 
-function buildUiHtml() {
+// The capture-type boxes of panel.html, for the tests that need them: the other tests filter
+// captured requests by no type.
+const CAPTURE_TYPE_BOXES = ['xhr', 'fetch', 'document', 'script', 'stylesheet']
+  .map(
+    value =>
+      `<input type="checkbox" class="capture-type-cb" value="${value}"${value === 'xhr' || value === 'fetch' ? ' checked' : ''}>`
+  )
+  .join('');
+
+function buildUiHtml({ captureTypeBoxes = false } = {}) {
   return `<!doctype html>
   <html>
     <body>
+      ${captureTypeBoxes ? CAPTURE_TYPE_BOXES : ''}
       <input id="enable" type="checkbox">
       <span id="attach-status" style="display:none"></span>
       <select id="throttle-preset">
@@ -294,8 +304,9 @@ export function createUiHarness({
   storageSetError = null,
   backgroundUpdateResponse = { success: true },
   promptResult = null,
+  captureTypeBoxes = false,
 } = {}) {
-  const dom = new JSDOM(buildUiHtml(), {
+  const dom = new JSDOM(buildUiHtml({ captureTypeBoxes }), {
     url: tabUrl,
     runScripts: 'outside-only',
   });

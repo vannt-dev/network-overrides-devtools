@@ -262,9 +262,11 @@ Pattern: all</pre>
 
       <h3>5.5. Rule order</h3>
       <p>
-        Rules are evaluated in list order. <strong>The first matching rule wins</strong>.
-        Drag-and-drop reordering is not supported — to change priority, delete and recreate rules in
-        the desired order.
+        Rules are evaluated in list order. <strong>The first matching rule wins</strong>. To change
+        priority, drag a rule by its <code>⠿</code> handle and drop it on the upper or lower half of
+        another rule, or focus the handle and press the up or down arrow key. The new order is saved
+        at once. Domain rules always run before global rules, so a rule moves only within its own
+        group.
       </p>
 
       <h3>5.6. HTTP method</h3>
@@ -306,6 +308,15 @@ Pattern: all</pre>
         A rule with conditions shows an <strong>IF</strong> badge in the rules list; hover it to see
         them. A CORS preflight carries neither the headers nor the body of the request behind it, so
         only the query conditions are checked for the preflight.
+      </p>
+
+      <h3 id="graphql-operation">5.8. GraphQL operation</h3>
+      <p>
+        The <strong>GraphQL operation</strong> field narrows a rule to one operation sent to a
+        shared URL such as <code>/graphql</code>. It matches when the JSON request body's
+        <code>operationName</code> equals the value (case-insensitive), failing that when its
+        <code>query</code> contains the value, failing that when the raw body contains it. Requests
+        without a body do not match.
       </p>
 
       <!-- ============ 6 ============ -->
@@ -411,6 +422,40 @@ set data.flags = {"beta": true}</pre>
         same warning; the other changes still apply. The rule shows a <code>PATCH</code> badge with
         the number of changes in the Rules tab; hover it to see them.
       </p>
+
+      <h3 id="script-response">6.7. Script responses</h3>
+      <p>
+        With the body mode <strong>Script (JavaScript)</strong> the rule computes its response. The
+        body is the body of an async function that receives <code>request</code> and returns the
+        response:
+      </p>
+      <pre>
+// Keep the real response, but only its first three items.
+const data = JSON.parse(request.response.body);
+return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
+      <ul>
+        <li>
+          <code>request</code> holds <code>url</code>, <code>method</code>,
+          <code>headers</code> (lower-case names), <code>query</code>, <code>params</code> (what
+          each <code>*</code> matched), <code>body</code> and <code>response</code> (the original
+          <code>status</code>, <code>headers</code> and <code>body</code>).
+        </li>
+        <li>
+          Return a string for the body, <code>{ status, headers, body }</code>, or any other value
+          to send it as JSON. A returned status or header wins over the rule's own; the delay still
+          applies. Templates are not processed in a script.
+        </li>
+        <li>
+          The script runs in the inspected page, so it can use <code>fetch</code>,
+          <code>localStorage</code> and the page's globals. It has 5 seconds; a script that throws,
+          returns nothing or times out answers with status <code>500</code> and the header
+          <code>x-network-overrides-error: script</code>.
+        </li>
+        <li>
+          Imported rules may contain scripts, which run in the pages they match: import only files
+          you trust.
+        </li>
+      </ul>
 
       <!-- ============ 7 ============ -->
       <h2 id="redirect">7. Redirect URL</h2>
@@ -709,6 +754,36 @@ set data.flags = {"beta": true}</pre>
         <li><code>Ctrl + Shift + F</code> / <code>Cmd + Shift + F</code> — Format JSON body</li>
       </ul>
 
+      <h3 id="websocket-frames">9.13. WebSocket frames</h3>
+      <p>
+        To change what a WebSocket carries, open the override dialog (or click a
+        <strong>WS</strong> entry in the API list) and choose <strong>WebSocket frames</strong>. A
+        rule matches the socket URL (<code>wss://api.example.com/*</code>), the direction (send,
+        receive or both) and optionally the frame text (contains, or a regular expression). The
+        first enabled rule that fits is applied:
+      </p>
+      <ul>
+        <li>
+          <strong>Replace</strong>: the frame becomes the body (templates such as
+          <code>{{now}}</code> work).
+        </li>
+        <li>
+          <strong>Substitute</strong>: every match is replaced by the body; <code>$1</code>… refer
+          to regex groups.
+        </li>
+        <li><strong>Block</strong>: the frame is dropped.</li>
+        <li>
+          <strong>Delay</strong>: the frame waits the given milliseconds; frames behind it keep
+          their order.
+        </li>
+      </ul>
+      <p>
+        Only text frames are changed (binary frames pass untouched); sockets opened from Web Workers
+        or cross-origin iframes are not covered; frames the page receives after a rule changed them
+        have <code>event.isTrusted</code> set to <code>false</code>. Reload the page after adding
+        the first WebSocket rule if the socket was already open.
+      </p>
+
       <!-- ============ 10 ============ -->
       <h2 id="notes">10. Important Notes</h2>
 
@@ -840,8 +915,8 @@ set data.flags = {"beta": true}</pre>
 
       <div class="faq-q">Q: Can I override WebSocket connections?</div>
       <div class="faq-a">
-        No. The extension only intercepts HTTP requests (XHR, Fetch) via Chrome's Fetch domain.
-        WebSocket is not supported.
+        Yes, the text frames a page sends or receives on a WebSocket: replace, substitute, block or
+        delay them with a WebSocket frames rule. See <a href="#websocket-frames">9.13</a>.
       </div>
 
       <div class="faq-q">Q: Does this support sync storage?</div>

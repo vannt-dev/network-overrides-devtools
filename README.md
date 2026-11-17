@@ -110,7 +110,11 @@ src/
 │   ├── debugger-controller.ts # chrome.debugger attach/detach & domain setup
 │   ├── encoding.ts          # Base64 response body encoding helpers
 │   ├── interceptor.ts       # Fetch.requestPaused request/response/fail interceptor
-│   └── message-router.ts    # Background message listener & route handler
+│   ├── message-router.ts    # Background message listener & route handler
+│   ├── response-script.ts   # Runs Script (JavaScript) rules in the inspected page
+│   └── websocket-bridge.ts  # Installs the WebSocket wrapper and sends it the frame rules
+├── injected/
+│   └── websocket-wrapper.ts # In-page WebSocket wrapper that applies frame rules
 └── ui/
     ├── api-list.ts          # Render captured APIs & resource type counters
     ├── attach-status.ts     # Status badge renderer (green/red)
@@ -129,7 +133,8 @@ src/
     ├── swagger.ts          # Swagger / OpenAPI spec parser
     ├── toolbar-controller.ts# Enable toggle, search, refresh, tabs, & action buttons
     ├── types.ts             # UI state & elements interfaces
-    └── view-utils.ts        # Highlighting & label formatting helpers
+    ├── view-utils.ts        # Highlighting & label formatting helpers
+    └── websocket-rule.ts    # WebSocket frame rule fields in the override modal
 
 styles.css                   # CSS stylesheet entrypoint
 styles/                      # Modular CSS stylesheets (base, feature, modal/rules, primitive, guide)
@@ -137,6 +142,7 @@ scripts/                     # Automation scripts:
 ├── bundle.mjs               # Bundles TypeScript outputs into 5 clean JS files & cleans dist/
 ├── package-store.mjs        # Store zip packager
 ├── smoke.mjs                # Real Chromium Playwright integration smoke test
+├── e2e-websocket.mjs        # Manual end-to-end check of WebSocket frame rules in Chromium
 └── capture-store-screenshots.mjs # Store assets screenshot generator
 
 icons/                       # Active extension icons (16x16, 48x48, 128x128)
@@ -346,6 +352,7 @@ In the modal, choose:
 - **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content, or `Patch the real JSON response` to change only some fields of what the server sends. The **Format JSON** action appears when the body contains valid JSON.
 - **Redirect to URL**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
 - **Fail request**: Pick a fail reason (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`) — the request fails at the network layer instead of receiving a response.
+- **WebSocket frames**: Replace, substitute, block or delay the text frames sent or received on a socket whose URL matches. Clicking a **WS** entry opens this type directly. See [WebSocket frame rules](#websocket-frame-rules).
 
 The advanced fields can override **Request Headers** and **Response Headers** in either Key–Value or Raw mode, force a **Status** (100–599), and set a **Delay** in milliseconds. Body and fail rules can use delay; combine `TimedOut` with a long delay to simulate a real timeout.
 
@@ -430,7 +437,7 @@ Produces a ZIP in `release/` containing only the runtime files (`manifest.json`,
 
 - Overrides only apply to the tab currently attached to the debugger.
 - Recent API data is capped at 500 URLs and 100 response bodies per tab.
-- Recent API bodies are only stored for XHR and Fetch resource types by default. Configure `CAPTURED_BODY_TYPES` in `src/background.ts` to add more types.
+- Recent API bodies are only stored for XHR and Fetch resource types by default. Tick more types (Doc, JS, CSS) in the capture filters of the APIs tab; the choice is saved (`capturedBodyTypes` in `chrome.storage.local`) and kept when the service worker restarts or the panel is opened again.
 - Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
 - The extension is designed for developer debugging only, not for end-user production use.
 

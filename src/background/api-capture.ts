@@ -17,7 +17,8 @@ namespace NetworkOverridesBackground {
   let capturedBodyTypes: string[] = ['xhr', 'fetch'];
   try {
     chrome.storage.local.get(['capturedBodyTypes'], (data: any) => {
-      if (Array.isArray(data?.capturedBodyTypes) && data.capturedBodyTypes.length > 0) {
+      // an empty list is a choice too (every box unticked), not a missing one
+      if (Array.isArray(data?.capturedBodyTypes)) {
         capturedBodyTypes = data.capturedBodyTypes.map((t: any) => String(t).toLowerCase());
       }
     });
@@ -125,8 +126,12 @@ namespace NetworkOverridesBackground {
     });
   });
 
+  /** Sets the resource types whose bodies are kept, and saves them so a restarted service worker keeps them. */
   export function setCapturedBodyTypes(types: unknown[]): void {
     capturedBodyTypes = types.map(type => String(type).toLowerCase());
+    try {
+      void Promise.resolve(chrome.storage.local.set({ capturedBodyTypes })).catch(() => {});
+    } catch {}
   }
 
   export function shouldCaptureBody(resourceType: string): boolean {

@@ -297,6 +297,21 @@ The real status and headers are kept; **Status**, **Extra Response Headers** and
 
 When the response is not JSON or has no body (an HTML page, a `204`, a redirect), it passes through unchanged and the panel shows a warning. A change that cannot apply, such as a path through a text field or an array index past the end, is skipped and named in the same warning; the other changes still apply. The rule shows a `PATCH` badge with the number of changes in the Rules tab; hover it to see them.
 
+### 6.8. Script response
+
+Pick **Script (JavaScript)** in the Response body mode list to compute the response instead of holding one. The body is the body of an async function that receives `request` and returns the response:
+
+```js
+// Keep the real response, but only its first three items.
+const data = JSON.parse(request.response.body);
+return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
+```
+
+- `request` holds `url`, `method`, `headers` (names in lower case), `query` (the first value of each parameter), `params` (what each `*` of the pattern matched), `body` (the request payload, or `null`) and `response`: the original `status`, `headers` and `body`.
+- Return a string for the body, `{ status, headers, body }` (any of them; `body` is sent as JSON when it is not a string), or any other value to send it as JSON. A status or header the script returns wins over the rule's own; the delay still applies. Templates such as `{{now}}` are not processed in a script.
+- The script runs in the inspected page, so it can use `fetch`, `localStorage` and the page's own globals. It has 5 seconds. A script that throws, returns nothing, returns a status outside 100–599 or runs out of time is answered with status `500`, the error as its text and the header `x-network-overrides-error: script`.
+- Rules imported from a file may contain scripts, which run in the pages they match: import only files you trust.
+
 ---
 
 ## 7. Redirect URL
@@ -501,7 +516,7 @@ A WebSocket rule matches the socket URL (`wss://api.example.com/*`), the directi
 
 Limits: only text frames are changed (binary frames pass untouched); sockets opened from Web Workers or cross-origin iframes are not covered; frames the page receives after a rule has changed them are dispatched by the extension, so their `event.isTrusted` is `false`. Reload the page after adding the first WebSocket rule if the socket was already open. Turning interception off empties the rules in the page; pressing "Cancel" on Chrome's debugging bar does not, so reload the page after that.
 
-### 9.5. Marker headers
+### 9.12. Marker headers
 
 When a request is overridden, the extension adds these response headers:
 
@@ -597,7 +612,7 @@ No. The extension uses `chrome.storage.local` (10MB limit). Sync storage is not 
 
 ### Q: Can I override WebSocket connections?
 
-No. The extension only intercepts HTTP requests (XHR, Fetch) via Chrome's Fetch domain. WebSocket is not supported.
+Yes, the text frames a page sends or receives on a WebSocket: replace, substitute, block or delay them with a WebSocket frames rule. See [9.11. WebSocket frames](#911-websocket-frames).
 
 ### Q: Can I import rules exported from a different domain?
 

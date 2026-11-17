@@ -297,6 +297,21 @@ Status và header thật được giữ nguyên; **Status**, **Extra Response He
 
 Khi response không phải JSON hoặc không có body (trang HTML, `204`, redirect), nó được cho qua nguyên vẹn và panel hiện một cảnh báo. Thay đổi nào không áp dụng được, như path đi qua một field dạng chuỗi hay chỉ số mảng vượt quá cuối mảng, sẽ bị bỏ qua và được nêu trong cùng cảnh báo đó; các thay đổi khác vẫn áp dụng. Rule có badge `PATCH` kèm số thay đổi trong tab Rules; rê chuột lên để xem chúng.
 
+### 6.8. Script response (tính response bằng JavaScript)
+
+Chọn **Script (JavaScript)** trong danh sách chế độ của Response body để rule tự tính response thay vì giữ sẵn một response. Body là thân của một hàm async nhận `request` và trả về response:
+
+```js
+// Giữ response thật, nhưng chỉ lấy ba phần tử đầu.
+const data = JSON.parse(request.response.body);
+return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
+```
+
+- `request` có `url`, `method`, `headers` (tên viết thường), `query` (giá trị đầu tiên của mỗi tham số), `params` (phần mà mỗi `*` của pattern khớp), `body` (payload của request, hoặc `null`) và `response`: `status`, `headers` và `body` gốc.
+- Trả về một chuỗi để làm body, `{ status, headers, body }` (có thể thiếu field; `body` không phải chuỗi thì được gửi dạng JSON), hoặc giá trị khác để gửi dạng JSON. Status hay header script trả về được ưu tiên hơn của rule; delay vẫn áp dụng. Template như `{{now}}` không được xử lý trong script.
+- Script chạy trong trang đang inspect, nên dùng được `fetch`, `localStorage` và biến toàn cục của trang. Script có 5 giây. Script ném lỗi, không trả về gì, trả status ngoài 100–599 hoặc hết giờ thì request nhận status `500`, nội dung là lỗi, kèm header `x-network-overrides-error: script`.
+- Rule import từ file có thể chứa script, và script đó chạy trong các trang mà rule khớp: chỉ import file bạn tin tưởng.
+
 ---
 
 ## 7. Redirect URL
@@ -506,7 +521,7 @@ Click vào tiêu đề nhóm (ví dụ "XHR ▼") để thu gọn/mở rộng. T
 
 Giới hạn: chỉ frame dạng text được sửa (frame binary đi qua nguyên vẹn); socket mở từ Web Worker hoặc iframe khác origin không được xử lý; frame mà trang nhận sau khi bị rule sửa do extension phát lại nên `event.isTrusted` là `false`. Nếu socket đã mở trước khi thêm rule WebSocket đầu tiên, hãy reload trang. Tắt interception sẽ xóa rule trong trang; còn bấm "Cancel" trên thanh debug của Chrome thì không, nên hãy reload trang sau khi bấm.
 
-### 9.5. Headers đánh dấu
+### 9.12. Headers đánh dấu
 
 Khi một request bị ghi đè, extension thêm các header sau vào response:
 
@@ -602,7 +617,7 @@ Không. Extension dùng `chrome.storage.local` (dung lượng 10MB). Không dùn
 
 ### Q: Có thể override WebSocket không?
 
-Không. Extension chỉ hoạt động với HTTP request (XHR, Fetch) thông qua Fetch domain của CDP. WebSocket không nằm trong phạm vi này.
+Có, với các frame dạng text mà trang gửi hoặc nhận qua WebSocket: thay, thay một phần, chặn hoặc làm chậm chúng bằng rule WebSocket frames. Xem [9.11. WebSocket frames](#911-websocket-frames).
 
 ### Q: Có thể import file rules được export từ domain khác không?
 

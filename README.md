@@ -437,7 +437,7 @@ Produces a ZIP in `release/` containing only the runtime files (`manifest.json`,
 
 - Overrides only apply to the tab currently attached to the debugger.
 - Recent API data is capped at 500 URLs and 100 response bodies per tab.
-- Recent API bodies are only stored for XHR and Fetch resource types by default. Tick more types (Doc, JS, CSS) in the capture filters of the APIs tab; the choice lasts until the service worker restarts. A `capturedBodyTypes` array in `chrome.storage.local`, read by `src/background/api-capture.ts` when the worker starts, changes the default.
+- Recent API bodies are only stored for XHR and Fetch resource types by default. Tick more types (Doc, JS, CSS) in the capture filters of the APIs tab; the choice is saved (`capturedBodyTypes` in `chrome.storage.local`) and kept when the service worker restarts or the panel is opened again.
 - Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
 - The extension is designed for developer debugging only, not for end-user production use.
 

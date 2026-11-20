@@ -88,7 +88,9 @@ namespace NetworkOverridesUi {
     const patchHelp = elements.modal?.querySelector('#modal-patch-help') as HTMLElement | null;
     if (patchHelp) patchHelp.style.display = isPatch ? '' : 'none';
     const templates = fieldOf(elements.modalProcessTemplates);
-    if (templates) templates.style.display = isScript || isPatch ? 'none' : '';
+    // The option goes with the body: hidden for redirect and network-error rules.
+    const bodyShown = elements.modalBodyFields?.style.display !== 'none';
+    if (templates) templates.style.display = isScript || isPatch || !bodyShown ? 'none' : '';
     const respondAtRequest = fieldOf(elements.modalRespondAtRequest);
     if (respondAtRequest) respondAtRequest.style.display = isBody && !isPatch ? '' : 'none';
     if (elements.modalBody) {
@@ -341,6 +343,7 @@ namespace NetworkOverridesUi {
     if (radio) radio.checked = true;
     // A preset never locks or unlocks the pattern.
     const patternDisabled = elements.modalPattern.disabled;
+    if (type !== 'body') elements.modalStatus.value = '';
     updateModalVisibility(elements, type);
     elements.modalPattern.disabled = patternDisabled;
   }

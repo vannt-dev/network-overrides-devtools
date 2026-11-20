@@ -394,3 +394,48 @@ test('the Rules tab shows each rule as one line: what matches → what happens',
     'GET /api/orders + query page=2 → 500 · slow 3 s'
   );
 });
+
+test('a status copied by "Mock this" is not saved with a network-error rule', async () => {
+  const harness = await panelHarness({
+    apis: [{ url: API_URL, type: 'fetch', method: 'GET', statusCode: 201, body: '{}' }],
+  });
+  click(harness, $(harness, '.api-item .mock-btn'));
+  await flushUi(harness.window);
+  assert.equal($(harness, '#modal-status').value, '201');
+  click(harness, $(harness, '.preset-btn[data-preset="offline"]'));
+  await save(harness);
+
+  const [rule] = savedRules(harness);
+  assert.equal(rule.failReason, 'InternetDisconnected');
+  assert.equal('statusCode' in rule, false);
+});
+
+test('switching the type away from a mock response clears the hidden status', async () => {
+  const harness = await panelHarness();
+  click(harness, $(harness, '#add-api-btn'));
+  await flushUi(harness.window);
+  input(harness, $(harness, '#modal-pattern'), '/api/r');
+  input(harness, $(harness, '#modal-status'), '404');
+  const redirect = $(harness, 'input[name="modal-override-type"][value="redirect"]');
+  redirect.checked = true;
+  redirect.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  assert.equal($(harness, '#modal-status').value, '');
+  // Body options do not apply to a redirect, so their group is not shown.
+  assert.equal($(harness, '#modal-group-body-type').style.display, 'none');
+});
+
+test('a new rule starts in Text mode even after editing a script rule', async () => {
+  const harness = await panelHarness({
+    storageState: { overrides: [{ pattern: 's', body: 'return 1;', mode: 'script' }] },
+  });
+  await openTab(harness, 'overrides');
+  click(harness, $(harness, '#list .edit-btn'));
+  await flushUi(harness.window);
+  assert.equal($(harness, '#modal-mode').value, 'script');
+  click(harness, $(harness, '#override-modal .modal-close'));
+  await openTab(harness, 'other');
+  click(harness, $(harness, '#add-api-btn'));
+  await flushUi(harness.window);
+  assert.equal($(harness, '#modal-mode').value, 'text');
+  assert.equal($(harness, '#modal-group-body-type').open, false);
+});

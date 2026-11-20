@@ -130,6 +130,7 @@ namespace NetworkOverridesUi {
       elements.modalPattern.value = '';
       elements.modalMethod.value = 'ANY';
       elements.modalBody.value = '';
+      elements.modalMode.value = 'text';
       elements.modalRedirectUrl.value = '';
       const bodyRadio = elements.modal.querySelector(
         'input[name="modal-override-type"][value="body"]'

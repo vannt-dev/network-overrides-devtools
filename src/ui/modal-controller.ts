@@ -103,6 +103,8 @@ namespace NetworkOverridesUi {
     typeRadios.forEach(radio => {
       radio.addEventListener('change', event => {
         const value = (event.target as HTMLInputElement).value as ModalType;
+        // The status is hidden for other types: a prefilled one must not be saved with them.
+        if (value !== 'body') elements.modalStatus.value = '';
         updateModalVisibility(elements, value);
         // The error to simulate lives under Timing & failure: show it.
         if (value === 'fail') revealField(elements.modalFailReason);

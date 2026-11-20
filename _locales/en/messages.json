@@ -101,11 +101,17 @@
   "enable_label": {
     "message": "Enable Overrides"
   },
+  "error_background_no_confirm": {
+    "message": "Background did not confirm the update"
+  },
   "error_body_not_json": {
     "message": "Response body is not valid JSON."
   },
   "error_delay_range": {
     "message": "Delay must be between 0 and 120000 ms."
+  },
+  "error_no_active_tab": {
+    "message": "No active tab is available"
   },
   "error_pattern_required": {
     "message": "Pattern is required."
@@ -127,6 +133,9 @@
   },
   "error_status_range": {
     "message": "Status code must be between 100 and 599."
+  },
+  "error_throttle_failed": {
+    "message": "Could not update network throttling"
   },
   "error_unknown": {
     "message": "Unknown error"
@@ -286,6 +295,9 @@
   },
   "header_actions_label": {
     "message": "Popup actions"
+  },
+  "headers_add": {
+    "message": "+ Add Header"
   },
   "headers_delete": {
     "message": "Delete header"
@@ -451,6 +463,9 @@
   },
   "presets_label": {
     "message": "Presets"
+  },
+  "preview_alt": {
+    "message": "Image preview"
   },
   "profile_delete_btn_title": {
     "message": "Delete selected Profile"

@@ -100,7 +100,7 @@ namespace NetworkOverridesUi {
 
     headers.forEach(h => addRow(h.name, h.value));
 
-    const addBtn = createUiButton('+ Add Header', {
+    const addBtn = createUiButton(t('headers_add'), {
       className: 'add-header-row-btn',
       variant: 'outline',
       size: 'small',

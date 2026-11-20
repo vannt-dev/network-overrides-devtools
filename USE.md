@@ -540,7 +540,7 @@ Khi một request bị ghi đè, extension thêm các header sau vào response:
 
 ### 9.13. Ngôn ngữ giao diện
 
-Giao diện có tiếng Anh và tiếng Việt. Mặc định extension dùng ngôn ngữ của trình duyệt. Menu ngôn ngữ ở góc trên bên phải chuyển sang **English** hoặc **Tiếng Việt**; chọn **Tự động** để quay lại theo trình duyệt. Lựa chọn được lưu trong máy, và cả hai ngôn ngữ nằm sẵn trong extension nên đổi ngôn ngữ không cần mạng.
+Giao diện có tiếng Anh và tiếng Việt. Mặc định extension dùng ngôn ngữ của trình duyệt. Menu ngôn ngữ cạnh công tắc **Bật ghi đè** chuyển sang **English** hoặc **Tiếng Việt**; chọn **Tự động** để quay lại theo trình duyệt. Lựa chọn được lưu trong máy, và cả hai ngôn ngữ nằm sẵn trong extension nên đổi ngôn ngữ không cần mạng.
 
 ---
 

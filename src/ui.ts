@@ -256,7 +256,7 @@ namespace NetworkOverridesUi {
     }
 
     function notifyBackground(overrides = state.overrides, isRetry = false): Promise<void> {
-      if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
+      if (activeTabId === null) return Promise.reject(new Error(t('error_no_active_tab')));
       return new Promise((resolve, reject) => {
         try {
           chrome.runtime.sendMessage(
@@ -284,7 +284,7 @@ namespace NetworkOverridesUi {
                 return;
               }
               if (!response || response.success === false) {
-                reject(new Error(response?.error || 'Background did not confirm the update'));
+                reject(new Error(response?.error || t('error_background_no_confirm')));
                 return;
               }
               resolve();
@@ -469,7 +469,7 @@ namespace NetworkOverridesUi {
       loadApis: () => loadApisWithRetry(),
       notifyBackground,
       setThrottle: preset => {
-        if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
+        if (activeTabId === null) return Promise.reject(new Error(t('error_no_active_tab')));
         return new Promise((resolve, reject) => {
           chrome.runtime.sendMessage(
             { type: 'setThrottle', tabId: activeTabId, preset },
@@ -477,7 +477,7 @@ namespace NetworkOverridesUi {
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
               } else if (!response?.success) {
-                reject(new Error(response?.error || 'Could not update network throttling'));
+                reject(new Error(response?.error || t('error_throttle_failed')));
               } else {
                 state.throttlePreset = preset;
                 renderRuntimeState();

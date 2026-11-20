@@ -115,10 +115,10 @@ namespace NetworkOverridesUi {
       (trimmed.startsWith('<svg') && trimmed.endsWith('</svg>'))
     ) {
       elements.modalPreviewContainer.style.display = 'block';
-      elements.modalPreviewContainer.innerHTML = `<img src="${escapeHtml(trimmed)}" alt="Preview" />`;
+      elements.modalPreviewContainer.innerHTML = `<img src="${escapeHtml(trimmed)}" alt="${escapeHtml(t('preview_alt'))}" />`;
     } else if (elements.modalMode && elements.modalMode.value === 'file') {
       elements.modalPreviewContainer.style.display = 'block';
-      elements.modalPreviewContainer.innerHTML = `<img src="data:image/png;base64,${escapeHtml(trimmed)}" alt="Image Preview" onerror="this.parentElement.style.display='none'" />`;
+      elements.modalPreviewContainer.innerHTML = `<img src="data:image/png;base64,${escapeHtml(trimmed)}" alt="${escapeHtml(t('preview_alt'))}" onerror="this.parentElement.style.display='none'" />`;
     } else {
       elements.modalPreviewContainer.style.display = 'none';
       elements.modalPreviewContainer.innerHTML = '';

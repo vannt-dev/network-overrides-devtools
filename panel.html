@@ -14,18 +14,6 @@
         aria-label="Popup actions"
         data-i18n-aria-label="header_actions_label"
       >
-        <select
-          id="ui-language"
-          class="ui-language-select"
-          title="Language"
-          aria-label="Language"
-          data-i18n-title="language_label"
-          data-i18n-aria-label="language_label"
-        >
-          <option value="auto" data-i18n="language_auto">Auto</option>
-          <option value="en">English</option>
-          <option value="vi">Tiếng Việt</option>
-        </select>
         <button
           id="refresh-apis"
           type="button"
@@ -67,6 +55,18 @@
       </label>
       <label for="enable" class="switch-label" data-i18n="enable_label">Enable Overrides</label>
       <span id="attach-status" class="attach-status" style="display: none"></span>
+      <select
+        id="ui-language"
+        class="ui-language-select"
+        title="Language"
+        aria-label="Language"
+        data-i18n-title="language_label"
+        data-i18n-aria-label="language_label"
+      >
+        <option value="auto" data-i18n="language_auto">Auto</option>
+        <option value="en">English</option>
+        <option value="vi">Tiếng Việt</option>
+      </select>
     </div>
     <div
       class="runtime-controls"

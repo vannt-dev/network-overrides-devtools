@@ -101,11 +101,17 @@
   "enable_label": {
     "message": "Bật ghi đè"
   },
+  "error_background_no_confirm": {
+    "message": "Background không xác nhận việc cập nhật"
+  },
   "error_body_not_json": {
     "message": "Response body không phải JSON hợp lệ."
   },
   "error_delay_range": {
     "message": "Độ trễ phải từ 0 đến 120000 ms."
+  },
+  "error_no_active_tab": {
+    "message": "Không có tab nào đang mở"
   },
   "error_pattern_required": {
     "message": "Cần nhập pattern."
@@ -127,6 +133,9 @@
   },
   "error_status_range": {
     "message": "Status code phải từ 100 đến 599."
+  },
+  "error_throttle_failed": {
+    "message": "Không đổi được giới hạn mạng"
   },
   "error_unknown": {
     "message": "Lỗi không rõ"
@@ -286,6 +295,9 @@
   },
   "header_actions_label": {
     "message": "Thao tác của popup"
+  },
+  "headers_add": {
+    "message": "+ Thêm header"
   },
   "headers_delete": {
     "message": "Xóa header"
@@ -452,6 +464,9 @@
   "presets_label": {
     "message": "Mẫu nhanh"
   },
+  "preview_alt": {
+    "message": "Xem trước ảnh"
+  },
   "profile_delete_btn_title": {
     "message": "Xóa profile đang chọn"
   },
@@ -558,7 +573,7 @@
     "message": "+ header $1"
   },
   "summary_mock_body": {
-    "message": "body giả"
+    "message": "mock body"
   },
   "summary_network_error": {
     "message": "lỗi mạng"

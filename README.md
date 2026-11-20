@@ -337,7 +337,7 @@ Two entry points:
 - **DevTools panel**: Open DevTools (F12) → "Overrides" tab. Same UI plus a manual rule editor row at the top of the "Rules" tab.
 
 The UI is in English and Vietnamese (Tiếng Việt). It follows the browser's language; the
-language menu at the top right switches it to English or Tiếng Việt, and **Auto** goes back to
+language menu beside the Enable Overrides switch changes it to English or Tiếng Việt, and **Auto** goes back to
 the browser's language. The choice is saved in `chrome.storage.local`, and both languages ship
 inside the extension (`_locales/`), so switching needs no network.
 

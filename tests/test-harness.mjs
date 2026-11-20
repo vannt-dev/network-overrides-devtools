@@ -292,6 +292,15 @@ function buildUiHtml({ captureTypeBoxes = false } = {}) {
   </html>`;
 }
 
+// The real markup of panel.html or popup.html, without its script tags: the
+// harness runs the UI bundle itself.
+export function readPageHtml(page) {
+  return fs
+    .readFileSync(path.join(repoRoot, page), 'utf8')
+    .replace(/<script[^>]*><\/script>/g, '')
+    .replace(/<link[^>]*>/g, '');
+}
+
 export function createUiHarness({
   storageState = {},
   apis = [],
@@ -305,8 +314,10 @@ export function createUiHarness({
   backgroundUpdateResponse = { success: true },
   promptResult = null,
   captureTypeBoxes = false,
+  page = null,
 } = {}) {
-  const dom = new JSDOM(buildUiHtml({ captureTypeBoxes }), {
+  const html = page ? readPageHtml(page) : buildUiHtml({ captureTypeBoxes });
+  const dom = new JSDOM(html, {
     url: tabUrl,
     runScripts: 'outside-only',
   });

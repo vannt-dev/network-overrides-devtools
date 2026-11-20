@@ -69,7 +69,12 @@
     </p>
 
     <div id="override-modal" class="modal" style="display: none">
-      <div class="modal-content modal-content--override">
+      <div
+        class="modal-content modal-content--override"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title-text"
+      >
         <header class="modal-header">
           <h4 class="modal-title">
             <span id="modal-title-text"></span>
@@ -80,10 +85,48 @@
           </button>
         </header>
         <div class="modal-scroll-body">
-          <label class="modal-field">
-            <span>Pattern</span>
-            <input id="modal-pattern" type="text" />
-          </label>
+          <div id="modal-presets" class="modal-presets" role="group" aria-label="Presets">
+            <span class="modal-presets-label" aria-hidden="true">Presets</span>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="empty-list"
+              title="Answer 200 with an empty list: [] or the same JSON with its lists emptied"
+            >
+              Empty list
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="server-error"
+              title="Answer with status 500 and a small JSON error"
+            >
+              Server error
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="slow"
+              title="Wait 3 seconds before the answer arrives"
+            >
+              Slow (3 s)
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="offline"
+              title="Fail the request as if the network were down"
+            >
+              Offline
+            </button>
+          </div>
+          <div class="modal-field">
+            <label for="modal-pattern"><span>URL pattern</span></label>
+            <input id="modal-pattern" type="text" aria-describedby="modal-pattern-hint" />
+            <p id="modal-pattern-hint" class="modal-field-hint">
+              Part of the URL. <code>*</code> matches anything; <code>/regex/</code> also works.
+            </p>
+          </div>
           <label class="modal-field">
             <span>Method</span>
             <select id="modal-method">
@@ -95,76 +138,39 @@
               <option value="DELETE">DELETE</option>
             </select>
           </label>
-          <label class="modal-field">
-            <span>GraphQL Operation (optional)</span>
-            <input
-              id="modal-graphql-op"
-              type="text"
-              placeholder="e.g. GetUserProfile or query name"
-            />
-          </label>
-          <details id="modal-match-fields" class="modal-match-fields">
-            <summary>Only when the request has… (optional)</summary>
-            <p class="modal-field-help">
-              Every condition you fill in must hold, together with the pattern, method and GraphQL
-              operation. A rule with none of them matches as before.
-            </p>
-            <label class="modal-field">
-              <span>Query parameters</span>
-              <input
-                id="modal-match-query"
-                type="text"
-                placeholder="e.g. page=2&amp;debug (a name alone: present with any value)"
-              />
-            </label>
-            <label class="modal-field">
-              <span>Request headers (one per line; names ignore case)</span>
-              <textarea
-                id="modal-match-headers"
-                rows="2"
-                placeholder="X-Tenant: acme&#10;Authorization"
-              ></textarea>
-            </label>
-            <label class="modal-field">
-              <span>Request body contains</span>
-              <input
-                id="modal-match-body"
-                type="text"
-                placeholder='e.g. "plan":"pro" (no match when the browser sends no body text)'
-              />
-            </label>
-          </details>
-          <label class="type-radio" title="Apply this rule on every domain">
-            <input id="modal-global-rule" type="checkbox" />
-            <span>Global rule (all domains)</span>
-          </label>
-          <div class="override-type-selector">
-            <label class="type-radio">
+          <div class="override-type-selector" role="radiogroup" aria-label="What the rule does">
+            <label class="type-radio" title="Answer with your own status and body">
               <input type="radio" name="modal-override-type" value="body" checked />
-              <span>Override body</span>
+              <span>Mock response</span>
             </label>
-            <label class="type-radio">
+            <label class="type-radio" title="Send the request to another URL">
               <input type="radio" name="modal-override-type" value="redirect" />
-              <span>Redirect to URL</span>
+              <span>Redirect</span>
             </label>
-            <label class="type-radio">
+            <label class="type-radio" title="Make the request fail as if the network broke">
               <input type="radio" name="modal-override-type" value="fail" />
-              <span>Fail request</span>
+              <span>Network error</span>
             </label>
-            <label class="type-radio">
+            <label class="type-radio" title="Change WebSocket messages">
               <input type="radio" name="modal-override-type" value="websocket" />
-              <span>WebSocket frames</span>
+              <span>WebSocket</span>
             </label>
           </div>
+          <div class="modal-field" id="modal-status-field">
+            <label for="modal-status"><span>Status code</span></label>
+            <input
+              id="modal-status"
+              type="number"
+              min="100"
+              max="599"
+              placeholder="e.g. 500"
+              aria-describedby="modal-status-hint"
+            />
+            <p id="modal-status-hint" class="modal-field-hint">Blank keeps the real status.</p>
+          </div>
           <div id="modal-body-fields">
-            <label class="modal-field">
-              <span>Response body</span>
-              <select id="modal-mode">
-                <option value="text">Text</option>
-                <option value="file">Raw base64</option>
-                <option value="script">Script (JavaScript)</option>
-                <option value="patch">Patch the real JSON response</option>
-              </select>
+            <div class="modal-field">
+              <label for="modal-body"><span>Response body</span></label>
               <p id="modal-script-help" class="modal-script-help" style="display: none">
                 The body of an async function that receives <code>request</code> and returns the
                 response: a string, or <code>{ status, headers, body }</code>. It runs in the page.
@@ -180,20 +186,6 @@
                 passes through unchanged.
               </p>
               <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
-              <label
-                class="type-radio"
-                title="Resolve dynamic {{...}} placeholders at request time"
-              >
-                <input id="modal-process-templates" type="checkbox" checked />
-                <span>Process dynamic templates</span>
-              </label>
-              <label
-                class="type-radio"
-                title="Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
-              >
-                <input id="modal-respond-at-request" type="checkbox" />
-                <span>Answer without calling the server</span>
-              </label>
               <div class="modal-body-footer">
                 <button
                   id="format-json-btn"
@@ -210,7 +202,7 @@
                 class="modal-preview-container"
                 style="display: none"
               ></div>
-            </label>
+            </div>
           </div>
           <div id="modal-redirect-fields" style="display: none">
             <label class="modal-field">
@@ -220,18 +212,6 @@
                 type="text"
                 placeholder="e.g. https://new-api.example.com/api/*"
               />
-            </label>
-          </div>
-          <div id="modal-fail-fields" style="display: none">
-            <label class="modal-field">
-              <span>Fail reason</span>
-              <select id="modal-fail-reason">
-                <option value="Failed">Failed</option>
-                <option value="TimedOut">TimedOut</option>
-                <option value="ConnectionRefused">ConnectionRefused</option>
-                <option value="NameNotResolved">NameNotResolved</option>
-                <option value="InternetDisconnected">InternetDisconnected</option>
-              </select>
             </label>
           </div>
           <div id="modal-ws-fields" style="display: none">
@@ -261,71 +241,195 @@
               </select>
             </label>
           </div>
-          <div id="modal-advanced-fields">
-            <label class="modal-field" id="modal-request-body-field">
-              <span>Override Request Payload (optional)</span>
-              <textarea
-                id="modal-request-body"
-                rows="3"
-                placeholder='e.g. {"name":"mock"}'
-              ></textarea>
-            </label>
-            <label class="modal-field" id="modal-request-headers-field">
-              <span>Override Request Headers (Key-Value or Raw)</span>
-              <textarea
-                id="modal-request-headers"
-                rows="2"
-                placeholder="Authorization: Bearer mock-token"
-              ></textarea>
-              <div id="modal-request-headers-table" class="modal-headers-table"></div>
-            </label>
-            <label class="modal-field" id="modal-status-field">
-              <span>Status (blank = keep original)</span>
-              <input id="modal-status" type="number" min="100" max="599" placeholder="e.g. 500" />
-            </label>
-            <label class="modal-field">
-              <span>Delay (ms)</span>
-              <input id="modal-delay" type="number" min="0" max="120000" placeholder="0" />
-            </label>
-            <label class="modal-field" id="modal-headers-field">
-              <span>Extra Response Headers (Key-Value or Raw)</span>
-              <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
-              <div id="modal-response-headers-table" class="modal-headers-table"></div>
-            </label>
-          </div>
+          <details id="modal-advanced-fields" class="modal-advanced">
+            <summary>
+              <span class="modal-group-title">Advanced</span>
+              <span class="modal-group-count" hidden></span>
+            </summary>
+            <details id="modal-match-fields" class="modal-group modal-match-fields">
+              <summary>
+                <span class="modal-group-title">Conditions</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <p class="modal-field-help">
+                Match only some requests. Every condition you fill in must hold, together with the
+                URL pattern and method. Leave them blank to match every request.
+              </p>
+              <div class="modal-field">
+                <label for="modal-graphql-op"><span>GraphQL operation</span></label>
+                <input
+                  id="modal-graphql-op"
+                  type="text"
+                  placeholder="e.g. GetUserProfile"
+                  aria-describedby="modal-graphql-op-hint"
+                />
+                <p id="modal-graphql-op-hint" class="modal-field-hint">
+                  The operation name the page sends to a GraphQL endpoint.
+                </p>
+              </div>
+              <label class="modal-field">
+                <span>Query parameters</span>
+                <input
+                  id="modal-match-query"
+                  type="text"
+                  placeholder="e.g. page=2&amp;debug (a name alone: present with any value)"
+                />
+              </label>
+              <label class="modal-field">
+                <span>Request headers (one per line; names ignore case)</span>
+                <textarea
+                  id="modal-match-headers"
+                  rows="2"
+                  placeholder="X-Tenant: acme&#10;Authorization"
+                ></textarea>
+              </label>
+              <label class="modal-field">
+                <span>Request body contains</span>
+                <input
+                  id="modal-match-body"
+                  type="text"
+                  placeholder='e.g. "plan":"pro" (no match when the browser sends no body text)'
+                />
+              </label>
+              <div class="modal-field modal-check-field">
+                <label class="type-radio" title="Apply this rule on every domain">
+                  <input
+                    id="modal-global-rule"
+                    type="checkbox"
+                    aria-describedby="modal-global-rule-hint"
+                  />
+                  <span>Apply on every site (global rule)</span>
+                </label>
+                <p id="modal-global-rule-hint" class="modal-field-hint">
+                  Off: the rule only works on the site it was made on.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-timing" class="modal-group">
+              <summary>
+                <span class="modal-group-title">Timing &amp; failure</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <div class="modal-field">
+                <label for="modal-delay"><span>Delay (ms)</span></label>
+                <input
+                  id="modal-delay"
+                  type="number"
+                  min="0"
+                  max="120000"
+                  placeholder="0"
+                  aria-describedby="modal-delay-hint"
+                />
+                <p id="modal-delay-hint" class="modal-field-hint">
+                  Wait this long before answering, to test loading states. 3000 = 3 seconds.
+                </p>
+              </div>
+              <div id="modal-fail-fields" class="modal-field" style="display: none">
+                <label for="modal-fail-reason"><span>Simulate a network error</span></label>
+                <select id="modal-fail-reason" aria-describedby="modal-fail-reason-hint">
+                  <option value="Failed">Failed</option>
+                  <option value="TimedOut">TimedOut</option>
+                  <option value="ConnectionRefused">ConnectionRefused</option>
+                  <option value="NameNotResolved">NameNotResolved</option>
+                  <option value="InternetDisconnected">InternetDisconnected</option>
+                </select>
+                <p id="modal-fail-reason-hint" class="modal-field-hint">
+                  The error the page sees instead of a response.
+                </p>
+              </div>
+              <div class="modal-field modal-check-field">
+                <label
+                  class="type-radio"
+                  title="Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
+                >
+                  <input
+                    id="modal-respond-at-request"
+                    type="checkbox"
+                    aria-describedby="modal-respond-at-request-hint"
+                  />
+                  <span>Answer without calling the server</span>
+                </label>
+                <p id="modal-respond-at-request-hint" class="modal-field-hint">
+                  The server is never contacted: works for endpoints that do not exist yet.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-response-headers" class="modal-group">
+              <summary>
+                <span class="modal-group-title">Response headers</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <label class="modal-field" id="modal-headers-field">
+                <span>Headers to add to the response (Key-Value or Raw)</span>
+                <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
+                <div id="modal-response-headers-table" class="modal-headers-table"></div>
+              </label>
+            </details>
+            <details id="modal-group-body-type" class="modal-group">
+              <summary>
+                <span class="modal-group-title">Body type: patch &amp; script</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <div class="modal-field">
+                <label for="modal-mode"><span>The response body is</span></label>
+                <select id="modal-mode" aria-describedby="modal-mode-hint">
+                  <option value="text">Text</option>
+                  <option value="file">Raw base64</option>
+                  <option value="script">Script (JavaScript)</option>
+                  <option value="patch">Patch the real JSON response</option>
+                </select>
+                <p id="modal-mode-hint" class="modal-field-hint">
+                  Text answers with the body as typed. Patch changes a few fields of the real
+                  response; Script computes the answer.
+                </p>
+              </div>
+              <div class="modal-field modal-check-field">
+                <label
+                  class="type-radio"
+                  title="Resolve dynamic {{...}} placeholders at request time"
+                >
+                  <input
+                    id="modal-process-templates"
+                    type="checkbox"
+                    checked
+                    aria-describedby="modal-process-templates-hint"
+                  />
+                  <span>Fill in {{...}} placeholders</span>
+                </label>
+                <p id="modal-process-templates-hint" class="modal-field-hint">
+                  Placeholders such as <code>{{$uuid}}</code> get a fresh value on every request.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-request" class="modal-group">
+              <summary>
+                <span class="modal-group-title">Change the request</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <label class="modal-field" id="modal-request-body-field">
+                <span>Replace the request body sent to the server</span>
+                <textarea
+                  id="modal-request-body"
+                  rows="3"
+                  placeholder='e.g. {"name":"mock"}'
+                ></textarea>
+              </label>
+              <label class="modal-field" id="modal-request-headers-field">
+                <span>Request headers to add or replace (Key-Value or Raw)</span>
+                <textarea
+                  id="modal-request-headers"
+                  rows="2"
+                  placeholder="Authorization: Bearer mock-token"
+                ></textarea>
+                <div id="modal-request-headers-table" class="modal-headers-table"></div>
+              </label>
+            </details>
+          </details>
         </div>
         <footer class="modal-footer">
           <div id="modal-feedback" class="modal-feedback" role="status" aria-live="polite"></div>
           <button id="save-override">Save Override</button>
         </footer>
-      </div>
-    </div>
-
-    <!-- cURL / Swagger Import Modal -->
-    <div id="curl-swagger-modal" class="modal" style="display: none">
-      <div class="modal-content">
-        <span id="curl-swagger-close" class="close">&times;</span>
-        <h3>Import Rules from cURL or OpenAPI / Swagger Spec</h3>
-        <label class="modal-field">
-          <span>Paste cURL command or OpenAPI/Swagger JSON/YAML spec:</span>
-          <textarea
-            id="curl-swagger-textarea"
-            rows="6"
-            placeholder='curl -X POST https://api.example.com/users -H "Authorization: Bearer token" -d &apos;{"name":"John"}&apos;&#10;&#10;Or paste Swagger/OpenAPI JSON content...'
-          ></textarea>
-        </label>
-        <div class="curl-swagger-file-row">
-          <span>Or choose file (.json, .yaml, .yml, .curl, .txt):</span>
-          <input id="curl-swagger-file-input" type="file" accept=".json,.yaml,.yml,.curl,.txt" />
-        </div>
-        <button
-          id="curl-swagger-import-btn"
-          type="button"
-          class="btn btn-primary"
-          style="margin-top: 10px"
-        >
-          Import Rules
-        </button>
       </div>
     </div>
 
@@ -391,10 +495,38 @@
     <div id="overrides-section" class="tab-content" style="display: none">
       <div class="rules-io-row">
         <button id="export-rules-btn" type="button" class="rules-io-btn">Export</button>
-        <button id="import-rules-btn" type="button" class="rules-io-btn">Import</button>
-        <button id="import-curl-swagger-btn" type="button" class="rules-io-btn">
-          cURL / Swagger
-        </button>
+        <div class="import-menu">
+          <button
+            id="import-menu-btn"
+            type="button"
+            class="rules-io-btn"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="import-menu"
+          >
+            Import ▾
+          </button>
+          <div id="import-menu" class="import-menu-list" role="menu" hidden>
+            <button
+              id="import-rules-btn"
+              type="button"
+              role="menuitem"
+              tabindex="-1"
+              title="Load rules exported from this extension"
+            >
+              Rules file (.json)
+            </button>
+            <button
+              id="import-curl-swagger-btn"
+              type="button"
+              role="menuitem"
+              tabindex="-1"
+              title="Make rules from a cURL command or an OpenAPI / Swagger spec"
+            >
+              cURL or OpenAPI / Swagger…
+            </button>
+          </div>
+        </div>
         <button
           id="reset-rule-hits-btn"
           type="button"
@@ -432,6 +564,47 @@
         </button>
       </div>
       <ul id="list"></ul>
+    </div>
+
+    <div id="curl-swagger-modal" class="modal" style="display: none">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="curl-swagger-title"
+      >
+        <button
+          id="curl-swagger-close"
+          type="button"
+          class="close modal-close"
+          aria-label="Close import dialog"
+        >
+          &times;
+        </button>
+        <h3 id="curl-swagger-title">Import rules from cURL or OpenAPI / Swagger</h3>
+        <label class="modal-field">
+          <span>Paste a cURL command or an OpenAPI / Swagger spec (JSON or YAML)</span>
+          <textarea
+            id="curl-swagger-textarea"
+            rows="6"
+            placeholder='curl -X POST https://api.example.com/users -H "Authorization: Bearer token" -d &apos;{"name":"John"}&apos;&#10;&#10;Or paste Swagger/OpenAPI JSON content...'
+          ></textarea>
+        </label>
+        <div class="curl-swagger-file-row">
+          <label for="curl-swagger-file-input"
+            >Or choose a file (.json, .yaml, .yml, .curl, .txt):</label
+          >
+          <input id="curl-swagger-file-input" type="file" accept=".json,.yaml,.yml,.curl,.txt" />
+        </div>
+        <button
+          id="curl-swagger-import-btn"
+          type="button"
+          class="btn btn-primary"
+          style="margin-top: 10px"
+        >
+          Import Rules
+        </button>
+      </div>
     </div>
 
     <script src="dist/ui.bundle.js"></script>

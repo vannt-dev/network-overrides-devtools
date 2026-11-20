@@ -352,11 +352,12 @@ test('Rule editor saves match conditions and shows them again when editing', asy
 
   click(harness, '[data-tab="overrides"]');
   await flushUi(harness.window);
-  const badge = harness.document.querySelector('.match-badge');
-  assert.ok(badge, 'the rule list shows that the rule has conditions');
-  assert.match(badge.title, /page=2/);
-  assert.match(badge.title, /X-Tenant/);
-  assert.match(badge.title, /plan/);
+  const summary = harness.document.querySelector('.rule-summary');
+  assert.ok(summary, 'the rule list shows that the rule has conditions');
+  assert.match(summary.textContent, /\+ query page=2&debug/);
+  assert.match(summary.textContent, /\+ header X-Tenant: acme, Authorization/);
+  assert.match(summary.textContent, /\+ body has "plan":"pro"/);
+  assert.match(summary.title, /Only when the request has:/);
 
   click(harness, '.edit-btn');
   await flushUi(harness.window);

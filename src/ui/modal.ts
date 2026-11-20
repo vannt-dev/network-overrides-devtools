@@ -28,6 +28,19 @@ namespace NetworkOverridesUi {
       .replace(/'/g, '&#039;');
   }
 
+  /** The wrapper of a field, with its label and hint: what is shown or hidden. */
+  export function fieldOf(el: Element | null | undefined): HTMLElement | null {
+    if (!el) return null;
+    return (el.closest('.modal-field') || el.closest('label')) as HTMLElement | null;
+  }
+
+  function selectedModalType(elements: Elements): ModalType {
+    const checked = elements.modal?.querySelector(
+      'input[name="modal-override-type"]:checked'
+    ) as HTMLInputElement | null;
+    return ((checked?.value || 'body') as ModalType) || 'body';
+  }
+
   export function updateModalVisibility(elements: Elements, type: ModalType): void {
     const isWs = type === 'websocket';
     const wsAction = elements.modalWsAction?.value || 'replace';
@@ -40,17 +53,21 @@ namespace NetworkOverridesUi {
     show(elements.modalRedirectFields, type === 'redirect');
     show(elements.modalFailFields, type === 'fail');
     show(elements.modalWsFields, isWs);
-    show(elements.modalAdvancedFields, type !== 'redirect');
+    show(elements.modalPresets, !isWs);
     show(elements.modalStatusField, type === 'body');
-    show(elements.modalRespondAtRequest?.closest('label'), type === 'body');
+    show(fieldOf(elements.modalRespondAtRequest), type === 'body');
     show(elements.modalHeadersField, type === 'body');
-    show(elements.modalRequestHeadersField, type !== 'fail' && !isWs);
-    show(elements.modalRequestBodyField, type !== 'fail' && !isWs);
-    show(elements.modalDelay.closest('label'), !isWs || wsAction === 'delay');
-    show(elements.modalMethod.closest('label'), !isWs);
-    show(elements.modalGraphqlOp?.closest('label'), !isWs);
-    show(elements.modalMatchFields, !isWs);
-    show(elements.modalMode, !isWs);
+    show(elements.modalRequestHeadersField, type !== 'fail' && type !== 'redirect' && !isWs);
+    show(elements.modalRequestBodyField, type !== 'fail' && type !== 'redirect' && !isWs);
+    show(fieldOf(elements.modalDelay), isWs ? wsAction === 'delay' : type !== 'redirect');
+    show(fieldOf(elements.modalMethod), !isWs);
+    show(fieldOf(elements.modalGraphqlOp), !isWs);
+    elements.modalMatchFields
+      ?.querySelectorAll<HTMLElement>('.modal-field-help, .modal-field')
+      .forEach(field => {
+        if (!field.contains(elements.modalGlobalRule || null)) show(field, !isWs);
+      });
+    show(fieldOf(elements.modalMode), type === 'body');
     elements.modalPattern.disabled = type === 'body';
     updateScriptHelp(elements);
   }
@@ -70,9 +87,9 @@ namespace NetworkOverridesUi {
     if (help) help.style.display = isScript ? '' : 'none';
     const patchHelp = elements.modal?.querySelector('#modal-patch-help') as HTMLElement | null;
     if (patchHelp) patchHelp.style.display = isPatch ? '' : 'none';
-    const templates = elements.modalProcessTemplates?.closest('label') as HTMLElement | null;
+    const templates = fieldOf(elements.modalProcessTemplates);
     if (templates) templates.style.display = isScript || isPatch ? 'none' : '';
-    const respondAtRequest = elements.modalRespondAtRequest?.closest('label') as HTMLElement | null;
+    const respondAtRequest = fieldOf(elements.modalRespondAtRequest);
     if (respondAtRequest) respondAtRequest.style.display = isBody && !isPatch ? '' : 'none';
     if (elements.modalBody) {
       elements.modalBody.placeholder = isScript
@@ -137,12 +154,6 @@ namespace NetworkOverridesUi {
     if (elements.modalMatchBody) {
       elements.modalMatchBody.value = existing?.matchBody || '';
     }
-    // Open the section when the rule has conditions, so they are not missed.
-    if (elements.modalMatchFields) {
-      elements.modalMatchFields.open = Boolean(
-        existing?.matchQuery?.length || existing?.matchHeaders?.length || existing?.matchBody
-      );
-    }
     elements.modalStatus.value =
       existing && typeof existing.statusCode === 'number' ? String(existing.statusCode) : '';
     elements.modalDelay.value =
@@ -188,9 +199,179 @@ namespace NetworkOverridesUi {
       .querySelectorAll('[aria-invalid="true"]')
       .forEach(field => field.removeAttribute('aria-invalid'));
     elements.modal.style.display = 'block';
+    // Every group that holds a value opens, so no setting is hidden.
+    syncAdvancedGroups(elements, true);
   }
 
   export function closeModal(elements: Elements): void {
     elements.modal.style.display = 'none';
+  }
+
+  function isShown(el: HTMLElement | null | undefined): boolean {
+    return !!el && el.style.display !== 'none';
+  }
+
+  function countHeaderLines(text: string | undefined): number {
+    return text ? parseHeadersText(text).length : 0;
+  }
+
+  /**
+   * How many settings each Advanced group holds, counting only what saving
+   * the rule would keep for the chosen type.
+   */
+  export function countAdvancedValues(elements: Elements): Record<string, number> {
+    const type = selectedModalType(elements);
+    const isWs = type === 'websocket';
+    const mode = elements.modalMode?.value || 'text';
+    const filled = (el: HTMLInputElement | HTMLTextAreaElement | null | undefined) =>
+      el && el.value.trim() ? 1 : 0;
+
+    const conditions =
+      (isWs
+        ? 0
+        : filled(elements.modalGraphqlOp) +
+          filled(elements.modalMatchQuery) +
+          filled(elements.modalMatchHeaders) +
+          (elements.modalMatchBody?.value ? 1 : 0)) + (elements.modalGlobalRule?.checked ? 1 : 0);
+    const timing =
+      (isShown(fieldOf(elements.modalDelay)) ? filled(elements.modalDelay) : 0) +
+      (type === 'fail' ? 1 : 0) +
+      (type === 'body' && mode !== 'patch' && elements.modalRespondAtRequest?.checked ? 1 : 0);
+    const responseHeaders = type === 'body' ? countHeaderLines(elements.modalHeaders?.value) : 0;
+    const templatesOff =
+      isShown(elements.modalBodyFields) &&
+      isShown(fieldOf(elements.modalProcessTemplates)) &&
+      elements.modalProcessTemplates?.checked === false;
+    const bodyType = (type === 'body' && mode !== 'text' ? 1 : 0) + (templatesOff ? 1 : 0);
+    const request =
+      type === 'body'
+        ? filled(elements.modalRequestBody) + countHeaderLines(elements.modalRequestHeaders?.value)
+        : 0;
+    return {
+      'modal-match-fields': conditions,
+      'modal-group-timing': timing,
+      'modal-group-response-headers': responseHeaders,
+      'modal-group-body-type': bodyType,
+      'modal-group-request': request,
+    };
+  }
+
+  function setCount(summaryOwner: Element, count: number): void {
+    const badge = summaryOwner.querySelector(
+      ':scope > summary .modal-group-count'
+    ) as HTMLElement | null;
+    if (!badge) return;
+    badge.hidden = count === 0;
+    badge.textContent = count === 0 ? '' : String(count);
+    badge.title = count === 1 ? '1 setting in use' : `${count} settings in use`;
+  }
+
+  /**
+   * Refreshes the count on every Advanced group, hides groups with nothing
+   * that applies to the chosen type and, with `openFilled`, opens exactly
+   * the groups that hold a value (used when the editor opens).
+   */
+  export function syncAdvancedGroups(elements: Elements, openFilled = false): void {
+    const advanced = elements.modalAdvancedFields;
+    if (!advanced || advanced.tagName !== 'DETAILS') return;
+    const counts = countAdvancedValues(elements);
+    let total = 0;
+    advanced.querySelectorAll<HTMLDetailsElement>('details.modal-group').forEach(group => {
+      const count = counts[group.id] || 0;
+      total += count;
+      setCount(group, count);
+      const fields = Array.from(group.children).filter(
+        child => child.tagName !== 'SUMMARY'
+      ) as HTMLElement[];
+      group.style.display = fields.some(field => isShown(field)) ? '' : 'none';
+      if (openFilled) group.open = count > 0;
+    });
+    setCount(advanced, total);
+    advanced.style.display = Array.from(
+      advanced.querySelectorAll<HTMLElement>('details.modal-group')
+    ).some(group => isShown(group))
+      ? ''
+      : 'none';
+    if (openFilled) advanced.open = total > 0;
+  }
+
+  /** Opens every collapsed section around a field, so it can be seen and focused. */
+  export function revealField(field: Element | null | undefined): void {
+    let node = field?.parentElement || null;
+    while (node) {
+      if (node.tagName === 'DETAILS') (node as HTMLDetailsElement).open = true;
+      node = node.parentElement;
+    }
+  }
+
+  /**
+   * The body of the "Empty list" preset: `[]`, or the same JSON object with
+   * each of its top-level lists emptied (`{}` when it has none).
+   */
+  export function emptyListBody(current: string): string {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(current);
+    } catch {
+      return '[]';
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return '[]';
+    const record = parsed as Record<string, unknown>;
+    const keys = Object.keys(record).filter(key => Array.isArray(record[key]));
+    if (keys.length === 0) return '{}';
+    keys.forEach(key => {
+      record[key] = [];
+    });
+    return JSON.stringify(record, null, 2);
+  }
+
+  export type PresetName = 'empty-list' | 'server-error' | 'slow' | 'offline';
+
+  const PRESET_LABELS: Record<PresetName, string> = {
+    'empty-list': 'Empty list',
+    'server-error': 'Server error',
+    slow: 'Slow (3 s)',
+    offline: 'Offline',
+  };
+
+  function chooseModalType(elements: Elements, type: ModalType): void {
+    const radio = elements.modal.querySelector(
+      `input[name="modal-override-type"][value="${type}"]`
+    ) as HTMLInputElement | null;
+    if (radio) radio.checked = true;
+    // A preset never locks or unlocks the pattern.
+    const patternDisabled = elements.modalPattern.disabled;
+    updateModalVisibility(elements, type);
+    elements.modalPattern.disabled = patternDisabled;
+  }
+
+  function useTextBody(elements: Elements, body: string, status: string): void {
+    chooseModalType(elements, 'body');
+    elements.modalMode.value = 'text';
+    elements.modalBody.value = body;
+    elements.modalStatus.value = status;
+  }
+
+  /** Fills the editor's existing fields for one of the one-click presets. */
+  export function applyPreset(elements: Elements, preset: PresetName): void {
+    if (preset === 'empty-list') {
+      useTextBody(elements, emptyListBody(elements.modalBody.value), '200');
+    } else if (preset === 'server-error') {
+      useTextBody(elements, '{"error":"Internal Server Error"}', '500');
+    } else if (preset === 'slow') {
+      if (selectedModalType(elements) === 'redirect') chooseModalType(elements, 'body');
+      elements.modalDelay.value = '3000';
+      revealField(elements.modalDelay);
+    } else if (preset === 'offline') {
+      chooseModalType(elements, 'fail');
+      elements.modalFailReason.value = 'InternetDisconnected';
+      revealField(elements.modalFailReason);
+    }
+    updateScriptHelp(elements);
+    updateBodyFormatAction(elements);
+    updateImagePreview(elements, elements.modalBody.value);
+    syncAdvancedGroups(elements);
+    elements.modalFeedback.textContent = `Preset applied: ${PRESET_LABELS[preset]}.`;
+    elements.modalFeedback.className = 'modal-feedback is-info';
   }
 }

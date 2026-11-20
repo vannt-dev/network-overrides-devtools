@@ -191,6 +191,68 @@ namespace NetworkOverridesUi {
     showNotification('Rules exported.', 'success');
   }
 
+  /**
+   * The Import button opens a small menu: a rules file exported from this
+   * extension, or rules made from cURL / OpenAPI. Arrow keys move between
+   * the items; Escape and Tab close it.
+   */
+  function bindImportMenu(elements: Elements): void {
+    const button = elements.importMenuBtn;
+    const menu = elements.importMenu;
+    if (!button || !menu) return;
+    const items = () => Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    const isOpen = () => !menu.hidden;
+    const close = (focusButton: boolean) => {
+      menu.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+      if (focusButton) button.focus();
+    };
+    const open = (focusIndex: number) => {
+      menu.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      const list = items();
+      list[(focusIndex + list.length) % list.length]?.focus();
+    };
+
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (isOpen()) close(true);
+      else open(0);
+    });
+    button.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        open(event.key === 'ArrowDown' ? 0 : -1);
+      }
+    });
+    menu.addEventListener('keydown', event => {
+      const list = items();
+      const current = list.indexOf(document.activeElement as HTMLElement);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        list[(current + step + list.length) % list.length]?.focus();
+      } else if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        list[event.key === 'Home' ? 0 : list.length - 1]?.focus();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+      } else if (event.key === 'Tab') {
+        close(false);
+      }
+    });
+    // An item runs its own action (bound below); the menu just closes.
+    menu.addEventListener('click', event => {
+      if ((event.target as HTMLElement).closest?.('[role="menuitem"]')) close(false);
+    });
+    document.addEventListener('click', event => {
+      if (isOpen() && !menu.contains(event.target as Node) && event.target !== button) {
+        close(false);
+      }
+    });
+  }
+
   export function bindRulesIoController(options: RulesIoControllerOptions): void {
     const { elements, state, getCurrentDomain, saveState, renderRules } = options;
     elements.exportRulesBtn?.addEventListener('click', () => {
@@ -257,12 +319,27 @@ namespace NetworkOverridesUi {
       }
     });
 
+    bindImportMenu(elements);
+
     if (elements.importCurlSwaggerBtn && elements.curlSwaggerModal) {
+      const dialog = elements.curlSwaggerModal;
+      let returnFocus: HTMLElement | null = null;
+      const closeDialog = () => {
+        dialog.style.display = 'none';
+        returnFocus?.focus();
+        returnFocus = null;
+      };
       elements.importCurlSwaggerBtn.addEventListener('click', () => {
-        elements.curlSwaggerModal!.style.display = 'flex';
+        returnFocus = elements.importMenuBtn || elements.importCurlSwaggerBtn || null;
+        dialog.style.display = 'flex';
+        elements.curlSwaggerTextarea?.focus();
       });
-      elements.curlSwaggerCloseModal?.addEventListener('click', () => {
-        elements.curlSwaggerModal!.style.display = 'none';
+      elements.curlSwaggerCloseModal?.addEventListener('click', closeDialog);
+      dialog.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeDialog();
+        }
       });
       elements.curlSwaggerImportBtn?.addEventListener('click', async () => {
         const text = elements.curlSwaggerTextarea?.value || '';
@@ -283,7 +360,7 @@ namespace NetworkOverridesUi {
         try {
           const result = await saveState([...state.overrides, ...newRules]);
           renderRules();
-          elements.curlSwaggerModal!.style.display = 'none';
+          closeDialog();
           if (elements.curlSwaggerTextarea) elements.curlSwaggerTextarea.value = '';
           showPersistenceNotification(
             `${newRules.length} rule${newRules.length === 1 ? '' : 's'} imported`,

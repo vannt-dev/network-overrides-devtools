@@ -4,6 +4,7 @@
 /// <reference path="./primitives.ts" />
 /// <reference path="./view-utils.ts" />
 /// <reference path="./websocket-rule.ts" />
+/// <reference path="./rule-summary.ts" />
 
 namespace NetworkOverridesUi {
   /** One line per query, header and body condition of a rule, for the list's tooltip. */
@@ -20,6 +21,26 @@ namespace NetworkOverridesUi {
       );
     }
     if (rule.matchBody) lines.push(`body contains ${rule.matchBody}`);
+    return lines;
+  }
+
+  /** The longer lines behind a rule's one-line summary, for its tooltip. */
+  export function describeRuleDetails(rule: OverrideRule): string[] {
+    const lines = [summarizeRule(rule)];
+    const conditions = describeMatchConditions(rule);
+    if (rule.kind !== 'websocket' && conditions.length > 0) {
+      lines.push('Only when the request has:', ...conditions);
+    }
+    if (rule.mode === 'patch' && rule.kind !== 'websocket' && !rule.failReason) {
+      lines.push(
+        'Changes these fields of the real JSON response:',
+        NetworkOverridesUtils.formatPatchOperations(rule.patch)
+      );
+    }
+    if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
+      lines.push('Answered in the browser; the server is never called');
+    }
+    lines.push('Click to edit');
     return lines;
   }
 
@@ -178,112 +199,12 @@ namespace NetworkOverridesUi {
         span.appendChild(globalBadge);
       }
 
-      const methodText = rule.method && rule.method !== 'ANY' ? rule.method : null;
-      if (methodText) {
-        const methodBadge = document.createElement('span');
-        methodBadge.className = `rule-method-badge method-${methodText.toLowerCase()}`;
-        methodBadge.textContent = methodText;
-        span.appendChild(methodBadge);
-      }
-
-      if (rule.graphqlOperation) {
-        const gqlBadge = document.createElement('span');
-        gqlBadge.className = 'graphql-badge';
-        gqlBadge.textContent = `GQL: ${rule.graphqlOperation}`;
-        span.appendChild(gqlBadge);
-      }
-
-      const conditions = describeMatchConditions(rule);
-      if (conditions.length > 0) {
-        const matchBadge = document.createElement('span');
-        matchBadge.className = 'match-badge';
-        matchBadge.textContent = 'IF';
-        matchBadge.title = ['Only when the request has:', ...conditions].join('\n');
-        span.appendChild(matchBadge);
-      }
-
-      if (rule.kind === 'websocket') {
-        const wsBadge = document.createElement('span');
-        wsBadge.className = 'ws-badge';
-        wsBadge.textContent = 'WS';
-        span.appendChild(wsBadge);
-      }
-
-      const patternText = document.createTextNode(` ${rule.pattern} `);
-      span.appendChild(patternText);
-
-      if (rule.kind === 'websocket') {
-        const summary = document.createElement('span');
-        summary.className = 'ws-summary';
-        summary.textContent = describeWebSocketRule(rule);
-        span.appendChild(summary);
-      }
-
-      if (rule.failReason) {
-        const failBadge = document.createElement('span');
-        failBadge.className = 'fail-badge override-fail-badge';
-        failBadge.textContent = 'FAIL';
-        failBadge.title = rule.failReason;
-        span.appendChild(failBadge);
-      } else if (rule.redirectUrl) {
-        const redirSpan = document.createElement('span');
-        redirSpan.className = 'redirect-text';
-        redirSpan.textContent = ` ➔ ${rule.redirectUrl}`;
-        span.appendChild(redirSpan);
-      }
-
-      if (
-        rule.mode === 'patch' &&
-        !rule.failReason &&
-        !rule.redirectUrl &&
-        rule.kind !== 'websocket'
-      ) {
-        const patchBadge = document.createElement('span');
-        patchBadge.className = 'patch-badge';
-        const count = rule.patch?.length || 0;
-        patchBadge.textContent = `PATCH ${count}`;
-        patchBadge.title = [
-          'Changes these fields of the real JSON response:',
-          NetworkOverridesUtils.formatPatchOperations(rule.patch),
-        ].join('\n');
-        span.appendChild(patchBadge);
-      }
-
-      if (typeof rule.statusCode === 'number') {
-        const statusBadge = document.createElement('span');
-        statusBadge.className = 'status-badge override-status-badge';
-        statusBadge.textContent = `${rule.statusCode}`;
-        span.appendChild(statusBadge);
-      }
-
-      if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
-        const offlineBadge = document.createElement('span');
-        offlineBadge.className = 'override-offline-badge';
-        offlineBadge.textContent = 'NO SERVER';
-        offlineBadge.title = 'Answered in the browser; the server is never called';
-        span.appendChild(offlineBadge);
-      }
-
-      if (rule.kind !== 'websocket' && typeof rule.delayMs === 'number' && rule.delayMs > 0) {
-        const delayBadge = document.createElement('span');
-        delayBadge.className = 'delay-badge override-delay-badge';
-        delayBadge.textContent = `⏱ ${rule.delayMs}ms`;
-        span.appendChild(delayBadge);
-      }
-
-      if (Array.isArray(rule.responseHeaders) && rule.responseHeaders.length > 0) {
-        const headerBadge = document.createElement('span');
-        headerBadge.className = 'header-badge';
-        headerBadge.textContent = `+${rule.responseHeaders.length} res headers`;
-        span.appendChild(headerBadge);
-      }
-
-      if (Array.isArray(rule.requestHeaders) && rule.requestHeaders.length > 0) {
-        const reqHeaderBadge = document.createElement('span');
-        reqHeaderBadge.className = 'header-badge';
-        reqHeaderBadge.textContent = `+${rule.requestHeaders.length} req headers`;
-        span.appendChild(reqHeaderBadge);
-      }
+      // One line: what the rule matches → what it does. The editor holds the rest.
+      const summary = document.createElement('span');
+      summary.className = 'rule-summary';
+      summary.textContent = summarizeRule(rule);
+      summary.title = describeRuleDetails(rule).join('\n');
+      span.appendChild(summary);
 
       span.addEventListener('click', () => onEdit(index));
 

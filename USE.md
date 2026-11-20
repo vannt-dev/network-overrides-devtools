@@ -70,7 +70,7 @@ Click icon extension trên thanh toolbar. Gồm:
 - **3 tabs**:
   - **Captured APIs (N)**: Danh sách API đã capture được, nhóm theo loại (XHR, Fetch, JS, CSS...).
   - **Overridden (N)**: API đang bị ghi đè bởi rule.
-  - **Rules (N)**: Danh sách các override rules.
+  - **Rules (N)**: Danh sách các override rules, mỗi rule một dòng: rule khớp gì → rule làm gì (ví dụ `GET /api/orders → 500 · slow 3 s`).
 - **Thanh tìm kiếm**: Lọc API theo URL.
 
 ### 3.2. DevTools Panel
@@ -82,20 +82,31 @@ Mở DevTools (F12) → tab **Overrides**. Giống popup nhưng có thêm:
 
 ### 3.3. Modal tạo/sửa Override
 
-Khi click vào một API, modal hiện ra với:
+Bấm **Mock this** trên một API (hoặc click vào dòng API) để mở modal. Modal hiện các field hay dùng trước:
 
-- **Pattern**: URL pattern để matching.
-- **HTTP Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method (giống như hành vi trước khi có field này). Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
-- **Override body / Redirect to URL**: Chọn loại override.
-- **Response body**: Nội dung response ghi đè (nếu chọn Override body).
-- **Answer without calling the server** (Override body): trả lời request ngay trong trình duyệt, trước khi gửi đi. Xem mục 6.6.
-- **Patch the real JSON response** (trong danh sách chế độ của Response body): giữ response của server và chỉ sửa vài field JSON của nó. Xem mục 6.7.
-- **GraphQL Operation** (tùy chọn): chỉ áp dụng rule cho một GraphQL operation. Xem mục 5.7.
-- **Only when the request has…** (tùy chọn, mặc định thu gọn): query parameter, request header và đoạn text mà body của request phải chứa. Xem mục 5.8.
-- **Redirect URL**: URL chuyển hướng (nếu chọn Redirect to URL).
+- **Presets**: một click điền sẵn các field bên dưới.
+  - **Empty list**: status 200 và `[]` (hoặc, nếu body là một object JSON, chính object đó với các danh sách bị làm rỗng; `{}` nếu không có danh sách nào).
+  - **Server error**: status 500 và `{"error":"Internal Server Error"}`.
+  - **Slow (3 s)**: delay 3000 ms; body giữ nguyên.
+  - **Offline**: lỗi mạng (`InternetDisconnected`).
+- **URL pattern**: URL pattern để matching.
+- **Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method. Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
+- **Mock response / Redirect / Network error / WebSocket**: Chọn loại rule.
+- **Status code** (mock response): để trống thì giữ status thật. Được điền sẵn từ request đã capture nếu status đó mang được body (không phải 204, 304 hay 3xx khác).
+- **Response body**: Nội dung response ghi đè (với mock response).
+- **Redirect URL**: URL chuyển hướng (với Redirect).
 - **Format JSON**: Làm đẹp JSON body.
-- **Body type badge**: Nhãn tự động phát hiện `text` hoặc `json`.
 - **Save Override**: Lưu rule.
+
+Các tùy chọn còn lại nằm trong mục **Advanced** (mặc định thu gọn), chia thành nhóm:
+
+- **Conditions**: **GraphQL operation** (xem mục 5.7), query parameter, request header và đoạn text mà body của request phải chứa (xem mục 5.8), và **Apply on every site (global rule)** (xem mục 9.6).
+- **Timing & failure**: **Delay (ms)**, **Simulate a network error** (với loại Network error: lỗi mà trang nhận được), và **Answer without calling the server** (mock response; xem mục 6.6).
+- **Response headers**: header thêm vào response.
+- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)` hoặc `Patch the real JSON response` (xem mục 6.7), và **Fill in {{...}} placeholders**.
+- **Change the request**: thay body của request gửi lên server, thêm hoặc thay request header.
+
+Nhóm nào đang có giá trị sẽ hiện số lượng trên tiêu đề và tự mở ra khi bạn sửa rule, nên không có thiết lập nào bị ẩn. Chọn **Network error** sẽ mở nhóm **Timing & failure** để hiện lỗi cần giả lập.
 
 ---
 
@@ -121,8 +132,8 @@ Duyệt web / dùng ứng dụng như bình thường. Các API request sẽ t�
 **Cách 1 (Click API):**
 
 1. Vào tab **Captured APIs** hoặc **Overridden**.
-2. Click vào API muốn ghi đè.
-3. Modal hiện ra với pattern được điền sẵn, và dropdown **Method** được chọn sẵn theo method của request đã capture nếu đó là `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (nếu không, mặc định là `Any`).
+2. Bấm **Mock this** trên API muốn ghi đè (click vào dòng API cũng vậy). Nếu đã có rule khớp với API này, modal mở rule đó để sửa thay vì tạo rule mới.
+3. Modal hiện ra với pattern và status thật được điền sẵn, và dropdown **Method** được chọn sẵn theo method của request đã capture nếu đó là `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (nếu không, mặc định là `Any`).
 4. Nếu API có response body, nó sẽ được tự động điền vào ô **Response body**.
 5. Chỉnh sửa nội dung → **Save Override**.
 
@@ -212,13 +223,13 @@ Bên cạnh URL pattern, một rule còn có thể được giới hạn theo HT
 
 ### 5.8. Điều kiện theo query, header và body
 
-Mở mục **Only when the request has…** trong modal để rule chỉ áp dụng cho một số request tới cùng URL. Mọi điều kiện đã điền đều phải đúng, cùng với pattern, method và GraphQL operation. Để trống thì rule khớp như trước.
+Mở mục **Advanced → Conditions** trong modal để rule chỉ áp dụng cho một số request tới cùng URL. Mọi điều kiện đã điền đều phải đúng, cùng với pattern, method và GraphQL operation. Để trống thì rule khớp như trước.
 
 - **Query parameters**: viết như trong URL, ví dụ `page=2&debug`. `page=2` yêu cầu `page` bằng `2` (chỉ cần một trong các giá trị nếu tham số lặp lại; so sánh sau khi giải mã URL). `debug` đứng riêng yêu cầu có tham số `debug`, giá trị nào cũng được. Tên tham số phân biệt hoa thường.
 - **Request headers**: mỗi dòng một header. `X-Tenant: acme` yêu cầu header đó có đúng giá trị này; `Authorization` đứng riêng chỉ yêu cầu có header. Tên header không phân biệt hoa thường.
 - **Request body contains**: body của request phải chứa đoạn text này, ví dụ `"plan":"pro"`. Có phân biệt hoa thường. Nếu trình duyệt không đưa body cho extension (ví dụ upload dạng stream) thì điều kiện không khớp.
 
-Rule có điều kiện hiện nhãn **IF** trong danh sách rule; rê chuột lên nhãn để xem các điều kiện. Request preflight CORS không mang header và body của request thật, nên với preflight chỉ điều kiện query được kiểm tra.
+Dòng của rule trong danh sách rule hiện các điều kiện của nó, ví dụ `+ query page=2`. Request preflight CORS không mang header và body của request thật, nên với preflight chỉ điều kiện query được kiểm tra.
 
 ---
 
@@ -264,7 +275,7 @@ Khi tạo override mới từ một API:
 
 Bình thường rule override body đợi response thật rồi mới thay nó, nên server luôn bị gọi trước: `POST` vẫn gây tác dụng phụ, và mock hỏng khi host chết hoặc endpoint chưa có.
 
-Tick **Answer without calling the server** để trả lời request ngay trong trình duyệt, trước khi gửi đi. Body, **Status** và **Extra Response Headers** của rule tạo nên toàn bộ response; delay vẫn áp dụng. Host không truy cập được cũng nhận được mock. Rule có badge `NO SERVER` trong tab Rules.
+Tick **Answer without calling the server** để trả lời request ngay trong trình duyệt, trước khi gửi đi. Body, **Status code** và **Response headers** của rule tạo nên toàn bộ response; delay vẫn áp dụng. Host không truy cập được cũng nhận được mock. Dòng của rule trong tab Rules kết thúc bằng `no server`.
 
 Khác với rule override body thường:
 
@@ -293,9 +304,9 @@ set data.flags = {"beta": true}
 - `[-]` (hoặc `-` trong JSON Pointer) là cuối mảng: `set data.items[-] = {"id": 99}` thêm một phần tử.
 - Khi path của `set` chưa tồn tại, các object còn thiếu được tạo ra (là mảng nếu phần tiếp theo là `[0]` hoặc `[-]`). `remove` một thứ không có thì không làm gì.
 
-Status và header thật được giữ nguyên; **Status**, **Extra Response Headers** và **Delay** vẫn áp dụng nếu bạn điền. `Content-Length` được tính lại theo body mới. JSON được gửi lại ở dạng gọn, không giữ khoảng trắng của server. Template như `{{now}}` không được xử lý trong giá trị của patch, và không có tùy chọn **Answer without calling the server**, vì patch cần response thật.
+Status và header thật được giữ nguyên; **Status code**, **Response headers** và **Delay** vẫn áp dụng nếu bạn điền. `Content-Length` được tính lại theo body mới. JSON được gửi lại ở dạng gọn, không giữ khoảng trắng của server. Template như `{{now}}` không được xử lý trong giá trị của patch, và không có tùy chọn **Answer without calling the server**, vì patch cần response thật.
 
-Khi response không phải JSON hoặc không có body (trang HTML, `204`, redirect), nó được cho qua nguyên vẹn và panel hiện một cảnh báo. Thay đổi nào không áp dụng được, như path đi qua một field dạng chuỗi hay chỉ số mảng vượt quá cuối mảng, sẽ bị bỏ qua và được nêu trong cùng cảnh báo đó; các thay đổi khác vẫn áp dụng. Rule có badge `PATCH` kèm số thay đổi trong tab Rules; rê chuột lên để xem chúng.
+Khi response không phải JSON hoặc không có body (trang HTML, `204`, redirect), nó được cho qua nguyên vẹn và panel hiện một cảnh báo. Thay đổi nào không áp dụng được, như path đi qua một field dạng chuỗi hay chỉ số mảng vượt quá cuối mảng, sẽ bị bỏ qua và được nêu trong cùng cảnh báo đó; các thay đổi khác vẫn áp dụng. Dòng của rule trong tab Rules kết thúc bằng `patch N fields`; rê chuột lên để xem các thay đổi.
 
 ### 6.8. Script response (tính response bằng JavaScript)
 
@@ -355,11 +366,8 @@ Nếu còn `*` chưa được thay thế trong Redirect URL, extension sẽ log 
 Vào tab **Rules**. Mỗi rule hiển thị:
 
 - **Checkbox enable**: ở đầu dòng. Bỏ tick nghĩa là rule đang bị tắt (xem mục 8.5).
-- **Pattern**: In đậm màu xanh.
-- **Method badge** (nếu khác `Any`): một badge nhỏ (ví dụ `POST`) cạnh phần preview body.
-- **Redirect URL** (nếu có): Mũi tên → kèm URL.
-- **Body preview**: 80 ký tự đầu của body, kèm mode (`text`/`file`).
-- **Badge `NO SERVER`**: rule trả lời mà không gọi server (xem mục 6.6).
+- **Badge `GLOBAL`**: rule áp dụng trên mọi site (xem mục 9.6).
+- **Tóm tắt một dòng**: rule khớp gì → rule làm gì. Vế trái gồm method (bỏ qua nếu là `Any`), pattern, GraphQL operation dạng `(op: GetUser)` và các điều kiện dạng `+ query page=2`, `+ header X-Tenant: acme`, `+ body has "plan":"pro"`. Vế phải gồm status hoặc `mock body`, `patch 2 fields`, `script`, `base64 body`, `redirect to …`, `network error (TimedOut)`, rồi `no server`, `slow 3 s`, `+1 response header`, `new request body`, `+2 request headers` và `templates off` khi có. Rule WebSocket có dạng `ws wss://example.com/socket (send, contains "ping") → block frames`. Rê chuột lên dòng để xem chi tiết; click để mở editor.
 - **Số lần áp dụng**: một con số nhỏ sau rule, là số lần rule được áp dụng trong phiên này. `0` màu xám, số lớn hơn màu xanh. Rê chuột lên (hoặc chuyển tới bằng phím Tab) để xem lần áp dụng gần nhất là lúc nào và với URL nào. Một request chỉ được tính khi rule thật sự thay đổi nó: rule chỉ khớp phía sau một rule đứng trước, hoặc rule patch cho qua một response không phải JSON, thì không được tính. Rule đang bật mà vẫn `0` sau khi đã có request đi qua sẽ có viền nét đứt: hãy kiểm tra pattern, method và các điều kiện. Con số đi theo rule khi bạn đổi thứ tự hoặc tắt/bật rule, và đếm lại từ đầu khi bạn sửa rule. Nút **Reset counts** phía trên danh sách đưa mọi con số về 0, tắt chặn request cũng vậy. Số đếm không bao giờ được lưu, export hay import cùng rule.
 
 ### 8.2. Sửa rule
@@ -402,7 +410,7 @@ Export chỉ bao gồm rules của domain đang mở trong panel, không phải 
 
 ### 8.7. Import rules
 
-Click **Import** trong tab **Rules** và chọn một file JSON đã export trước đó (hoặc tự tạo tay):
+Click **Import → Rules file (.json)** trong tab **Rules** và chọn một file JSON đã export trước đó (hoặc tự tạo tay):
 
 - Nếu field `domain` trong file có giá trị và khác với domain đang active trong panel, một hộp thoại confirm sẽ cảnh báo và hỏi có muốn import vào domain hiện tại không. Nhấn Cancel sẽ hủy import, không có gì thay đổi.
 - Nếu domain hiện tại **đã có rules**, một hộp thoại confirm sẽ hỏi cách kết hợp: **OK** = merge — các rule import được nối thêm vào cuối danh sách hiện có; **Cancel** = replace — toàn bộ rule hiện có của domain này bị thay thế bằng các rule trong file import.
@@ -463,11 +471,11 @@ Cho phép chèn các biến sinh tự động vào nội dung Response Mock Body
 
 ### 9.6. Quy tắc Toàn cục (Global Rules)
 
-Tích chọn tùy chọn **Global Rule** khi tạo/chỉnh sửa quy tắc để áp dụng rule này trên **tất cả các domain**. Các Global Rule sẽ có nhãn badge **GLOBAL** nổi bật trong danh sách Rules.
+Tích chọn **Advanced → Conditions → Apply on every site (global rule)** khi tạo/chỉnh sửa quy tắc để áp dụng rule này trên **tất cả các domain**. Các Global Rule sẽ có nhãn badge **GLOBAL** nổi bật trong danh sách Rules.
 
 ### 9.7. Can thiệp & Ghi đè Request Payload
 
-Cho phép sửa đổi dữ liệu Request Payload (body của các request `POST`, `PUT`, `PATCH`) trước khi gửi lên Server bằng cách nhập nội dung mới vào ô **Request Payload** trong editor modal.
+Cho phép sửa đổi dữ liệu Request Payload (body của các request `POST`, `PUT`, `PATCH`) trước khi gửi lên Server bằng cách nhập nội dung mới vào **Advanced → Change the request → Replace the request body sent to the server** trong editor modal.
 
 ### 9.8. Giới hạn Mạng và Thống kê Traffic
 
@@ -475,7 +483,7 @@ Dùng bộ chọn **Network** để mô phỏng **Fast 3G**, **Slow 3G** hoặc 
 
 ### 9.9. Import HAR File (HTTP Archive)
 
-Hỗ trợ Import trực tiếp file `.har` (được export từ DevTools Network tab): Hệ thống sẽ tự động phân tích và chuyển đổi lịch sử traffic mạng ghi trong file HAR thành danh sách các Mock Rules sẵn sàng sử dụng.
+Hỗ trợ Import trực tiếp file `.har` (được export từ DevTools Network tab): Hệ thống sẽ tự động phân tích và chuyển đổi lịch sử traffic mạng ghi trong file HAR thành danh sách các Mock Rules sẵn sàng sử dụng: trong tab **Rules**, bấm **Import → cURL or OpenAPI / Swagger…** rồi dán nội dung file hoặc chọn file. Hộp thoại này cũng nhận lệnh cURL hoặc spec OpenAPI / Swagger.
 
 #### Export HAR file
 

@@ -73,33 +73,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-#modal-advanced-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-}
-#modal-advanced-fields .modal-field {
-  min-width: 0;
-}
-#modal-advanced-fields #modal-request-headers-field,
-#modal-advanced-fields #modal-headers-field {
-  grid-column: 1 / -1;
-}
-
-.ws-badge {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-right: 4px;
-  background: #e0f2f1;
-  color: #00695c;
-  font-weight: bold;
-}
-.ws-summary {
-  font-size: 11px;
-  opacity: 0.75;
-  margin-left: 4px;
-}
 .rule-hits {
   display: inline-block;
   min-width: 14px;
@@ -128,32 +101,6 @@
 .rule-hits:focus-visible {
   outline: 2px solid #007acc;
   outline-offset: 1px;
-}
-.override-status-badge,
-.override-delay-badge,
-.override-offline-badge,
-.override-fail-badge {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-right: 4px;
-}
-.override-status-badge {
-  background: #fff3e0;
-  color: #e65100;
-}
-.override-delay-badge {
-  background: #e3f2fd;
-  color: #0a4f9c;
-}
-.override-offline-badge {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-.override-fail-badge {
-  background: #ffebee;
-  color: #c62828;
-  font-weight: 600;
 }
 
 .profiles-row {
@@ -231,38 +178,6 @@
   max-width: 100%;
   max-height: 130px;
   object-fit: contain;
-}
-
-.graphql-badge {
-  background-color: #e5c07b;
-  color: #1e1e1e;
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-}
-
-.patch-badge {
-  background-color: #c678dd;
-  color: #1e1e1e;
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  cursor: help;
-}
-
-.match-badge {
-  background-color: #56b6c2;
-  color: #1e1e1e;
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  cursor: help;
 }
 
 .modal-match-fields {
@@ -376,4 +291,132 @@
   gap: 4px;
   font-size: 0.85rem;
   color: #abb2bf;
+}
+
+/* Rule list: one line per rule, what matches → what happens. */
+.rule-summary {
+  font-size: 12px;
+  color: #243b53;
+  overflow-wrap: anywhere;
+}
+
+/* Rule editor: presets, hints and the collapsed Advanced groups. */
+.modal-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.modal-presets-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4e708e;
+}
+.preset-btn {
+  border: 1px solid #c9d7e6;
+  border-radius: 12px;
+  background: #f7fafd;
+  color: #35506b;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.preset-btn:hover {
+  background: #e8f3ff;
+}
+.preset-btn:focus-visible,
+.modal-advanced summary:focus-visible,
+.import-menu-list [role='menuitem']:focus-visible {
+  outline: 2px solid #007acc;
+  outline-offset: 1px;
+}
+.modal-field-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #627d98;
+}
+.modal-check-field .type-radio {
+  justify-content: flex-start;
+  padding: 4px 0;
+}
+.modal-check-field .type-radio span {
+  display: inline;
+  margin: 0;
+  font-weight: 500;
+}
+.modal-advanced {
+  margin: 4px 0 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.modal-advanced > summary,
+.modal-group > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334e68;
+  padding: 4px 0;
+}
+.modal-group {
+  border-top: 1px solid #eef2f6;
+  padding: 2px 0 4px 10px;
+}
+.modal-group .modal-group-title,
+.modal-advanced .modal-group-title {
+  display: inline;
+}
+.modal-group-count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #0a84ff;
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.modal-group-count[hidden] {
+  display: none;
+}
+
+/* Import menu in the Rules tab. */
+.import-menu {
+  position: relative;
+  display: inline-block;
+}
+.import-menu-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid #c9d7e6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(16, 42, 67, 0.15);
+}
+.import-menu-list[hidden] {
+  display: none;
+}
+.import-menu-list [role='menuitem'] {
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #243b53;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.import-menu-list [role='menuitem']:hover,
+.import-menu-list [role='menuitem']:focus {
+  background: #e8f3ff;
 }

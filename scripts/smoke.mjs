@@ -20,6 +20,15 @@ const PROFILE = path.join(WORK_DIR, 'profile');
 console.log('screenshots + profile in', WORK_DIR);
 
 const results = [];
+// The rule editor keeps everything but the everyday fields in a collapsed
+// Advanced section; open it and one of its groups, as a user would.
+async function openEditorGroup(page, groupId) {
+  for (const id of ['modal-advanced-fields', groupId]) {
+    const isOpen = await page.locator(`#${id}`).evaluate(details => details.open);
+    if (!isOpen) await page.click(`#${id} > summary`);
+  }
+}
+
 function report(name, ok, detail = '') {
   results.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
@@ -262,6 +271,7 @@ try {
       await popup.waitForSelector('#override-modal', { state: 'visible' });
       await popup.fill('#modal-pattern', pattern);
       await popup.check('input[name="modal-override-type"][value="body"]');
+      await openEditorGroup(popup, 'modal-group-body-type');
       await popup.selectOption('#modal-mode', 'script');
       await popup.fill('#modal-body', script);
       await popup.click('#save-override');
@@ -318,9 +328,11 @@ return {
     await popup.waitForSelector('#override-modal', { state: 'visible' });
     await popup.fill('#modal-pattern', '127.0.0.1:1/api/offline');
     await popup.check('input[name="modal-override-type"][value="body"]');
+    await openEditorGroup(popup, 'modal-group-body-type');
     await popup.selectOption('#modal-mode', 'text');
     await popup.fill('#modal-body', '{"offline":"{{$queryParam(q)}}"}');
     await popup.fill('#modal-status', '201');
+    await openEditorGroup(popup, 'modal-group-timing');
     await popup.check('#modal-respond-at-request');
     await popup.click('#save-override');
     await popup.waitForSelector('#override-modal', { state: 'hidden' });
@@ -362,9 +374,11 @@ return {
     await popup.waitForSelector('#override-modal', { state: 'visible' });
     await popup.fill('#modal-pattern', '127.0.0.1:1/api/broken');
     await popup.check('input[name="modal-override-type"][value="body"]');
+    await openEditorGroup(popup, 'modal-group-body-type');
     await popup.selectOption('#modal-mode', 'text');
     await popup.fill('#modal-body', '{"error":"down"}');
     await popup.fill('#modal-status', '500');
+    await openEditorGroup(popup, 'modal-group-timing');
     await popup.check('#modal-respond-at-request');
     await popup.click('#save-override');
     await popup.waitForSelector('#override-modal', { state: 'hidden' });
@@ -393,9 +407,10 @@ return {
     await popup.waitForSelector('#override-modal', { state: 'visible' });
     await popup.fill('#modal-pattern', 'api/cond');
     await popup.check('input[name="modal-override-type"][value="body"]');
+    await openEditorGroup(popup, 'modal-group-body-type');
     await popup.selectOption('#modal-mode', 'text');
     await popup.fill('#modal-body', '{"cond":true}');
-    await popup.click('#modal-match-fields > summary');
+    await openEditorGroup(popup, 'modal-match-fields');
     await popup.fill('#modal-match-query', 'page=2&debug');
     await popup.fill('#modal-match-headers', 'X-Tenant: acme');
     await popup.fill('#modal-match-body', '"plan":"pro"');
@@ -431,6 +446,7 @@ return {
       await popup.waitForSelector('#override-modal', { state: 'visible' });
       await popup.fill('#modal-pattern', pattern);
       await popup.check('input[name="modal-override-type"][value="body"]');
+      await openEditorGroup(popup, 'modal-group-body-type');
       await popup.selectOption('#modal-mode', 'patch');
       await popup.fill('#modal-body', operations);
       await popup.click('#save-override');

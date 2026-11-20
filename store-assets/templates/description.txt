@@ -11,6 +11,7 @@ Highlights:
 - Enable, disable, duplicate, import, export, and organize reusable rules.
 - Keep rules separated by domain and restore interception after service-worker restarts.
 - See clear save and apply feedback when Chrome cannot attach the debugger.
+- Use the interface in English or Vietnamese (Tiếng Việt), following the browser's language.
 
 Designed for frontend developers, QA engineers, and anyone who needs predictable API states while debugging edge cases and failure flows.
 

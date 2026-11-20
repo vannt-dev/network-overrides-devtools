@@ -13,7 +13,11 @@ namespace NetworkOverridesUi {
     try {
       const data = await Promise.resolve(chrome.storage.local.get([key]));
       const profiles: Record<string, OverrideRule[]> = data[key] || {};
-      selectEl.innerHTML = '<option value="">-- Rule Profiles --</option>';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = t('profiles_placeholder');
+      placeholder.dataset.i18n = 'profiles_placeholder';
+      selectEl.replaceChildren(placeholder);
       Object.keys(profiles).forEach(name => {
         const option = document.createElement('option');
         option.value = name;
@@ -21,7 +25,7 @@ namespace NetworkOverridesUi {
         selectEl.appendChild(option);
       });
     } catch (error) {
-      showNotification(`Could not load rule profiles: ${errorMessage(error)}`, 'error');
+      showNotification(t('toast_profiles_load_failed', errorMessage(error)), 'error');
     }
   }
 
@@ -31,14 +35,14 @@ namespace NetworkOverridesUi {
     currentRules: OverrideRule[]
   ): Promise<void> {
     if (!domain) {
-      showNotification('A page domain is required before saving a profile.', 'error');
+      showNotification(t('toast_profile_needs_domain'), 'error');
       return;
     }
     const profileName = await showPromptDialog(
-      'Save rule profile',
-      'Save the current rules as a reusable profile for this domain.',
-      'Profile name',
-      'e.g. Staging Mock or Error Flow'
+      t('profile_save_title'),
+      t('profile_save_message'),
+      t('profile_name_label'),
+      t('profile_name_placeholder')
     );
     if (!profileName) return;
     const key = `rule_profiles_${domain}`;
@@ -49,9 +53,9 @@ namespace NetworkOverridesUi {
       await Promise.resolve(chrome.storage.local.set({ [key]: profiles }));
       await loadProfiles(selectEl, domain);
       if (selectEl) selectEl.value = profileName;
-      showNotification(`Profile “${profileName}” saved.`, 'success');
+      showNotification(t('toast_profile_saved', profileName), 'success');
     } catch (error) {
-      showNotification(`Could not save profile: ${errorMessage(error)}`, 'error');
+      showNotification(t('toast_profile_save_failed', errorMessage(error)), 'error');
     }
   }
 
@@ -60,14 +64,14 @@ namespace NetworkOverridesUi {
     domain: string
   ): Promise<void> {
     if (!selectEl || !selectEl.value || !domain) {
-      showNotification('Select a profile to delete.', 'error');
+      showNotification(t('toast_profile_select'), 'error');
       return;
     }
     const name = selectEl.value;
     const confirmed = await showConfirmDialog(
-      'Delete rule profile',
-      `Delete profile “${name}”? This cannot be undone.`,
-      'Delete',
+      t('profile_delete_title'),
+      t('profile_delete_message', name),
+      t('profile_delete_button'),
       undefined,
       true
     );
@@ -80,9 +84,9 @@ namespace NetworkOverridesUi {
       delete profiles[name];
       await Promise.resolve(chrome.storage.local.set({ [key]: profiles }));
       await loadProfiles(selectEl, domain);
-      showNotification(`Profile “${name}” deleted.`, 'success');
+      showNotification(t('toast_profile_deleted', name), 'success');
     } catch (error) {
-      showNotification(`Could not delete profile: ${errorMessage(error)}`, 'error');
+      showNotification(t('toast_profile_delete_failed', errorMessage(error)), 'error');
     }
   }
 }

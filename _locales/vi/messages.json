@@ -1,0 +1,863 @@
+{
+  "ext_name": {
+    "message": "Network Overrides API (DevTools)"
+  },
+  "ext_description": {
+    "message": "Công cụ debug chặn và ghi đè response API ngay trong DevTools hoặc popup. Dành cho lập trình viên."
+  },
+  "action_title": {
+    "message": "Network Overrides"
+  },
+  "api_add_title": {
+    "message": "Thêm API tùy chỉnh"
+  },
+  "api_copied": {
+    "message": "Đã chép!"
+  },
+  "api_copy_curl_title": {
+    "message": "Chép lệnh cURL"
+  },
+  "api_export_har_title": {
+    "message": "Xuất các request đã bắt thành file HAR"
+  },
+  "api_mock_edit_title": {
+    "message": "Sửa rule đang áp dụng cho request này"
+  },
+  "api_mock_new_title": {
+    "message": "Mở trình sửa rule, điền sẵn từ request này"
+  },
+  "api_mock_this": {
+    "message": "Mock request này"
+  },
+  "api_search_placeholder": {
+    "message": "Tìm API..."
+  },
+  "attach_failed": {
+    "message": "Không gắn được: $1"
+  },
+  "attach_off": {
+    "message": "Chưa bật"
+  },
+  "attach_on": {
+    "message": "Đang chặn request"
+  },
+  "badge_disabled": {
+    "message": "Đã tắt"
+  },
+  "badge_disabled_title": {
+    "message": "Rule đã tắt: $1"
+  },
+  "badge_overridden": {
+    "message": "Đã ghi đè"
+  },
+  "capture_body_label": {
+    "message": "Lưu body:"
+  },
+  "conditions_help": {
+    "message": "Chỉ khớp một số request. Mọi điều kiện bạn điền đều phải đúng, cùng với URL pattern và method. Để trống để khớp mọi request."
+  },
+  "detail_body_contains": {
+    "message": "body chứa $1"
+  },
+  "detail_click_to_edit": {
+    "message": "Bấm để sửa"
+  },
+  "detail_header": {
+    "message": "header $1"
+  },
+  "detail_header_value": {
+    "message": "header $1: $2"
+  },
+  "detail_no_server": {
+    "message": "Trả lời ngay trong trình duyệt; không gọi server"
+  },
+  "detail_only_when": {
+    "message": "Chỉ khi request có:"
+  },
+  "detail_patch": {
+    "message": "Đổi các trường này trong JSON response thật:"
+  },
+  "detail_query": {
+    "message": "query $1"
+  },
+  "dialog_cancel": {
+    "message": "Hủy"
+  },
+  "dialog_confirm": {
+    "message": "Xác nhận"
+  },
+  "dialog_save": {
+    "message": "Lưu"
+  },
+  "empty_captured": {
+    "message": "Chưa bắt được request nào. Hãy tải lại trang hoặc gọi API."
+  },
+  "empty_overridden": {
+    "message": "Không có request nào khớp rule đang bật."
+  },
+  "empty_search": {
+    "message": "Không có request nào khớp từ khóa tìm."
+  },
+  "enable_label": {
+    "message": "Bật ghi đè"
+  },
+  "error_body_not_json": {
+    "message": "Response body không phải JSON hợp lệ."
+  },
+  "error_delay_range": {
+    "message": "Độ trễ phải từ 0 đến 120000 ms."
+  },
+  "error_pattern_required": {
+    "message": "Cần nhập pattern."
+  },
+  "error_redirect_required": {
+    "message": "Cần nhập URL chuyển hướng cho rule Redirect."
+  },
+  "error_request_headers": {
+    "message": "Request header phải viết mỗi dòng một “Header-Name: value”."
+  },
+  "error_response_headers": {
+    "message": "Response header thêm vào phải viết mỗi dòng một “Header-Name: value”."
+  },
+  "error_save_override": {
+    "message": "Không lưu được rule."
+  },
+  "error_save_override_reason": {
+    "message": "Không lưu được rule: $1"
+  },
+  "error_status_range": {
+    "message": "Status code phải từ 100 đến 599."
+  },
+  "error_unknown": {
+    "message": "Lỗi không rõ"
+  },
+  "error_ws_delay": {
+    "message": "Trễ frame cần độ trễ lớn hơn 0 ms."
+  },
+  "error_ws_pattern": {
+    "message": "Pattern WebSocket phải bắt đầu bằng ws://, wss:// hoặc *."
+  },
+  "error_ws_regex": {
+    "message": "Match không phải biểu thức chính quy hợp lệ: $1"
+  },
+  "error_ws_substitute": {
+    "message": "Thay phần khớp cần có Match để thay."
+  },
+  "field_body": {
+    "message": "Response body"
+  },
+  "field_delay": {
+    "message": "Độ trễ (ms)"
+  },
+  "field_delay_hint": {
+    "message": "Chờ chừng này rồi mới trả lời, để thử trạng thái đang tải. 3000 = 3 giây."
+  },
+  "field_fail": {
+    "message": "Giả lập lỗi mạng"
+  },
+  "field_fail_hint": {
+    "message": "Lỗi mà trang nhận được thay cho response."
+  },
+  "field_global": {
+    "message": "Áp dụng trên mọi trang (rule toàn cục)"
+  },
+  "field_global_hint": {
+    "message": "Tắt: rule chỉ chạy trên trang đã tạo nó."
+  },
+  "field_global_title": {
+    "message": "Áp dụng rule này trên mọi domain"
+  },
+  "field_graphql": {
+    "message": "GraphQL operation"
+  },
+  "field_graphql_hint": {
+    "message": "Tên operation mà trang gửi tới endpoint GraphQL."
+  },
+  "field_graphql_placeholder": {
+    "message": "vd. GetUserProfile"
+  },
+  "field_match_body": {
+    "message": "Request body chứa"
+  },
+  "field_match_body_placeholder": {
+    "message": "vd. \"plan\":\"pro\" (không khớp khi trình duyệt không gửi body dạng text)"
+  },
+  "field_match_headers": {
+    "message": "Request header (mỗi dòng một header; tên không phân biệt hoa thường)"
+  },
+  "field_method": {
+    "message": "Method"
+  },
+  "field_mode": {
+    "message": "Response body là"
+  },
+  "field_mode_hint": {
+    "message": "Text trả về body đúng như bạn gõ. Patch đổi vài trường của response thật; Script tự tính câu trả lời."
+  },
+  "field_patch_help": {
+    "message": "Request vẫn tới server và chỉ các trường này trong JSON response bị đổi. Mỗi dòng một thay đổi: <code>set data.user.plan = \"pro\"</code> (giá trị là JSON) hoặc <code>remove data.ads</code>. Đường dẫn dùng dấu chấm và <code>[0]</code> cho phần tử mảng, hoặc JSON Pointer như <code>/data/items/0</code>. Response không phải JSON được giữ nguyên."
+  },
+  "field_pattern": {
+    "message": "URL pattern"
+  },
+  "field_pattern_hint": {
+    "message": "Một phần của URL. <code>*</code> khớp mọi thứ; <code>/regex/</code> cũng được."
+  },
+  "field_query": {
+    "message": "Query parameter"
+  },
+  "field_query_placeholder": {
+    "message": "vd. page=2&debug (chỉ ghi tên: có mặt với giá trị bất kỳ)"
+  },
+  "field_redirect": {
+    "message": "URL chuyển hướng (dùng * cho phần wildcard đã bắt)"
+  },
+  "field_redirect_placeholder": {
+    "message": "vd. https://new-api.example.com/api/*"
+  },
+  "field_request_body": {
+    "message": "Thay request body gửi tới server"
+  },
+  "field_request_body_placeholder": {
+    "message": "vd. {\"name\":\"mock\"}"
+  },
+  "field_request_headers": {
+    "message": "Request header cần thêm hoặc thay (Key-Value hoặc Raw)"
+  },
+  "field_respond": {
+    "message": "Trả lời mà không gọi server"
+  },
+  "field_respond_hint": {
+    "message": "Không gọi tới server: dùng được cho endpoint chưa tồn tại."
+  },
+  "field_respond_title": {
+    "message": "Trả lời request ngay trong trình duyệt bằng body, status và header này. Server không bị gọi, nên dùng được cho host không truy cập được và endpoint chưa tồn tại."
+  },
+  "field_response_headers": {
+    "message": "Header thêm vào response (Key-Value hoặc Raw)"
+  },
+  "field_script_help": {
+    "message": "Thân của một hàm async nhận <code>request</code> và trả về response: một chuỗi, hoặc <code>{ status, headers, body }</code>. Hàm chạy trong trang. <code>request</code> có <code>url</code>, <code>method</code>, <code>headers</code>, <code>query</code>, <code>params</code>, <code>body</code> và <code>response</code> gốc."
+  },
+  "field_status": {
+    "message": "Status code"
+  },
+  "field_status_hint": {
+    "message": "Để trống thì giữ status thật."
+  },
+  "field_status_placeholder": {
+    "message": "vd. 500"
+  },
+  "field_templates": {
+    "message": "Điền placeholder {{...}}"
+  },
+  "field_templates_hint": {
+    "message": "Placeholder như <code>$1</code> nhận giá trị mới ở mỗi request."
+  },
+  "field_templates_title": {
+    "message": "Thay placeholder {{...}} động khi request chạy"
+  },
+  "format_json": {
+    "message": "Định dạng JSON"
+  },
+  "format_json_title": {
+    "message": "Định dạng lại JSON của response body cho dễ đọc"
+  },
+  "group_advanced": {
+    "message": "Nâng cao"
+  },
+  "group_body_type": {
+    "message": "Kiểu body: patch & script"
+  },
+  "group_conditions": {
+    "message": "Điều kiện"
+  },
+  "group_request": {
+    "message": "Đổi request"
+  },
+  "group_response_headers": {
+    "message": "Response header"
+  },
+  "group_timing": {
+    "message": "Thời gian & lỗi"
+  },
+  "guide_title": {
+    "message": "Mở hướng dẫn sử dụng"
+  },
+  "header_actions_label": {
+    "message": "Thao tác của popup"
+  },
+  "headers_delete": {
+    "message": "Xóa header"
+  },
+  "headers_mode_raw": {
+    "message": "Raw"
+  },
+  "headers_mode_table": {
+    "message": "Key-Value"
+  },
+  "headers_name": {
+    "message": "Tên header"
+  },
+  "headers_value": {
+    "message": "Giá trị header"
+  },
+  "hint_tip": {
+    "message": "Mẹo: dùng <code>*</code> làm wildcard trong pattern (vd. <code>https://old.com/api/*/users</code>), <code>*</code>/<code>all</code> cho mọi request, hoặc regex <code>/pattern/flags</code>. Dùng <code>*</code> trong URL chuyển hướng để chèn phần wildcard đã bắt."
+  },
+  "hits_count_one": {
+    "message": "Đã áp dụng 1 lần trong phiên này"
+  },
+  "hits_count_other": {
+    "message": "Đã áp dụng $1 lần trong phiên này"
+  },
+  "hits_idle": {
+    "message": "Chưa áp dụng lần nào, dù đã có request đi qua."
+  },
+  "hits_idle_check": {
+    "message": "Hãy kiểm tra pattern, method và các điều kiện."
+  },
+  "hits_last": {
+    "message": "Áp dụng gần nhất lúc $1"
+  },
+  "hits_none": {
+    "message": "Chưa áp dụng trong phiên này"
+  },
+  "import_anyway": {
+    "message": "Vẫn nhập"
+  },
+  "import_append": {
+    "message": "Thêm vào cuối"
+  },
+  "import_button": {
+    "message": "Nhập rule"
+  },
+  "import_close": {
+    "message": "Đóng hộp thoại nhập"
+  },
+  "import_curl": {
+    "message": "cURL hoặc OpenAPI / Swagger…"
+  },
+  "import_curl_title": {
+    "message": "Tạo rule từ lệnh cURL hoặc spec OpenAPI / Swagger"
+  },
+  "import_file": {
+    "message": "Hoặc chọn file (.json, .yaml, .yml, .har, .curl, .txt):"
+  },
+  "import_merge_message": {
+    "message": "Domain này đã có rule. Chọn cách thêm các rule được nhập."
+  },
+  "import_merge_title": {
+    "message": "Nhập rule"
+  },
+  "import_other_domain_message": {
+    "message": "File này được xuất từ “$1”, nhưng domain hiện tại là “$2”."
+  },
+  "import_other_domain_title": {
+    "message": "Nhập rule từ domain khác?"
+  },
+  "import_paste": {
+    "message": "Dán lệnh cURL hoặc spec OpenAPI / Swagger (JSON hoặc YAML)"
+  },
+  "import_paste_placeholder": {
+    "message": "curl -X POST https://api.example.com/users -H \"Authorization: Bearer token\" -d '{\"name\":\"John\"}'\n\nHoặc dán nội dung JSON Swagger/OpenAPI..."
+  },
+  "import_replace": {
+    "message": "Thay toàn bộ"
+  },
+  "import_rules_file": {
+    "message": "File rule (.json)"
+  },
+  "import_rules_file_title": {
+    "message": "Nạp rule đã xuất từ extension này"
+  },
+  "import_title": {
+    "message": "Nhập rule từ cURL hoặc OpenAPI / Swagger"
+  },
+  "language_auto": {
+    "message": "Tự động"
+  },
+  "language_label": {
+    "message": "Ngôn ngữ"
+  },
+  "manual_add": {
+    "message": "Thêm thủ công"
+  },
+  "manual_redirect_placeholder": {
+    "message": "URL chuyển hướng, không bắt buộc (dùng * cho wildcard)"
+  },
+  "method_any": {
+    "message": "Bất kỳ"
+  },
+  "modal_body_placeholder": {
+    "message": "Response body tùy chỉnh"
+  },
+  "modal_close": {
+    "message": "Đóng trình sửa rule"
+  },
+  "modal_save": {
+    "message": "Lưu rule"
+  },
+  "modal_saving": {
+    "message": "Đang lưu rule…"
+  },
+  "modal_saving_button": {
+    "message": "Đang lưu…"
+  },
+  "modal_title_add": {
+    "message": "Thêm rule"
+  },
+  "modal_title_edit": {
+    "message": "Sửa rule"
+  },
+  "mode_file": {
+    "message": "Base64 thô"
+  },
+  "mode_patch": {
+    "message": "Patch JSON response thật"
+  },
+  "mode_script": {
+    "message": "Script (JavaScript)"
+  },
+  "mode_text": {
+    "message": "Text"
+  },
+  "preset_applied": {
+    "message": "Đã dùng mẫu: $1."
+  },
+  "preset_empty_list": {
+    "message": "Danh sách rỗng"
+  },
+  "preset_empty_list_title": {
+    "message": "Trả 200 với danh sách rỗng: [] hoặc chính JSON đó với các mảng được làm rỗng"
+  },
+  "preset_offline": {
+    "message": "Mất mạng"
+  },
+  "preset_offline_title": {
+    "message": "Cho request lỗi như khi mất mạng"
+  },
+  "preset_server_error": {
+    "message": "Lỗi server"
+  },
+  "preset_server_error_title": {
+    "message": "Trả status 500 kèm một JSON lỗi ngắn"
+  },
+  "preset_slow": {
+    "message": "Chậm (3 s)"
+  },
+  "preset_slow_title": {
+    "message": "Chờ 3 giây rồi mới trả lời"
+  },
+  "presets_label": {
+    "message": "Mẫu nhanh"
+  },
+  "profile_delete_btn_title": {
+    "message": "Xóa profile đang chọn"
+  },
+  "profile_delete_button": {
+    "message": "Xóa"
+  },
+  "profile_delete_message": {
+    "message": "Xóa profile “$1”? Không thể hoàn tác."
+  },
+  "profile_delete_title": {
+    "message": "Xóa profile rule"
+  },
+  "profile_name_label": {
+    "message": "Tên profile"
+  },
+  "profile_name_placeholder": {
+    "message": "vd. Staging Mock hoặc Error Flow"
+  },
+  "profile_save_btn": {
+    "message": "Lưu profile"
+  },
+  "profile_save_btn_title": {
+    "message": "Lưu các rule hiện tại thành profile"
+  },
+  "profile_save_message": {
+    "message": "Lưu các rule hiện tại thành profile dùng lại được cho domain này."
+  },
+  "profile_save_title": {
+    "message": "Lưu profile rule"
+  },
+  "profiles_placeholder": {
+    "message": "-- Profile rule --"
+  },
+  "refresh_title": {
+    "message": "Làm mới danh sách request"
+  },
+  "refreshing_title": {
+    "message": "Đang làm mới danh sách request…"
+  },
+  "reset_counts": {
+    "message": "Đặt lại số đếm"
+  },
+  "reset_counts_title": {
+    "message": "Đưa số lần áp dụng của mọi rule về 0"
+  },
+  "rule_copy": {
+    "message": "Nhân bản"
+  },
+  "rule_copy_title": {
+    "message": "Nhân bản rule"
+  },
+  "rule_delete": {
+    "message": "Xóa"
+  },
+  "rule_delete_title": {
+    "message": "Xóa rule"
+  },
+  "rule_disable": {
+    "message": "Tắt rule"
+  },
+  "rule_drag_label": {
+    "message": "Đổi thứ tự rule $1"
+  },
+  "rule_drag_title": {
+    "message": "Kéo để đổi thứ tự, hoặc dùng phím mũi tên lên/xuống"
+  },
+  "rule_edit": {
+    "message": "Sửa"
+  },
+  "rule_edit_title": {
+    "message": "Sửa rule"
+  },
+  "rule_enable": {
+    "message": "Bật rule"
+  },
+  "rule_global_badge": {
+    "message": "TOÀN CỤC"
+  },
+  "rules_export": {
+    "message": "Xuất"
+  },
+  "rules_import": {
+    "message": "Nhập"
+  },
+  "runtime_controls_label": {
+    "message": "Điều kiện mạng và thống kê lưu lượng"
+  },
+  "settings_in_use_one": {
+    "message": "1 tùy chọn đang dùng"
+  },
+  "settings_in_use_other": {
+    "message": "$1 tùy chọn đang dùng"
+  },
+  "summary_base64": {
+    "message": "body base64"
+  },
+  "summary_body_has": {
+    "message": "+ body có $1"
+  },
+  "summary_graphql_op": {
+    "message": "(op: $1)"
+  },
+  "summary_header": {
+    "message": "+ header $1"
+  },
+  "summary_mock_body": {
+    "message": "body giả"
+  },
+  "summary_network_error": {
+    "message": "lỗi mạng"
+  },
+  "summary_network_error_reason": {
+    "message": "lỗi mạng ($1)"
+  },
+  "summary_no_server": {
+    "message": "không gọi server"
+  },
+  "summary_patch_one": {
+    "message": "patch 1 trường"
+  },
+  "summary_patch_other": {
+    "message": "patch $1 trường"
+  },
+  "summary_query": {
+    "message": "+ query $1"
+  },
+  "summary_redirect": {
+    "message": "chuyển tới $1"
+  },
+  "summary_request_body": {
+    "message": "request body mới"
+  },
+  "summary_request_headers_one": {
+    "message": "+1 request header"
+  },
+  "summary_request_headers_other": {
+    "message": "+$1 request header"
+  },
+  "summary_response_headers_one": {
+    "message": "+1 response header"
+  },
+  "summary_response_headers_other": {
+    "message": "+$1 response header"
+  },
+  "summary_script": {
+    "message": "script"
+  },
+  "summary_slow": {
+    "message": "chậm $1"
+  },
+  "summary_templates_off": {
+    "message": "tắt template"
+  },
+  "summary_ws_block": {
+    "message": "chặn frame"
+  },
+  "summary_ws_contains": {
+    "message": "chứa \"$1\""
+  },
+  "summary_ws_delay": {
+    "message": "trễ frame"
+  },
+  "summary_ws_replace": {
+    "message": "thay frame"
+  },
+  "summary_ws_substitute": {
+    "message": "thay text trong frame"
+  },
+  "tab_captured": {
+    "message": "API đã bắt ($1)"
+  },
+  "tab_captured_plain": {
+    "message": "API đã bắt"
+  },
+  "tab_overridden": {
+    "message": "Đã ghi đè ($1)"
+  },
+  "tab_overridden_plain": {
+    "message": "Đã ghi đè"
+  },
+  "tab_rules": {
+    "message": "Rule ($1)"
+  },
+  "tab_rules_plain": {
+    "message": "Rule"
+  },
+  "throttle_label": {
+    "message": "Mạng"
+  },
+  "throttle_none": {
+    "message": "Không giới hạn"
+  },
+  "throttle_offline": {
+    "message": "Mất mạng"
+  },
+  "toast_add_rule_failed": {
+    "message": "Không thêm được rule: $1"
+  },
+  "toast_applied": {
+    "message": "$1, đã áp dụng cho tab hiện tại."
+  },
+  "toast_disabled_sync_failed": {
+    "message": "Đã lưu trạng thái tắt, nhưng không cập nhật được background: $1"
+  },
+  "toast_dismiss": {
+    "message": "Đóng thông báo"
+  },
+  "toast_enable_save_failed": {
+    "message": "Không lưu được trạng thái chặn: $1"
+  },
+  "toast_enabled_sync_failed": {
+    "message": "Đã lưu trạng thái bật, nhưng không cập nhật được background: $1"
+  },
+  "toast_export_failed": {
+    "message": "Không xuất được rule: $1"
+  },
+  "toast_exported": {
+    "message": "Đã xuất rule."
+  },
+  "toast_har_empty": {
+    "message": "Chưa bắt được gì nên chưa có gì để xuất."
+  },
+  "toast_har_exported": {
+    "message": "Đã xuất $1 request, $2 có response body."
+  },
+  "toast_har_failed": {
+    "message": "Không xuất được HAR: $1"
+  },
+  "toast_har_no_tab": {
+    "message": "Không có tab nào đang mở để xuất."
+  },
+  "toast_import_failed": {
+    "message": "Không nhập được rule: $1"
+  },
+  "toast_import_nothing": {
+    "message": "Không đọc được rule nào từ cURL, file HAR hay spec Swagger/OpenAPI."
+  },
+  "toast_import_read_failed": {
+    "message": "Không đọc được file đã chọn."
+  },
+  "toast_imported_one": {
+    "message": "Đã nhập 1 rule"
+  },
+  "toast_imported_other": {
+    "message": "Đã nhập $1 rule"
+  },
+  "toast_interception_off": {
+    "message": "Đã tắt chặn request."
+  },
+  "toast_interception_on": {
+    "message": "Đã bật chặn request."
+  },
+  "toast_invalid_file": {
+    "message": "File không hợp lệ: $1"
+  },
+  "toast_invalid_file_list": {
+    "message": "File không hợp lệ: thiếu danh sách “overrides”."
+  },
+  "toast_invalid_file_rule": {
+    "message": "File không hợp lệ: có rule thiếu hoặc sai trường."
+  },
+  "toast_language_save_failed": {
+    "message": "Không lưu được ngôn ngữ: $1"
+  },
+  "toast_not_applied": {
+    "message": "$1, nhưng chưa cập nhật được việc chặn request."
+  },
+  "toast_not_applied_reason": {
+    "message": "$1, nhưng chưa cập nhật được việc chặn request: $2"
+  },
+  "toast_override_saved": {
+    "message": "Đã lưu rule"
+  },
+  "toast_patch_rule_skipped": {
+    "message": "Rule patch \"$1\": $2"
+  },
+  "toast_pattern_required": {
+    "message": "Cần nhập pattern trước khi thêm rule."
+  },
+  "toast_persist_disabled_failed": {
+    "message": "Không lưu được trạng thái tắt chặn: $1"
+  },
+  "toast_profile_delete_failed": {
+    "message": "Không xóa được profile: $1"
+  },
+  "toast_profile_deleted": {
+    "message": "Đã xóa profile “$1”."
+  },
+  "toast_profile_needs_domain": {
+    "message": "Cần có domain của trang trước khi lưu profile."
+  },
+  "toast_profile_save_failed": {
+    "message": "Không lưu được profile: $1"
+  },
+  "toast_profile_saved": {
+    "message": "Đã lưu profile “$1”."
+  },
+  "toast_profile_select": {
+    "message": "Hãy chọn profile cần xóa."
+  },
+  "toast_profiles_load_failed": {
+    "message": "Không tải được profile rule: $1"
+  },
+  "toast_retry": {
+    "message": "Thử lại"
+  },
+  "toast_retry_done": {
+    "message": "Đã cập nhật việc chặn cho tab hiện tại."
+  },
+  "toast_retry_failed": {
+    "message": "Thử lại không thành công: $1"
+  },
+  "toast_rule_added": {
+    "message": "Đã thêm rule"
+  },
+  "toast_rule_deleted": {
+    "message": "Đã xóa rule"
+  },
+  "toast_rule_disabled": {
+    "message": "Đã tắt rule"
+  },
+  "toast_rule_duplicated": {
+    "message": "Đã nhân bản rule"
+  },
+  "toast_rule_enabled": {
+    "message": "Đã bật rule"
+  },
+  "toast_rule_moved": {
+    "message": "Đã chuyển rule"
+  },
+  "toast_throttle_changed": {
+    "message": "Đã đổi mạng sang $1."
+  },
+  "toast_throttle_failed": {
+    "message": "Không đổi được chế độ mạng: $1"
+  },
+  "toast_update_rules_failed": {
+    "message": "Không cập nhật được rule: $1"
+  },
+  "toast_ws_rule_skipped": {
+    "message": "Bỏ qua rule WebSocket \"$1\": $2"
+  },
+  "traffic_stats": {
+    "message": "Đã ghi đè $1 · Lỗi $2"
+  },
+  "type_body": {
+    "message": "Mock response"
+  },
+  "type_body_title": {
+    "message": "Trả lời bằng status và body của bạn"
+  },
+  "type_fail": {
+    "message": "Lỗi mạng"
+  },
+  "type_fail_title": {
+    "message": "Cho request lỗi như khi mạng hỏng"
+  },
+  "type_group_label": {
+    "message": "Rule làm gì"
+  },
+  "type_redirect": {
+    "message": "Chuyển hướng"
+  },
+  "type_redirect_title": {
+    "message": "Gửi request tới URL khác"
+  },
+  "type_ws": {
+    "message": "WebSocket"
+  },
+  "type_ws_title": {
+    "message": "Đổi message WebSocket"
+  },
+  "ws_action": {
+    "message": "Hành động"
+  },
+  "ws_block": {
+    "message": "Chặn frame"
+  },
+  "ws_both": {
+    "message": "Cả hai"
+  },
+  "ws_delay": {
+    "message": "Trễ frame"
+  },
+  "ws_direction": {
+    "message": "Chiều"
+  },
+  "ws_match": {
+    "message": "Frame khớp (để trống = mọi text frame)"
+  },
+  "ws_match_placeholder": {
+    "message": "vd. \"type\":\"price\""
+  },
+  "ws_receive": {
+    "message": "Nhận (server → trang)"
+  },
+  "ws_regex": {
+    "message": "Match là biểu thức chính quy"
+  },
+  "ws_replace": {
+    "message": "Thay cả frame"
+  },
+  "ws_send": {
+    "message": "Gửi (trang → server)"
+  },
+  "ws_substitute": {
+    "message": "Thay phần khớp"
+  }
+}

@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
 /// <reference path="./utils.ts" />
+/// <reference path="./ui/i18n.ts" />
 /// <reference path="./ui/types.ts" />
 /// <reference path="./ui/view-utils.ts" />
 /// <reference path="./ui/primitives.ts" />
@@ -136,6 +137,7 @@ namespace NetworkOverridesUi {
     addApis: (apis: ApiEntry[]) => void;
   } {
     const elements = getElements();
+    applyI18n(document);
     upgradeUiPrimitives();
     const state: UiState = {
       overrides: [],
@@ -180,7 +182,11 @@ namespace NetworkOverridesUi {
     }
 
     function renderRuntimeState(): void {
-      elements.trafficStats.textContent = `Overridden ${state.stats.totalOverridden} · Failed ${state.stats.totalFailed}`;
+      elements.trafficStats.textContent = t(
+        'traffic_stats',
+        state.stats.totalOverridden,
+        state.stats.totalFailed
+      );
       elements.throttleSelect.value = state.throttlePreset;
     }
 
@@ -298,7 +304,7 @@ namespace NetworkOverridesUi {
       void persistRuleChange(
         saveState,
         nextOverrides,
-        enabled ? 'Rule enabled' : 'Rule disabled',
+        enabled ? t('toast_rule_enabled') : t('toast_rule_disabled'),
         renderRules
       );
     }
@@ -306,7 +312,7 @@ namespace NetworkOverridesUi {
     function deleteRule(index: number): void {
       if (index < 0 || index >= state.overrides.length) return;
       const nextOverrides = state.overrides.filter((_, ruleIndex) => ruleIndex !== index);
-      void persistRuleChange(saveState, nextOverrides, 'Rule deleted', renderRules);
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_deleted'), renderRules);
     }
 
     function duplicateRule(index: number): void {
@@ -314,7 +320,7 @@ namespace NetworkOverridesUi {
       const copy = JSON.parse(JSON.stringify(state.overrides[index]));
       const nextOverrides = [...state.overrides];
       nextOverrides.splice(index + 1, 0, copy);
-      void persistRuleChange(saveState, nextOverrides, 'Rule duplicated', renderRules);
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_duplicated'), renderRules);
     }
 
     function reorderRule(from: number, target: number, placement: RulePlacement): void {
@@ -322,7 +328,7 @@ namespace NetworkOverridesUi {
       const nextOverrides = moveRule(state.overrides, from, target, placement);
       if (!nextOverrides) return;
       const newIndex = nextOverrides.indexOf(moved);
-      void persistRuleChange(saveState, nextOverrides, 'Rule moved', () => {
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_moved'), () => {
         renderRules();
         // The list is rebuilt on every render; keep the keyboard on the rule that moved.
         elements.listEl.querySelectorAll<HTMLElement>('.rule-drag-handle')[newIndex]?.focus();
@@ -334,7 +340,7 @@ namespace NetworkOverridesUi {
       if (!rule) return;
 
       state.currentEditIndex = index;
-      elements.modalTitleText.textContent = 'Edit override';
+      elements.modalTitleText.textContent = t('modal_title_edit');
       elements.modalUrl.textContent = rule.pattern;
       elements.modalPattern.value = rule.pattern;
       const storedMethod = (rule.method || 'ANY').toUpperCase();
@@ -391,7 +397,7 @@ namespace NetworkOverridesUi {
 
       if (api.type.toLowerCase() === 'websocket') {
         state.currentEditIndex = null;
-        elements.modalTitleText.textContent = 'Add override';
+        elements.modalTitleText.textContent = t('modal_title_add');
         elements.modalUrl.textContent = api.url;
         elements.modalPattern.value = api.url;
         const wsRadio = elements.modal.querySelector(
@@ -409,7 +415,7 @@ namespace NetworkOverridesUi {
       }
 
       state.currentEditIndex = null;
-      elements.modalTitleText.textContent = 'Add override';
+      elements.modalTitleText.textContent = t('modal_title_add');
       elements.modalUrl.textContent = api.url;
 
       try {
@@ -502,7 +508,7 @@ namespace NetworkOverridesUi {
     /** Downloads every request captured for the active tab as a HAR 1.2 file. */
     async function exportHar(): Promise<void> {
       if (activeTabId === null) {
-        showNotification('No active tab to export from.', 'error');
+        showNotification(t('toast_har_no_tab'), 'error');
         return;
       }
       try {
@@ -514,7 +520,7 @@ namespace NetworkOverridesUi {
         });
         const apis: UiApi[] = Array.isArray(response?.apis) ? response.apis : [];
         if (apis.length === 0) {
-          showNotification('Nothing captured yet; there is nothing to export.', 'error');
+          showNotification(t('toast_har_empty'), 'error');
           return;
         }
         const har = buildHar(apis, {
@@ -532,12 +538,9 @@ namespace NetworkOverridesUi {
         anchor.remove();
         URL.revokeObjectURL(url);
         const withBody = apis.filter(api => typeof api.body === 'string').length;
-        showNotification(
-          `Exported ${apis.length} request(s), ${withBody} with a response body.`,
-          'success'
-        );
+        showNotification(t('toast_har_exported', apis.length, withBody), 'success');
       } catch (error) {
-        showNotification(`Failed to export HAR: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_har_failed', errorMessage(error)), 'error');
       }
     }
     elements.exportHarBtn?.addEventListener('click', () => void exportHar());
@@ -634,12 +637,9 @@ namespace NetworkOverridesUi {
           } else if (msg.type === 'stats') {
             updateRuntimeState(msg);
           } else if (msg.type === 'wsRuleError') {
-            showNotification(
-              `WebSocket rule "${msg.pattern}" was skipped: ${msg.message}`,
-              'error'
-            );
+            showNotification(t('toast_ws_rule_skipped', msg.pattern, msg.message), 'error');
           } else if (msg.type === 'patchRuleSkipped') {
-            showNotification(`Patch rule "${msg.pattern}": ${msg.message}`, 'warning');
+            showNotification(t('toast_patch_rule_skipped', msg.pattern, msg.message), 'warning');
           } else if (msg.type === 'throttle') {
             updateRuntimeState(msg);
           } else if (msg.type === 'status') {
@@ -703,6 +703,14 @@ namespace NetworkOverridesUi {
 
     void refreshActiveTab();
     renderRuntimeState();
+    // A language picked in the switch redraws the text drawn from code.
+    initLanguageSwitch(() => {
+      renderRules();
+      renderRuntimeState();
+      if (elements.attachStatus.style.display !== 'none') {
+        elements.attachStatus.textContent = attachStatusText(state);
+      }
+    });
     window.addEventListener('focus', () => void refreshActiveTab());
 
     function addApis(newApis: ApiEntry[]): void {

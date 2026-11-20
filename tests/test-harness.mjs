@@ -315,6 +315,9 @@ export function createUiHarness({
   promptResult = null,
   captureTypeBoxes = false,
   page = null,
+  // A _locales messages.json object: the page gets a chrome.i18n that reads it,
+  // as Chrome does for the browser's language. Without it there is no chrome.i18n.
+  i18nMessages = null,
 } = {}) {
   const html = page ? readPageHtml(page) : buildUiHtml({ captureTypeBoxes });
   const dom = new JSDOM(html, {
@@ -467,6 +470,19 @@ export function createUiHarness({
       },
     },
   };
+
+  if (i18nMessages) {
+    chrome.i18n = {
+      getMessage(key, substitutions) {
+        const entry = i18nMessages[String(key).toLowerCase()];
+        if (!entry) return '';
+        const values = [].concat(substitutions ?? []).map(String);
+        return entry.message.replace(/\$(\$|[1-9])/g, (_, token) =>
+          token === '$' ? '$' : (values[Number(token) - 1] ?? '')
+        );
+      },
+    };
+  }
 
   Object.assign(window, {
     chrome,

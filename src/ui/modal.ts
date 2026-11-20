@@ -98,7 +98,7 @@ namespace NetworkOverridesUi {
         ? 'return { status: 200, body: { ok: true } };'
         : isPatch
           ? 'set data.user.plan = "pro"\nremove data.ads'
-          : 'Custom response body';
+          : t('modal_body_placeholder');
     }
   }
 
@@ -265,7 +265,7 @@ namespace NetworkOverridesUi {
     if (!badge) return;
     badge.hidden = count === 0;
     badge.textContent = count === 0 ? '' : String(count);
-    badge.title = count === 1 ? '1 setting in use' : `${count} settings in use`;
+    badge.title = count === 1 ? t('settings_in_use_one') : t('settings_in_use_other', count);
   }
 
   /**
@@ -329,12 +329,12 @@ namespace NetworkOverridesUi {
 
   export type PresetName = 'empty-list' | 'server-error' | 'slow' | 'offline';
 
-  const PRESET_LABELS: Record<PresetName, string> = {
-    'empty-list': 'Empty list',
-    'server-error': 'Server error',
-    slow: 'Slow (3 s)',
-    offline: 'Offline',
-  };
+  function presetLabel(preset: PresetName): string {
+    if (preset === 'empty-list') return t('preset_empty_list');
+    if (preset === 'server-error') return t('preset_server_error');
+    if (preset === 'slow') return t('preset_slow');
+    return t('preset_offline');
+  }
 
   function chooseModalType(elements: Elements, type: ModalType): void {
     const radio = elements.modal.querySelector(
@@ -374,7 +374,7 @@ namespace NetworkOverridesUi {
     updateBodyFormatAction(elements);
     updateImagePreview(elements, elements.modalBody.value);
     syncAdvancedGroups(elements);
-    elements.modalFeedback.textContent = `Preset applied: ${PRESET_LABELS[preset]}.`;
+    elements.modalFeedback.textContent = t('preset_applied', presetLabel(preset));
     elements.modalFeedback.className = 'modal-feedback is-info';
   }
 }

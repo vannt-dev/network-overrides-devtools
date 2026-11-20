@@ -533,6 +533,10 @@ When a request is overridden, the extension adds these response headers:
 
 This lets you easily identify overridden requests in the DevTools Network tab.
 
+### 9.13. Interface language
+
+The interface is in English and Vietnamese. By default it follows the browser's language. The language menu at the top right switches to **English** or **Tiếng Việt**; **Auto** goes back to the browser's language. The choice is saved locally, and both languages ship inside the extension, so switching needs no network.
+
 ---
 
 ## 10. Important Notes

@@ -538,6 +538,10 @@ Khi một request bị ghi đè, extension thêm các header sau vào response:
 
 Điều này giúp bạn dễ dàng nhận biết request nào đã bị can thiệp ngay trong Network tab của DevTools.
 
+### 9.13. Ngôn ngữ giao diện
+
+Giao diện có tiếng Anh và tiếng Việt. Mặc định extension dùng ngôn ngữ của trình duyệt. Menu ngôn ngữ ở góc trên bên phải chuyển sang **English** hoặc **Tiếng Việt**; chọn **Tự động** để quay lại theo trình duyệt. Lựa chọn được lưu trong máy, và cả hai ngôn ngữ nằm sẵn trong extension nên đổi ngôn ngữ không cần mạng.
+
 ---
 
 ## 10. Lưu ý quan trọng

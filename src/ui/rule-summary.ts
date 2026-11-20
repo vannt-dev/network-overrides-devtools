@@ -8,54 +8,53 @@ namespace NetworkOverridesUi {
     return `${Math.round(ms / 100) / 10} s`;
   }
 
-  function plural(count: number, word: string): string {
-    return `${count} ${word}${count === 1 ? '' : 's'}`;
-  }
-
   /** What a rule matches: method, pattern, GraphQL operation and conditions. */
   function describeMatch(rule: OverrideRule): string {
     if (rule.kind === 'websocket') {
       const details: string[] = [];
       if (rule.wsDirection && rule.wsDirection !== 'receive') details.push(rule.wsDirection);
       if (rule.wsMatch) {
-        details.push(rule.wsMatchRegex ? `/${rule.wsMatch}/` : `contains "${rule.wsMatch}"`);
+        details.push(
+          rule.wsMatchRegex ? `/${rule.wsMatch}/` : t('summary_ws_contains', rule.wsMatch)
+        );
       }
       return `ws ${rule.pattern}${details.length ? ` (${details.join(', ')})` : ''}`;
     }
     const parts: string[] = [];
     if (rule.method && rule.method.toUpperCase() !== 'ANY') parts.push(rule.method.toUpperCase());
     parts.push(rule.pattern);
-    if (rule.graphqlOperation) parts.push(`(op: ${rule.graphqlOperation})`);
+    if (rule.graphqlOperation) parts.push(t('summary_graphql_op', rule.graphqlOperation));
     if (rule.matchQuery?.length) {
-      parts.push(`+ query ${NetworkOverridesUtils.formatQueryConditions(rule.matchQuery)}`);
+      parts.push(t('summary_query', NetworkOverridesUtils.formatQueryConditions(rule.matchQuery)));
     }
     if (rule.matchHeaders?.length) {
       const headers = NetworkOverridesUtils.formatHeaderConditions(rule.matchHeaders);
-      parts.push(`+ header ${headers.split('\n').join(', ')}`);
+      parts.push(t('summary_header', headers.split('\n').join(', ')));
     }
-    if (rule.matchBody) parts.push(`+ body has ${rule.matchBody}`);
+    if (rule.matchBody) parts.push(t('summary_body_has', rule.matchBody));
     return parts.join(' ');
   }
 
-  const WS_ACTION_TEXT: Record<string, string> = {
-    replace: 'replace frames',
-    substitute: 'substitute text in frames',
-    block: 'block frames',
-    delay: 'delay frames',
-  };
+  function wsActionText(action: string): string {
+    if (action === 'replace') return t('summary_ws_replace');
+    if (action === 'substitute') return t('summary_ws_substitute');
+    if (action === 'block') return t('summary_ws_block');
+    if (action === 'delay') return t('summary_ws_delay');
+    return action;
+  }
 
   /** What a rule does to the request or its response. */
   function describeOutcome(rule: OverrideRule): string[] {
     if (rule.kind === 'websocket') {
       const action = rule.wsAction || 'replace';
-      const text = WS_ACTION_TEXT[action] || action;
+      const text = wsActionText(action);
       const delay =
         action === 'delay' && typeof rule.delayMs === 'number' && rule.delayMs > 0
           ? ` ${formatDelay(rule.delayMs)}`
           : '';
       const parts = [`${text}${delay}`];
       if (rule.processTemplates === false && (action === 'replace' || action === 'substitute')) {
-        parts.push('templates off');
+        parts.push(t('summary_templates_off'));
       }
       return parts;
     }
@@ -64,30 +63,40 @@ namespace NetworkOverridesUi {
     const status = typeof rule.statusCode === 'number' ? String(rule.statusCode) : null;
     if (rule.failReason) {
       parts.push(
-        rule.failReason === 'Failed' ? 'network error' : `network error (${rule.failReason})`
+        rule.failReason === 'Failed'
+          ? t('summary_network_error')
+          : t('summary_network_error_reason', rule.failReason)
       );
     } else if (rule.redirectUrl) {
-      parts.push(`redirect to ${rule.redirectUrl}`);
+      parts.push(t('summary_redirect', rule.redirectUrl));
     } else {
       if (status) parts.push(status);
-      if (rule.mode === 'patch') parts.push(`patch ${plural(rule.patch?.length || 0, 'field')}`);
-      else if (rule.mode === 'script') parts.push('script');
-      else if (rule.mode === 'file') parts.push('base64 body');
-      else if (!status) parts.push('mock body');
-      if (rule.respondAtRequest && rule.mode !== 'patch') parts.push('no server');
+      if (rule.mode === 'patch') {
+        const fields = rule.patch?.length || 0;
+        parts.push(fields === 1 ? t('summary_patch_one') : t('summary_patch_other', fields));
+      } else if (rule.mode === 'script') parts.push(t('summary_script'));
+      else if (rule.mode === 'file') parts.push(t('summary_base64'));
+      else if (!status) parts.push(t('summary_mock_body'));
+      if (rule.respondAtRequest && rule.mode !== 'patch') parts.push(t('summary_no_server'));
       if (rule.processTemplates === false && (rule.mode === 'text' || rule.mode === 'file')) {
-        parts.push('templates off');
+        parts.push(t('summary_templates_off'));
       }
     }
     if (typeof rule.delayMs === 'number' && rule.delayMs > 0) {
-      parts.push(`slow ${formatDelay(rule.delayMs)}`);
+      parts.push(t('summary_slow', formatDelay(rule.delayMs)));
     }
     if (!rule.failReason && !rule.redirectUrl && rule.responseHeaders?.length) {
-      parts.push(`+${plural(rule.responseHeaders.length, 'response header')}`);
+      const count = rule.responseHeaders.length;
+      parts.push(
+        count === 1 ? t('summary_response_headers_one') : t('summary_response_headers_other', count)
+      );
     }
-    if (rule.requestBody) parts.push('new request body');
+    if (rule.requestBody) parts.push(t('summary_request_body'));
     if (rule.requestHeaders?.length) {
-      parts.push(`+${plural(rule.requestHeaders.length, 'request header')}`);
+      const count = rule.requestHeaders.length;
+      parts.push(
+        count === 1 ? t('summary_request_headers_one') : t('summary_request_headers_other', count)
+      );
     }
     return parts;
   }

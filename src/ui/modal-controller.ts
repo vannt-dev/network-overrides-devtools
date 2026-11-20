@@ -29,6 +29,7 @@ namespace NetworkOverridesUi {
     elements.modalFeedback.textContent = message;
     elements.modalFeedback.className = `modal-feedback is-${kind}`;
     if (field) {
+      revealField(field);
       field.setAttribute('aria-invalid', 'true');
       field.focus();
       field.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
@@ -53,6 +54,16 @@ namespace NetworkOverridesUi {
     elements.modal?.addEventListener('input', event => {
       (event.target as HTMLElement).removeAttribute?.('aria-invalid');
       if (elements.modalFeedback.classList.contains('is-error')) clearModalFeedback(elements);
+      syncAdvancedGroups(elements);
+    });
+    // Counts follow every change, including header rows added or removed
+    // with the table editor's buttons.
+    elements.modal?.addEventListener('change', () => syncAdvancedGroups(elements));
+    elements.modal?.addEventListener('click', () => syncAdvancedGroups(elements));
+    elements.modalPresets?.addEventListener('click', event => {
+      const button = (event.target as HTMLElement).closest?.('[data-preset]') as HTMLElement | null;
+      if (!button) return;
+      applyPreset(elements, button.dataset.preset as PresetName);
     });
     elements.modal?.addEventListener('keydown', (event: KeyboardEvent) => {
       const isCtrlOrCmd = event.ctrlKey || event.metaKey;
@@ -92,11 +103,18 @@ namespace NetworkOverridesUi {
     typeRadios.forEach(radio => {
       radio.addEventListener('change', event => {
         const value = (event.target as HTMLInputElement).value as ModalType;
+        // The status is hidden for other types: a prefilled one must not be saved with them.
+        if (value !== 'body') elements.modalStatus.value = '';
         updateModalVisibility(elements, value);
+        // The error to simulate lives under Timing & failure: show it.
+        if (value === 'fail') revealField(elements.modalFailReason);
+        syncAdvancedGroups(elements);
       });
     });
     elements.modalWsAction?.addEventListener('change', () => {
       updateModalVisibility(elements, 'websocket');
+      if (elements.modalWsAction.value === 'delay') revealField(elements.modalDelay);
+      syncAdvancedGroups(elements);
     });
 
     elements.saveOverrideBtn?.addEventListener('click', async () => {

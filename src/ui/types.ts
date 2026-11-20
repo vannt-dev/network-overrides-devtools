@@ -51,7 +51,7 @@ namespace NetworkOverridesUi {
     modalHeaders: HTMLTextAreaElement;
     modalFailFields: HTMLDivElement;
     modalFailReason: HTMLSelectElement;
-    modalAdvancedFields: HTMLDivElement;
+    modalAdvancedFields: HTMLDetailsElement;
     modalWsFields: HTMLDivElement;
     modalWsDirection: HTMLSelectElement;
     modalWsMatch: HTMLInputElement;
@@ -98,6 +98,9 @@ namespace NetworkOverridesUi {
     curlSwaggerFileInput?: HTMLInputElement;
     curlSwaggerImportBtn?: HTMLButtonElement;
     curlSwaggerCloseModal?: HTMLElement;
+    importMenuBtn?: HTMLButtonElement;
+    importMenu?: HTMLElement;
+    modalPresets?: HTMLElement;
   }
 
   export interface AppOptions {

@@ -106,59 +106,75 @@
       </ul>
 
       <h3>3.3. Override Modal</h3>
-      <p>Click an API to open the modal with:</p>
+      <p>
+        Click <strong>Mock this</strong> on an API (or the API row) to open the modal. It shows the
+        everyday fields first:
+      </p>
       <ul>
-        <li><strong>Pattern</strong>: URL pattern for matching.</li>
         <li>
-          <strong>HTTP Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>,
-          <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the
-          rule to a specific request method. Defaults to <code>Any</code>, which matches every
-          method (same as before this field existed). Pre-filled from the captured request's method
-          when opening the modal from a captured API.
+          <strong>Presets</strong>: one click fills the fields below.
+          <strong>Empty list</strong> (status 200 and <code>[]</code>, or the JSON object with its
+          lists emptied), <strong>Server error</strong> (status 500), <strong>Slow (3 s)</strong> (a
+          3000 ms delay) and <strong>Offline</strong> (a network error,
+          <code>InternetDisconnected</code>).
+        </li>
+        <li><strong>URL pattern</strong>: URL pattern for matching.</li>
+        <li>
+          <strong>Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>, <code>POST</code>,
+          <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the rule to a specific
+          request method. Defaults to <code>Any</code>, which matches every method. Pre-filled from
+          the captured request's method when opening the modal from a captured API.
         </li>
         <li>
-          <strong>Only when the request has…</strong> (optional, folded): query parameters, request
-          headers and a text the request body must contain. See <a href="#match-conditions">5.7</a>.
+          <strong>Mock response / Redirect / Network error / WebSocket</strong>: Choose the rule
+          type.
         </li>
         <li>
-          <strong>Override body / Redirect to URL / Fail request</strong>: Choose the override type
-          via radio buttons.
+          <strong>Status code</strong> (mock response): blank keeps the real status. Pre-filled from
+          the captured request when it can carry a body.
         </li>
-        <li>
-          <strong>Patch the real JSON response</strong> (in the Response body mode list): keep the
-          server's response and change only some of its JSON fields. See
-          <a href="#patch-response">6.6</a>.
-        </li>
-        <li>
-          <strong>Fail request</strong>: The request never receives a response — it fails at the
-          network layer with the chosen reason (<code>Failed</code>, <code>TimedOut</code>,
-          <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
-          <code>InternetDisconnected</code>). Use it to test offline and timeout handling.
-        </li>
-        <li>
-          <strong>Advanced row</strong> (body rules): force a <strong>Status</strong> (100–599), add
-          <strong>Extra headers</strong> (one <code>Header-Name: value</code> per line, same names
-          overwrite the original), and set a <strong>Delay</strong> in milliseconds (also available
-          for fail rules — combine <code>TimedOut</code> with a long delay to simulate a real
-          timeout).
-        </li>
-        <li>
-          <strong>Response body</strong>: Custom response content (for body override), with mode
-          selector (Text / Raw base64).
-        </li>
-        <li>
-          <strong>Answer without calling the server</strong> (body rules): the request is answered
-          in the browser before it is sent, so the server is never called and unreachable hosts
-          still get the mock. The rule alone makes the response (blank status = 200); CORS
-          preflights are answered for you.
-        </li>
+        <li><strong>Response body</strong>: Custom response content (for a mock response).</li>
         <li><strong>Redirect URL</strong>: Target URL with wildcard substitution support.</li>
         <li><strong>Format JSON</strong>: Pretty-print JSON body.</li>
-        <li>
-          <strong>Body type badge</strong>: Auto-detects <code>text</code> or <code>json</code>.
-        </li>
         <li><strong>Save Override</strong>: Save the rule.</li>
       </ul>
+      <p>Everything else is in the collapsed <strong>Advanced</strong> section, in groups:</p>
+      <ul>
+        <li>
+          <strong>Conditions</strong>: GraphQL operation (see <a href="#graphql-operation">5.8</a>),
+          query parameters, request headers and a text the request body must contain (see
+          <a href="#match-conditions">5.7</a>), and
+          <strong>Apply on every site (global rule)</strong>.
+        </li>
+        <li>
+          <strong>Timing &amp; failure</strong>: <strong>Delay (ms)</strong>;
+          <strong>Simulate a network error</strong> for the Network error type (<code>Failed</code>,
+          <code>TimedOut</code>, <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
+          <code>InternetDisconnected</code>; combine <code>TimedOut</code> with a long delay to
+          simulate a real timeout); and <strong>Answer without calling the server</strong> (mock
+          response: the request is answered in the browser before it is sent, so the server is never
+          called and unreachable hosts still get the mock; blank status = 200; CORS preflights are
+          answered for you).
+        </li>
+        <li>
+          <strong>Response headers</strong>: headers to add (one <code>Header-Name: value</code> per
+          line; same names overwrite the original).
+        </li>
+        <li>
+          <strong>Body type: patch &amp; script</strong>: the response body is Text, Raw base64,
+          Script (JavaScript) or <strong>Patch the real JSON response</strong> (see
+          <a href="#patch-response">6.6</a>), and whether <code>{{...}}</code> placeholders are
+          filled in.
+        </li>
+        <li>
+          <strong>Change the request</strong>: replace the request body sent to the server, and add
+          or replace request headers.
+        </li>
+      </ul>
+      <p>
+        A group that holds a value shows a count on its header and opens by itself when you edit the
+        rule, so no setting is hidden.
+      </p>
 
       <!-- ============ 4 ============ -->
       <h2 id="basic-usage">4. Basic Usage</h2>
@@ -185,11 +201,16 @@
       <p><strong>Method 1 (Click API):</strong></p>
       <ol>
         <li>Go to <strong>Captured APIs</strong> or <strong>Overridden</strong> tab.</li>
-        <li>Click an API you want to override.</li>
         <li>
-          The modal opens with the pattern pre-filled, and the <strong>Method</strong> dropdown
-          pre-selected to the captured request's method if it's one of
-          <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code>DELETE</code>
+          Click <strong>Mock this</strong> on the API you want to override (clicking the row does
+          the same). If a rule already covers the API, that rule opens for editing instead.
+        </li>
+        <li>
+          The modal opens with the pattern and the real status pre-filled, and the
+          <strong>Method</strong> dropdown pre-selected to the captured request's method if it's one
+          of <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code
+            >DELETE</code
+          >
           (otherwise it defaults to <code>Any</code>).
         </li>
         <li>If the API has a stored response body, it will be auto-filled.</li>
@@ -281,9 +302,9 @@ Pattern: all</pre>
 
       <h3 id="match-conditions">5.7. Query, header and body conditions</h3>
       <p>
-        Open <strong>Only when the request has…</strong> in the modal to narrow a rule to some
-        requests of the same URL. Every condition you fill in must hold, together with the pattern
-        and method. Leave them empty and the rule matches as before.
+        Open <strong>Advanced → Conditions</strong> in the modal to narrow a rule to some requests
+        of the same URL. Every condition you fill in must hold, together with the pattern and
+        method. Leave them empty and the rule matches as before.
       </p>
       <ul>
         <li>
@@ -305,9 +326,9 @@ Pattern: all</pre>
         </li>
       </ul>
       <p>
-        A rule with conditions shows an <strong>IF</strong> badge in the rules list; hover it to see
-        them. A CORS preflight carries neither the headers nor the body of the request behind it, so
-        only the query conditions are checked for the preflight.
+        A rule's line in the rules list shows its conditions, such as
+        <code>+ query page=2</code>. A CORS preflight carries neither the headers nor the body of
+        the request behind it, so only the query conditions are checked for the preflight.
       </p>
 
       <h3 id="graphql-operation">5.8. GraphQL operation</h3>
@@ -408,10 +429,10 @@ set data.flags = {"beta": true}</pre>
         </li>
       </ul>
       <p>
-        The real status and headers are kept; <strong>Status</strong>,
-        <strong>Extra Response Headers</strong> and <strong>Delay</strong> still apply when you fill
-        them. <code>Content-Length</code> is worked out again for the new body. The JSON is sent
-        back compact. Templates are not processed in patch values, and
+        The real status and headers are kept; <strong>Status code</strong>,
+        <strong>Response headers</strong> and <strong>Delay</strong> still apply when you fill them.
+        <code>Content-Length</code> is worked out again for the new body. The JSON is sent back
+        compact. Templates are not processed in patch values, and
         <strong>Answer without calling the server</strong> is not offered, since a patch needs the
         real response.
       </p>
@@ -419,8 +440,8 @@ set data.flags = {"beta": true}</pre>
         When the response is not JSON or has no body (an HTML page, a <code>204</code>, a redirect),
         it passes through unchanged and the panel shows a warning. A change that cannot apply, such
         as a path through a text field or an array index past the end, is skipped and named in the
-        same warning; the other changes still apply. The rule shows a <code>PATCH</code> badge with
-        the number of changes in the Rules tab; hover it to see them.
+        same warning; the other changes still apply. The rule's line in the Rules tab ends with
+        <code>patch N fields</code>; hover it to see the changes.
       </p>
 
       <h3 id="script-response">6.7. Script responses</h3>
@@ -540,15 +561,16 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           <strong>Enabled checkbox</strong>: at the start of the row. Unchecked means the rule is
           disabled (see 8.5).
         </li>
-        <li><strong>Pattern</strong>: Bold blue text.</li>
         <li>
-          <strong>Method badge</strong> (if set to something other than <code>Any</code>): a small
-          badge (e.g. <code>POST</code>) next to the body preview.
+          <strong><code>GLOBAL</code> badge</strong>: the rule applies on every site.
         </li>
-        <li><strong>Redirect URL</strong> (if set): Arrow → followed by the URL.</li>
         <li>
-          <strong>Body preview</strong>: First 80 characters + mode label
-          (<code>text</code>/<code>file</code>).
+          <strong>One-line summary</strong>: what the rule matches → what it does, for example
+          <code>GET /api/orders + query page=2 → 500 · slow 3 s</code>,
+          <code>POST /graphql (op: GetUser) → patch 2 fields</code>,
+          <code>/api/* → network error</code> or
+          <code>ws wss://example.com/socket → replace frames</code>. Hover it for the details; click
+          it to open the editor.
         </li>
         <li>
           <strong>Applied count</strong>: a small number after the rule, the times it was applied in
@@ -617,8 +639,8 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>8.7. Import rules</h3>
       <p>
-        Click <strong>Import</strong> in the <strong>Rules</strong> tab and pick a previously
-        exported (or hand-crafted) JSON file:
+        Click <strong>Import → Rules file (.json)</strong> in the <strong>Rules</strong> tab and
+        pick a previously exported (or hand-crafted) JSON file:
       </p>
       <ul>
         <li>
@@ -725,14 +747,15 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>9.8. Global Cross-Domain Rules</h3>
       <p>
-        Mark rules as <strong>Global</strong> to intercept matching requests across all domains.
-        Global rules display a <code>GLOBAL</code> badge in the rules list.
+        Tick <strong>Advanced → Conditions → Apply on every site (global rule)</strong> to intercept
+        matching requests across all domains. Global rules display a <code>GLOBAL</code> badge in
+        the rules list.
       </p>
 
       <h3>9.9. Request Payload Modification</h3>
       <p>
         Override outgoing <code>POST</code>, <code>PUT</code>, or <code>PATCH</code> request
-        payloads before they reach the server.
+        payloads before they reach the server, under <strong>Advanced → Change the request</strong>.
       </p>
 
       <h3>9.10. Network Throttling and Traffic Analytics</h3>
@@ -744,8 +767,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>9.11. HAR File Import</h3>
       <p>
-        Drag &amp; drop or import <code>.har</code> files (HTTP Archive) to generate mock rules in
-        bulk from recorded traffic.
+        In the <strong>Rules</strong> tab, click
+        <strong>Import → cURL or OpenAPI / Swagger…</strong> and paste or choose a
+        <code>.har</code> file (HTTP Archive) to generate mock rules in bulk from recorded traffic.
+        The same dialog takes a cURL command or an OpenAPI / Swagger spec.
       </p>
 
       <h3>9.12. Editor Keyboard Shortcuts</h3>

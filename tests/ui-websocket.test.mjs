@@ -103,7 +103,7 @@ for (const [name, setup, message] of [
   });
 }
 
-test('the rules list shows a WS badge and a summary, and edit restores the fields', async () => {
+test('the rules list shows a WebSocket summary, and edit restores the fields', async () => {
   const rule = {
     pattern: 'wss://x.test/*',
     body: '',
@@ -119,8 +119,10 @@ test('the rules list shows a WS badge and a summary, and edit restores the field
   click(harness, harness.document.querySelector('[data-tab="overrides"]'));
   await flushUi(harness.window);
 
-  assert.equal(harness.document.querySelector('.ws-badge').textContent, 'WS');
-  assert.equal(harness.document.querySelector('.ws-summary').textContent, 'send · /^ping/ → block');
+  assert.equal(
+    harness.document.querySelector('.rule-summary').textContent,
+    'ws wss://x.test/* (send, /^ping/) → block frames'
+  );
 
   click(harness, harness.document.querySelector('.edit-btn'));
   await flushUi(harness.window);

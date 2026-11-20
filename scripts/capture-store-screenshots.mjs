@@ -270,6 +270,12 @@ try {
     json({ users: [{ id: 42, name: 'Ada Lovelace', role: 'admin', plan: 'pro' }] })
   );
   await popup.click('#format-json-btn');
+  // Show the request headers and the delay from the editor's Advanced groups.
+  await popup.evaluate(() => {
+    for (const id of ['modal-advanced-fields', 'modal-group-request', 'modal-group-timing']) {
+      document.getElementById(id).open = true;
+    }
+  });
   await popup.click('#modal-request-headers-table .add-header-row-btn');
   await popup.fill('#modal-request-headers-table .header-row-key', 'Authorization');
   await popup.fill('#modal-request-headers-table .header-row-value', 'Bearer mock-token');

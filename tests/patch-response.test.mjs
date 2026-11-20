@@ -466,10 +466,10 @@ test('Rule editor saves patch operations and shows them again when editing', asy
 
   click(harness, '[data-tab="overrides"]');
   await flushUi(harness.window);
-  const badge = harness.document.querySelector('.patch-badge');
-  assert.ok(badge, 'the rule list shows that the rule patches the real response');
-  assert.match(badge.textContent, /PATCH/);
-  assert.match(badge.title, /data\.user\.plan/);
+  const summary = harness.document.querySelector('.rule-summary');
+  assert.ok(summary, 'the rule list shows that the rule patches the real response');
+  assert.match(summary.textContent, /→ patch 2 fields$/);
+  assert.match(summary.title, /data\.user\.plan/);
 
   click(harness, '.edit-btn');
   await flushUi(harness.window);

@@ -2,6 +2,7 @@
 /// <reference path="./types.ts" />
 /// <reference path="./primitives.ts" />
 /// <reference path="./curl.ts" />
+/// <reference path="./rule-summary.ts" />
 
 namespace NetworkOverridesUi {
   export const TYPE_ORDER = [
@@ -197,11 +198,13 @@ namespace NetworkOverridesUi {
         const badge = document.createElement('span');
         badge.className = 'overridden-badge';
         badge.textContent = 'Overridden';
+        badge.title = summarizeRule(match.rule);
         infoDiv.appendChild(badge);
       } else if (isDisabledOverridden) {
         const badge = document.createElement('span');
         badge.className = 'overridden-badge overridden-badge-disabled';
         badge.textContent = 'Disabled';
+        badge.title = `Disabled rule: ${summarizeRule(match.rule)}`;
         infoDiv.appendChild(badge);
       }
 
@@ -223,6 +226,22 @@ namespace NetworkOverridesUi {
         });
       });
 
+      // The same as clicking the row, made visible: opens the editor filled
+      // from this request, or the rule that already covers it.
+      const mockBtn = createUiButton('Mock this', {
+        className: 'mock-btn',
+        variant: 'ghost',
+        size: 'small',
+        title: match
+          ? 'Edit the rule that already covers this request'
+          : 'Open the rule editor filled from this request',
+      });
+      mockBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        onApiClick(api);
+      });
+
+      actionsDiv.appendChild(mockBtn);
       actionsDiv.appendChild(copyCurlBtn);
 
       item.appendChild(infoDiv);

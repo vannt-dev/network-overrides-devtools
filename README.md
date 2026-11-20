@@ -70,19 +70,22 @@ anything else is not published by vannt-dev.
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
 - **Four override types:**
-  - **Override body**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response.
-  - **Redirect URL**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
-  - **Fail request**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
-  - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket frames" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
+  - **Mock response**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response.
+  - **Redirect**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
+  - **Network error**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
+  - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
-- **One-click override creation**: Click any API in the list to open the modal and create/edit an override rule.
+- **One-click override creation**: Click **Mock this** (or the row) on any captured API to open the editor filled from the real request: URL pattern, method, status and response body. When a rule already covers the request, its rule opens instead, so nothing is duplicated.
+- **A short editor**: the editor shows only the URL pattern, method, type, status and response body. Everything else sits in a collapsed **Advanced** section, grouped as Conditions, Timing & failure, Response headers, Body type (patch & script) and Change the request. A group that holds a value opens by itself and shows how many settings it holds, so nothing is hidden silently.
+- **One-click presets**: **Empty list** (status 200 with `[]`, or the real JSON with its lists emptied), **Server error** (500), **Slow (3 s)** (a 3000 ms delay) and **Offline** (a network error), filled into the editor's own fields.
+- **One line per rule**: the Rules tab shows each rule as what it matches and what it does, for example `GET /api/orders + query page=2 → 500 · slow 3 s` or `ws wss://example.com/socket → replace frames`. Click it for the full editor.
 - **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
 - **Per-rule hit counter**: every rule in the Rules tab shows how many times it was applied in this session (`0` greyed, a number highlighted), with the time and URL of the last one in its tooltip, so you can tell at a glance whether a rule is being applied at all. **Reset counts** starts over. The counts live in the session only and are never saved, exported or imported with the rules.
 - **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.
-- **HAR File Import**: Drag & drop or import `.har` files (HTTP Archive) to generate mock rules in bulk.
+- **HAR File Import**: Paste or choose a `.har` file (HTTP Archive) under **Import → cURL or OpenAPI / Swagger…** to generate mock rules in bulk.
 - **HAR File Export**: The **HAR** button next to the search box saves every request captured for the tab as a HAR 1.2 file: method, URL, request headers and payload, status, and the response body where one was captured. Response headers and timings are not recorded by the capture, so they are left empty. The file can be imported again to turn the capture into mock rules.
 - **Traffic Analytics**: Track total overridden and failed request statistics per active tab.
 - **Network Throttling Presets**: Apply No throttling, Fast 3G, Slow 3G, or Offline conditions to the active tab through the Chrome DevTools Protocol.
@@ -293,7 +296,7 @@ Optional fields on an override rule:
 
 ### Answer without calling the server
 
-A body rule normally answers at the response stage: the request reaches the server first, and its response is replaced. With **Answer without calling the server** (`respondAtRequest: true`) the rule is fulfilled at the request stage with `Fetch.fulfillRequest`, so the server is never contacted: no side effects on `POST`, and unreachable hosts or endpoints that do not exist yet still get the mock.
+A body rule normally answers at the response stage: the request reaches the server first, and its response is replaced. With **Answer without calling the server** (`respondAtRequest: true`, under **Advanced → Timing & failure**) the rule is fulfilled at the request stage with `Fetch.fulfillRequest`, so the server is never contacted: no side effects on `POST`, and unreachable hosts or endpoints that do not exist yet still get the mock.
 
 The response is built from the rule alone: a blank status means `200`, and the headers are the rule's own (plus the CORS headers below). Templates work (they read the request, not the response); a script sees `request.response` as `{ status: null, headers: {}, body: null }`. Cross-origin requests work with no extra headers: the CORS preflight is answered for you, and the mock allows the page's origin unless the rule sets its own `Access-Control-Allow-*` headers.
 
@@ -303,7 +306,7 @@ The response is built from the rule alone: a blank status means `200`, and the h
 
 ### Query, header and body conditions
 
-`matchQuery`, `matchHeaders` and `matchBody` narrow a rule further. Each one you set must hold, together with the pattern, method and GraphQL operation; a rule without them matches exactly as before. In the editor they sit under **Only when the request has…**.
+`matchQuery`, `matchHeaders` and `matchBody` narrow a rule further. Each one you set must hold, together with the pattern, method and GraphQL operation; a rule without them matches exactly as before. In the editor they sit under **Advanced → Conditions**.
 
 - **Query parameters** (`page=2&debug`): a name with a value needs one of that parameter's values to equal it, after URL decoding; a name alone needs the parameter to be present with any value. Names are case-sensitive.
 - **Request headers** (one `Name: value` or `Name` per line): names ignore case, values must be equal.
@@ -345,20 +348,31 @@ Browse your application as normal. Requests appear in the **Captured APIs** tab,
 
 ### 4. Create an override
 
-Click any API in the list to open the override modal. You can also add a rule manually (DevTools panel only) by filling in the pattern, body, and clicking "Add override".
+Click **Mock this** on any API in the list (or the row itself) to open the editor, filled from the real request. You can also click **+** to start from an empty rule, or add a rule manually (DevTools panel only) by filling in the pattern, body, and clicking "Add override".
 
-In the modal, choose:
+The editor shows the everyday fields first:
 
-- **Override body**: Enter custom response body text. Use `Text` mode for raw text or `Raw base64` for pre-encoded content, or `Patch the real JSON response` to change only some fields of what the server sends. The **Format JSON** action appears when the body contains valid JSON.
-- **Redirect to URL**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
-- **Fail request**: Pick a fail reason (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`) — the request fails at the network layer instead of receiving a response.
-- **WebSocket frames**: Replace, substitute, block or delay the text frames sent or received on a socket whose URL matches. Clicking a **WS** entry opens this type directly. See [WebSocket frame rules](#websocket-frame-rules).
+- **Presets**: **Empty list**, **Server error**, **Slow (3 s)** and **Offline** fill the fields below in one click.
+- **URL pattern** and **Method**.
+- The type of rule:
+  - **Mock response**: answer with a **Status code** (blank keeps the real one) and a **Response body**. The **Format JSON** action appears when the body contains valid JSON.
+  - **Redirect**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
+  - **Network error**: the request fails at the network layer instead of receiving a response. Pick the error under **Advanced → Timing & failure → Simulate a network error** (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`); the group opens when you choose this type.
+  - **WebSocket**: Replace, substitute, block or delay the text frames sent or received on a socket whose URL matches. Clicking a **WS** entry opens this type directly. See [WebSocket frame rules](#websocket-frame-rules).
 
-The advanced fields can override **Request Headers** and **Response Headers** in either Key–Value or Raw mode, force a **Status** (100–599), and set a **Delay** in milliseconds. Body and fail rules can use delay; combine `TimedOut` with a long delay to simulate a real timeout.
+Everything else is under **Advanced**, in groups that stay closed until you need them:
+
+- **Conditions**: GraphQL operation, query parameters, request headers, request body text, and **Apply on every site (global rule)**.
+- **Timing & failure**: a **Delay** in milliseconds, the network error to simulate, and **Answer without calling the server**. Body and fail rules can use delay; combine `TimedOut` with a long delay to simulate a real timeout.
+- **Response headers**: headers to add, in Key–Value or Raw mode.
+- **Body type: patch & script**: `Text`, `Raw base64`, `Script (JavaScript)` or `Patch the real JSON response`, and whether `{{...}}` placeholders are filled in.
+- **Change the request**: replace the request body, and add or replace request headers.
+
+When you edit a rule, every group that holds a value opens and shows a count on its header.
 
 ### 5. Manage rules
 
-Switch to the **Rules** tab to edit, copy, delete, or enable/disable saved rules. A disabled rule stays visible but dimmed and is skipped by the background worker. Use **Export**/**Import** to share the current domain's rules; import provides explicit **Append rules** and **Replace rules** choices when rules already exist. The **Overridden** tab shows captured APIs currently matched by a rule.
+Switch to the **Rules** tab to edit, copy, delete, or enable/disable saved rules. Each rule is one line: what it matches → what it does, such as `POST /graphql (op: GetUser) → patch 2 fields` or `/api/* → network error`; click it to open the editor. A disabled rule stays visible but dimmed and is skipped by the background worker. Use **Export** to save the current domain's rules and **Import** to load them back: the Import menu holds **Rules file (.json)** and **cURL or OpenAPI / Swagger…** (a cURL command, an OpenAPI / Swagger spec or a HAR file). A rules file import provides explicit **Append rules** and **Replace rules** choices when rules already exist; rule files exported by earlier versions import unchanged. The **Overridden** tab shows captured APIs currently matched by a rule; hover the **Overridden** badge to see that rule's summary.
 
 ### 6. Copy cURL
 

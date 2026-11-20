@@ -252,7 +252,7 @@ test('Editing a fail rule pre-fills the fail type, reason, and delay', async () 
   assert.equal(harness.document.getElementById('modal-fail-fields').style.display, '');
 });
 
-test('Rules list shows status, delay, and FAIL badges', async () => {
+test('Rules list summarises status, delay and network errors', async () => {
   const harness = createUiHarness({
     storageState: {
       overrides: [
@@ -270,11 +270,8 @@ test('Rules list shows status, delay, and FAIL badges', async () => {
   await flushUi(harness.window);
 
   const items = harness.document.querySelectorAll('#list .override-item');
-  assert.equal(items[0].querySelector('.override-status-badge').textContent, '500');
-  assert.equal(items[0].querySelector('.override-delay-badge').textContent, '⏱ 3000ms');
-  const failBadge = items[1].querySelector('.override-fail-badge');
-  assert.equal(failBadge.textContent, 'FAIL');
-  assert.equal(failBadge.title, 'TimedOut');
+  assert.equal(items[0].querySelector('.rule-summary').textContent, 'a → 500 · slow 3 s');
+  assert.equal(items[1].querySelector('.rule-summary').textContent, 'b → network error (TimedOut)');
 });
 
 test('Import rejects invalid mock-power fields', async () => {

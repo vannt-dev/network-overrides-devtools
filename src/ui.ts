@@ -72,7 +72,7 @@ namespace NetworkOverridesUi {
       modalHeaders: document.getElementById('modal-headers') as HTMLTextAreaElement,
       modalFailFields: document.getElementById('modal-fail-fields') as HTMLDivElement,
       modalFailReason: document.getElementById('modal-fail-reason') as HTMLSelectElement,
-      modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDivElement,
+      modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDetailsElement,
       modalWsFields: document.getElementById('modal-ws-fields') as HTMLDivElement,
       modalWsDirection: document.getElementById('modal-ws-direction') as HTMLSelectElement,
       modalWsMatch: document.getElementById('modal-ws-match') as HTMLInputElement,
@@ -120,6 +120,9 @@ namespace NetworkOverridesUi {
       curlSwaggerFileInput: document.getElementById('curl-swagger-file-input') as HTMLInputElement,
       curlSwaggerImportBtn: document.getElementById('curl-swagger-import-btn') as HTMLButtonElement,
       curlSwaggerCloseModal: document.getElementById('curl-swagger-close') as HTMLElement,
+      importMenuBtn: document.getElementById('import-menu-btn') as HTMLButtonElement,
+      importMenu: document.getElementById('import-menu') as HTMLElement,
+      modalPresets: document.getElementById('modal-presets') as HTMLElement,
       modalRequestHeadersTable: document.getElementById(
         'modal-request-headers-table'
       ) as HTMLDivElement,
@@ -429,6 +432,13 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = '';
 
       prefillAdvancedFields(elements, null);
+      // Start from the real status, unless it cannot carry the mocked body.
+      const status = api.statusCode;
+      if (typeof status === 'number' && status >= 200 && status <= 599) {
+        if (status !== 204 && (status < 300 || status >= 400)) {
+          elements.modalStatus.value = String(status);
+        }
+      }
       updateBodyFormatAction(elements);
       updateImagePreview(elements, elements.modalBody.value);
       openModal(elements);

@@ -74,16 +74,4 @@ namespace NetworkOverridesUi {
     if (elements.modalGlobalRule?.checked) rule.isGlobal = true;
     return { rule };
   }
-
-  export function describeWebSocketRule(rule: OverrideRule): string {
-    const direction = rule.wsDirection || 'receive';
-    const match = rule.wsMatch
-      ? rule.wsMatchRegex
-        ? `/${rule.wsMatch}/`
-        : `contains "${rule.wsMatch}"`
-      : 'any frame';
-    const action = rule.wsAction || 'replace';
-    const suffix = action === 'delay' ? ` ${rule.delayMs || 0}ms` : '';
-    return `${direction} · ${match} → ${action}${suffix}`;
-  }
 }

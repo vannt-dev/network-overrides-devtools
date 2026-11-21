@@ -109,6 +109,22 @@ body {
     background 0.15s,
     border-color 0.15s;
 }
+.switch-container .ui-language-select {
+  width: auto;
+  margin-left: auto;
+  height: 26px;
+  padding: 2px 20px 2px 6px;
+  border: 1px solid #c9d7e6;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #35506b;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ui-language-select:focus-visible {
+  outline: 2px solid #8cc8ff;
+  outline-offset: 2px;
+}
 .header-btn:hover {
   color: #0a66c2;
   background: #f4f8fc;

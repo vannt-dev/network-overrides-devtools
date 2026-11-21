@@ -336,6 +336,11 @@ Two entry points:
 - **Popup**: Click the extension icon in the toolbar. Shows "Captured APIs", "Overridden", and "Rules" tabs.
 - **DevTools panel**: Open DevTools (F12) → "Overrides" tab. Same UI plus a manual rule editor row at the top of the "Rules" tab.
 
+The UI is in English and Vietnamese (Tiếng Việt). It follows the browser's language; the
+language menu beside the Enable Overrides switch changes it to English or Tiếng Việt, and **Auto** goes back to
+the browser's language. The choice is saved in `chrome.storage.local`, and both languages ship
+inside the extension (`_locales/`), so switching needs no network.
+
 ### 2. Enable overrides
 
 Toggle **Enable Overrides** on. The extension attaches the debugger to the current tab.

@@ -90,12 +90,7 @@ namespace NetworkOverridesUi {
         updateBodyFormatAction(elements);
         updateImagePreview(elements, elements.modalBody.value);
       } catch {
-        showModalFeedback(
-          elements,
-          'Response body is not valid JSON.',
-          'error',
-          elements.modalBody
-        );
+        showModalFeedback(elements, t('error_body_not_json'), 'error', elements.modalBody);
       }
     });
 
@@ -125,21 +120,21 @@ namespace NetworkOverridesUi {
         if (state.currentEditIndex !== null) nextOverrides[state.currentEditIndex] = rule;
         else nextOverrides.push(rule);
 
-        const originalButtonText = elements.saveOverrideBtn.textContent || 'Save Override';
+        const originalButtonText = elements.saveOverrideBtn.textContent || t('modal_save');
         elements.saveOverrideBtn.disabled = true;
-        elements.saveOverrideBtn.textContent = 'Saving…';
-        showModalFeedback(elements, 'Saving override…', 'info');
+        elements.saveOverrideBtn.textContent = t('modal_saving_button');
+        showModalFeedback(elements, t('modal_saving'), 'info');
         try {
           const result = await saveState(nextOverrides);
           renderRules();
           closeModal(elements);
-          showPersistenceNotification('Override saved', result);
+          showPersistenceNotification(t('toast_override_saved'), result);
         } catch (error) {
           state.overrides = previousOverrides;
           const reason = error instanceof Error ? error.message : String(error);
           showModalFeedback(
             elements,
-            `Could not save override${reason ? `: ${reason}` : '.'}`,
+            reason ? t('error_save_override_reason', reason) : t('error_save_override'),
             'error'
           );
         } finally {
@@ -150,7 +145,7 @@ namespace NetworkOverridesUi {
 
       const pattern = elements.modalPattern.value.trim();
       if (!pattern) {
-        showModalFeedback(elements, 'Pattern is required.', 'error', elements.modalPattern);
+        showModalFeedback(elements, t('error_pattern_required'), 'error', elements.modalPattern);
         return;
       }
 
@@ -181,7 +176,7 @@ namespace NetworkOverridesUi {
         if (!redirectUrl) {
           showModalFeedback(
             elements,
-            'Redirect URL is required for a redirect override.',
+            t('error_redirect_required'),
             'error',
             elements.modalRedirectUrl
           );
@@ -194,12 +189,7 @@ namespace NetworkOverridesUi {
       if (overrideType !== 'websocket' && elements.modalStatus.value.trim()) {
         statusCode = parseInt(elements.modalStatus.value.trim(), 10);
         if (isNaN(statusCode) || statusCode < 100 || statusCode > 599) {
-          showModalFeedback(
-            elements,
-            'Status code must be between 100 and 599.',
-            'error',
-            elements.modalStatus
-          );
+          showModalFeedback(elements, t('error_status_range'), 'error', elements.modalStatus);
           return;
         }
       }
@@ -208,12 +198,7 @@ namespace NetworkOverridesUi {
       if (elements.modalDelay.value.trim()) {
         delayMs = parseInt(elements.modalDelay.value.trim(), 10);
         if (isNaN(delayMs) || delayMs < 0 || delayMs > 120000) {
-          showModalFeedback(
-            elements,
-            'Delay must be between 0 and 120000 ms.',
-            'error',
-            elements.modalDelay
-          );
+          showModalFeedback(elements, t('error_delay_range'), 'error', elements.modalDelay);
           return;
         }
       }
@@ -229,12 +214,7 @@ namespace NetworkOverridesUi {
       }
 
       if (hasMalformedHeaderLine(elements.modalHeaders.value)) {
-        showModalFeedback(
-          elements,
-          'Extra response headers must use one “Header-Name: value” per line.',
-          'error',
-          elements.modalHeaders
-        );
+        showModalFeedback(elements, t('error_response_headers'), 'error', elements.modalHeaders);
         return;
       }
       if (
@@ -243,7 +223,7 @@ namespace NetworkOverridesUi {
       ) {
         showModalFeedback(
           elements,
-          'Request headers must use one “Header-Name: value” per line.',
+          t('error_request_headers'),
           'error',
           elements.modalRequestHeaders
         );

@@ -127,11 +127,11 @@ namespace NetworkOverridesUi {
     tabBtns.forEach(btn => {
       const tabType = btn.dataset.tab;
       if (tabType === 'other') {
-        btn.textContent = `Captured APIs (${capturedCount})`;
+        btn.textContent = t('tab_captured', capturedCount);
       } else if (tabType === 'overridden') {
-        btn.textContent = `Overridden (${overriddenCount})`;
+        btn.textContent = t('tab_overridden', overriddenCount);
       } else if (tabType === 'overrides') {
-        btn.textContent = `Rules (${state.overrides.length})`;
+        btn.textContent = t('tab_rules', state.overrides.length);
       }
     });
 
@@ -149,10 +149,10 @@ namespace NetworkOverridesUi {
       emptyDiv.className = 'empty-state';
       emptyDiv.textContent =
         state.activeTab === 'overridden'
-          ? 'No captured requests match active overrides.'
+          ? t('empty_overridden')
           : filterText
-            ? 'No requests match search filter.'
-            : 'No network requests captured yet. Refresh page or trigger APIs.';
+            ? t('empty_search')
+            : t('empty_captured');
       elements.apisList.appendChild(emptyDiv);
       return;
     }
@@ -197,14 +197,14 @@ namespace NetworkOverridesUi {
       if (isOverridden) {
         const badge = document.createElement('span');
         badge.className = 'overridden-badge';
-        badge.textContent = 'Overridden';
+        badge.textContent = t('badge_overridden');
         badge.title = summarizeRule(match.rule);
         infoDiv.appendChild(badge);
       } else if (isDisabledOverridden) {
         const badge = document.createElement('span');
         badge.className = 'overridden-badge overridden-badge-disabled';
-        badge.textContent = 'Disabled';
-        badge.title = `Disabled rule: ${summarizeRule(match.rule)}`;
+        badge.textContent = t('badge_disabled');
+        badge.title = t('badge_disabled_title', summarizeRule(match.rule));
         infoDiv.appendChild(badge);
       }
 
@@ -215,26 +215,24 @@ namespace NetworkOverridesUi {
         className: 'curl-btn',
         variant: 'ghost',
         size: 'small',
-        title: 'Copy cURL command',
+        title: t('api_copy_curl_title'),
       });
       copyCurlBtn.addEventListener('click', e => {
         e.stopPropagation();
         const cmd = generateCurlCommand(api);
         navigator.clipboard.writeText(cmd).then(() => {
-          copyCurlBtn.innerText = 'Copied!';
+          copyCurlBtn.innerText = t('api_copied');
           setTimeout(() => (copyCurlBtn.innerText = 'cURL'), 1500);
         });
       });
 
       // The same as clicking the row, made visible: opens the editor filled
       // from this request, or the rule that already covers it.
-      const mockBtn = createUiButton('Mock this', {
+      const mockBtn = createUiButton(t('api_mock_this'), {
         className: 'mock-btn',
         variant: 'ghost',
         size: 'small',
-        title: match
-          ? 'Edit the rule that already covers this request'
-          : 'Open the rule editor filled from this request',
+        title: match ? t('api_mock_edit_title') : t('api_mock_new_title'),
       });
       mockBtn.addEventListener('click', e => {
         e.stopPropagation();

@@ -11,16 +11,16 @@ namespace NetworkOverridesUi {
   export function describeMatchConditions(rule: OverrideRule): string[] {
     const lines: string[] = [];
     if (rule.matchQuery?.length) {
-      lines.push(`query ${NetworkOverridesUtils.formatQueryConditions(rule.matchQuery)}`);
+      lines.push(t('detail_query', NetworkOverridesUtils.formatQueryConditions(rule.matchQuery)));
     }
     for (const header of rule.matchHeaders || []) {
       lines.push(
         typeof header.value === 'string'
-          ? `header ${header.name}: ${header.value}`
-          : `header ${header.name}`
+          ? t('detail_header_value', header.name, header.value)
+          : t('detail_header', header.name)
       );
     }
-    if (rule.matchBody) lines.push(`body contains ${rule.matchBody}`);
+    if (rule.matchBody) lines.push(t('detail_body_contains', rule.matchBody));
     return lines;
   }
 
@@ -29,34 +29,26 @@ namespace NetworkOverridesUi {
     const lines = [summarizeRule(rule)];
     const conditions = describeMatchConditions(rule);
     if (rule.kind !== 'websocket' && conditions.length > 0) {
-      lines.push('Only when the request has:', ...conditions);
+      lines.push(t('detail_only_when'), ...conditions);
     }
     if (rule.mode === 'patch' && rule.kind !== 'websocket' && !rule.failReason) {
-      lines.push(
-        'Changes these fields of the real JSON response:',
-        NetworkOverridesUtils.formatPatchOperations(rule.patch)
-      );
+      lines.push(t('detail_patch'), NetworkOverridesUtils.formatPatchOperations(rule.patch));
     }
     if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
-      lines.push('Answered in the browser; the server is never called');
+      lines.push(t('detail_no_server'));
     }
-    lines.push('Click to edit');
+    lines.push(t('detail_click_to_edit'));
     return lines;
   }
 
   /** What a rule's hit badge says, in its tooltip and to a screen reader. */
   export function describeRuleHit(hit: RuleHit | undefined, idle: boolean): string[] {
     if (!hit || hit.count < 1) {
-      return idle
-        ? [
-            'Not applied yet, although requests went by.',
-            'Check the pattern, the method and the conditions.',
-          ]
-        : ['Not applied yet in this session'];
+      return idle ? [t('hits_idle'), t('hits_idle_check')] : [t('hits_none')];
     }
-    const lines = [`Applied ${hit.count} ${hit.count === 1 ? 'time' : 'times'} in this session`];
+    const lines = [hit.count === 1 ? t('hits_count_one') : t('hits_count_other', hit.count)];
     if (Number.isFinite(hit.lastAt)) {
-      lines.push(`Last applied at ${new Date(hit.lastAt).toLocaleTimeString()}`);
+      lines.push(t('hits_last', new Date(hit.lastAt).toLocaleTimeString()));
     }
     if (hit.lastUrl) lines.push(hit.lastUrl);
     return lines;
@@ -128,8 +120,8 @@ namespace NetworkOverridesUi {
       handle.className = 'rule-drag-handle';
       handle.textContent = '⠿';
       handle.draggable = true;
-      handle.title = 'Drag to reorder, or press the up and down arrow keys';
-      handle.setAttribute('aria-label', `Reorder rule ${rule.pattern}`);
+      handle.title = t('rule_drag_title');
+      handle.setAttribute('aria-label', t('rule_drag_label', rule.pattern));
       handle.addEventListener('click', e => e.stopPropagation());
       handle.addEventListener('keydown', e => {
         if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -181,7 +173,7 @@ namespace NetworkOverridesUi {
       cb.type = 'checkbox';
       cb.checked = isEnabled;
       cb.classList.add('rule-toggle', 'override-enabled-toggle');
-      cb.title = isEnabled ? 'Disable rule' : 'Enable rule';
+      cb.title = isEnabled ? t('rule_disable') : t('rule_enable');
       cb.addEventListener('change', e => {
         e.stopPropagation();
         onToggle(index, cb.checked);
@@ -193,7 +185,7 @@ namespace NetworkOverridesUi {
       if (rule.isGlobal) {
         const globalBadge = document.createElement('span');
         globalBadge.className = 'global-badge rule-global-badge';
-        globalBadge.textContent = 'GLOBAL';
+        globalBadge.textContent = t('rule_global_badge');
         globalBadge.style.cssText =
           'background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;font-size:10px;margin-right:4px;font-weight:bold;';
         span.appendChild(globalBadge);
@@ -221,33 +213,33 @@ namespace NetworkOverridesUi {
       const actionsDiv = document.createElement('div');
       actionsDiv.className = 'rule-actions';
 
-      const editBtn = createUiButton('Edit', {
+      const editBtn = createUiButton(t('rule_edit'), {
         className: 'action-btn edit-btn',
         variant: 'ghost',
         size: 'small',
-        title: 'Edit rule',
+        title: t('rule_edit_title'),
       });
       editBtn.addEventListener('click', e => {
         e.stopPropagation();
         onEdit(index);
       });
 
-      const dupBtn = createUiButton('Copy', {
+      const dupBtn = createUiButton(t('rule_copy'), {
         className: 'action-btn duplicate-btn',
         variant: 'ghost',
         size: 'small',
-        title: 'Duplicate rule',
+        title: t('rule_copy_title'),
       });
       dupBtn.addEventListener('click', e => {
         e.stopPropagation();
         onDuplicate(index);
       });
 
-      const delBtn = createUiButton('Delete', {
+      const delBtn = createUiButton(t('rule_delete'), {
         className: 'action-btn delete-btn del-btn',
         variant: 'danger',
         size: 'small',
-        title: 'Delete rule',
+        title: t('rule_delete_title'),
       });
       delBtn.addEventListener('click', e => {
         e.stopPropagation();

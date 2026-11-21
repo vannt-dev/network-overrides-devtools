@@ -82,13 +82,13 @@ namespace NetworkOverridesUi {
       try {
         await setThrottle(preset);
         showNotification(
-          `Network preset changed to ${elements.throttleSelect.selectedOptions[0]?.text || preset}.`,
+          t('toast_throttle_changed', elements.throttleSelect.selectedOptions[0]?.text || preset),
           'success'
         );
       } catch (error) {
         state.throttlePreset = previousPreset;
         elements.throttleSelect.value = previousPreset;
-        showNotification(`Could not update network preset: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_throttle_failed', errorMessage(error)), 'error');
       } finally {
         elements.throttleSelect.disabled = false;
       }
@@ -100,7 +100,7 @@ namespace NetworkOverridesUi {
       button.disabled = true;
       button.classList.add('loading');
       button.setAttribute('aria-busy', 'true');
-      button.title = 'Refreshing captured requests…';
+      button.title = t('refreshing_title');
       try {
         await loadApis();
       } finally {
@@ -125,7 +125,7 @@ namespace NetworkOverridesUi {
     });
     elements.addApiBtn?.addEventListener('click', () => {
       state.currentEditIndex = null;
-      elements.modalTitleText.textContent = 'Add override';
+      elements.modalTitleText.textContent = t('modal_title_add');
       elements.modalUrl.textContent = '';
       elements.modalPattern.value = '';
       elements.modalMethod.value = 'ANY';
@@ -145,7 +145,7 @@ namespace NetworkOverridesUi {
     elements.addBtn?.addEventListener('click', async () => {
       const pattern = elements.patternInput.value.trim();
       if (!pattern) {
-        showNotification('Pattern is required before adding a rule.', 'error');
+        showNotification(t('toast_pattern_required'), 'error');
         elements.patternInput.focus();
         return;
       }
@@ -159,9 +159,9 @@ namespace NetworkOverridesUi {
       try {
         const result = await saveState([...state.overrides, rule]);
         renderRules();
-        showPersistenceNotification('Rule added', result);
+        showPersistenceNotification(t('toast_rule_added'), result);
       } catch (error) {
-        showNotification(`Could not add rule: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_add_rule_failed', errorMessage(error)), 'error');
       }
     });
     elements.enableCheckbox?.addEventListener('change', async () => {
@@ -175,19 +175,21 @@ namespace NetworkOverridesUi {
       } catch (error) {
         state.enabled = previousEnabled;
         elements.enableCheckbox.checked = previousEnabled;
-        showNotification(`Could not save interception setting: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_enable_save_failed', errorMessage(error)), 'error');
         return;
       }
 
       try {
         await notifyBackground();
         showNotification(
-          nextEnabled ? 'Interception enabled.' : 'Interception disabled.',
+          nextEnabled ? t('toast_interception_on') : t('toast_interception_off'),
           'success'
         );
       } catch (error) {
         showNotification(
-          `${nextEnabled ? 'Enabled' : 'Disabled'} setting saved, but the background update failed: ${errorMessage(error)}`,
+          nextEnabled
+            ? t('toast_enabled_sync_failed', errorMessage(error))
+            : t('toast_disabled_sync_failed', errorMessage(error)),
           'warning',
           7000
         );

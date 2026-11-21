@@ -37,11 +37,11 @@ namespace NetworkOverridesUi {
 
     const modeToggle = document.createElement('div');
     modeToggle.className = 'headers-editor-mode';
-    const tableModeBtn = createUiButton('Key-Value', {
+    const tableModeBtn = createUiButton(t('headers_mode_table'), {
       variant: 'ghost',
       size: 'small',
     });
-    const rawModeBtn = createUiButton('Raw', { variant: 'ghost', size: 'small' });
+    const rawModeBtn = createUiButton(t('headers_mode_raw'), { variant: 'ghost', size: 'small' });
     modeToggle.appendChild(tableModeBtn);
     modeToggle.appendChild(rawModeBtn);
 
@@ -54,24 +54,24 @@ namespace NetworkOverridesUi {
 
       const keyInput = createUiInput({
         className: 'header-row-key',
-        placeholder: 'Header name',
+        placeholder: t('headers_name'),
         value: name,
-        ariaLabel: 'Header name',
+        ariaLabel: t('headers_name'),
       });
 
       const valInput = createUiInput({
         className: 'header-row-value',
-        placeholder: 'Header value',
+        placeholder: t('headers_value'),
         value,
-        ariaLabel: 'Header value',
+        ariaLabel: t('headers_value'),
       });
 
       const deleteBtn = createUiButton('×', {
         className: 'header-row-delete',
         variant: 'danger',
         size: 'small',
-        title: 'Delete header',
-        ariaLabel: 'Delete header',
+        title: t('headers_delete'),
+        ariaLabel: t('headers_delete'),
       });
 
       const syncToTextarea = () => {
@@ -100,7 +100,7 @@ namespace NetworkOverridesUi {
 
     headers.forEach(h => addRow(h.name, h.value));
 
-    const addBtn = createUiButton('+ Add Header', {
+    const addBtn = createUiButton(t('headers_add'), {
       className: 'add-header-row-btn',
       variant: 'outline',
       size: 'small',

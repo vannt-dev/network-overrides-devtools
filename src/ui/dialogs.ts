@@ -52,7 +52,7 @@ namespace NetworkOverridesUi {
       const cancel = document.createElement('button');
       cancel.type = 'button';
       cancel.className = 'ui-btn ui-btn--secondary';
-      cancel.textContent = 'Cancel';
+      cancel.textContent = t('dialog_cancel');
       actions.appendChild(cancel);
 
       if (options.secondaryLabel) {
@@ -119,7 +119,7 @@ namespace NetworkOverridesUi {
   export async function showConfirmDialog(
     title: string,
     message: string,
-    primaryLabel = 'Confirm',
+    primaryLabel = t('dialog_confirm'),
     secondaryLabel?: string,
     danger = false
   ): Promise<boolean | null> {
@@ -141,7 +141,7 @@ namespace NetworkOverridesUi {
     return (await openDialog({
       title,
       message,
-      primaryLabel: 'Save',
+      primaryLabel: t('dialog_save'),
       inputLabel,
       inputPlaceholder,
     })) as string | null;

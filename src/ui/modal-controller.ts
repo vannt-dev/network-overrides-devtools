@@ -148,6 +148,16 @@ namespace NetworkOverridesUi {
         showModalFeedback(elements, t('error_pattern_required'), 'error', elements.modalPattern);
         return;
       }
+      const patternProblem = NetworkOverridesUtils.patternError(pattern);
+      if (patternProblem) {
+        showModalFeedback(
+          elements,
+          t('error_pattern_invalid', patternProblem),
+          'error',
+          elements.modalPattern
+        );
+        return;
+      }
 
       const method = elements.modalMethod.value;
       const selectedType = elements.modal.querySelector(

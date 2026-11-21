@@ -496,3 +496,29 @@ test('switching the rule type back to a mock keeps the pattern editable', async 
   }
   assert.equal($(harness, '#modal-pattern').disabled, false);
 });
+
+test('a broken /regex/ pattern is refused with the reason, and nothing is saved', async () => {
+  const harness = await panelHarness({
+    apis: [{ url: API_URL, type: 'fetch', method: 'GET', statusCode: 200 }],
+  });
+  click(harness, $(harness, '.api-item .mock-btn'));
+  await flushUi(harness.window);
+  input(harness, $(harness, '#modal-pattern'), '/api/(users/');
+  await save(harness);
+  assert.match($(harness, '#modal-feedback').textContent, /^Invalid regex pattern: /);
+  assert.equal($(harness, '#modal-pattern').getAttribute('aria-invalid'), 'true');
+  assert.deepEqual(savedRules(harness), []);
+
+  input(harness, $(harness, '#modal-pattern'), '/api\/(users|orders)/i');
+  await save(harness);
+  assert.equal(savedRules(harness)[0].pattern, '/api\/(users|orders)/i');
+});
+
+test('Add Manual refuses a broken /regex/ pattern', async () => {
+  const harness = await panelHarness();
+  input(harness, $(harness, '#pattern'), '/api/[users/');
+  click(harness, $(harness, '#add'));
+  await flushUi(harness.window);
+  assert.match(harness.window.document.body.textContent, /Invalid regex pattern: /);
+  assert.deepEqual(savedRules(harness), []);
+});

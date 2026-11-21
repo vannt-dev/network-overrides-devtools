@@ -150,6 +150,12 @@ namespace NetworkOverridesUi {
         elements.patternInput.focus();
         return;
       }
+      const patternProblem = NetworkOverridesUtils.patternError(pattern);
+      if (patternProblem) {
+        showNotification(t('error_pattern_invalid', patternProblem), 'error');
+        elements.patternInput.focus();
+        return;
+      }
       const rule: OverrideRule = {
         pattern,
         body: elements.bodyInput.value,

@@ -113,6 +113,9 @@
   "error_no_active_tab": {
     "message": "Không có tab nào đang mở"
   },
+  "error_pattern_invalid": {
+    "message": "Pattern regex không hợp lệ: $1"
+  },
   "error_pattern_required": {
     "message": "Cần nhập pattern."
   },

@@ -113,6 +113,9 @@
   "error_no_active_tab": {
     "message": "No active tab is available"
   },
+  "error_pattern_invalid": {
+    "message": "Invalid regex pattern: $1"
+  },
   "error_pattern_required": {
     "message": "Pattern is required."
   },

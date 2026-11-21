@@ -9,6 +9,19 @@ namespace NetworkOverridesUtils {
     return /^[dgimsuvy]*$/.test(pattern.slice(lastSlash + 1));
   }
 
+  /** Why a /regex/flags pattern cannot compile (the engine's message), or null if it is fine. */
+  export function patternError(pattern: string): string | null {
+    const trimmed = pattern.trim();
+    if (!isRegexPattern(trimmed)) return null;
+    const lastSlash = trimmed.lastIndexOf('/');
+    try {
+      new RegExp(trimmed.slice(1, lastSlash), trimmed.slice(lastSlash + 1));
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  }
+
   export function escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }

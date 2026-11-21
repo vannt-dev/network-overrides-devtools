@@ -210,7 +210,7 @@
     "message": "URL pattern"
   },
   "field_pattern_hint": {
-    "message": "Part of the URL. <code>*</code> matches anything; <code>/regex/</code> also works."
+    "message": "Part of the URL. Use <code>*</code> to match more URLs, e.g. <code>/api/users/*</code>; <code>/regex/</code> also works."
   },
   "field_query": {
     "message": "Query parameters"

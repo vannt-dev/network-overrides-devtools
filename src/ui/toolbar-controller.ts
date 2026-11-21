@@ -139,7 +139,6 @@ namespace NetworkOverridesUi {
       prefillAdvancedFields(elements, null);
       prefillWebSocketFields(elements, null);
       updateModalVisibility(elements, 'body');
-      elements.modalPattern.disabled = false;
       openModal(elements);
     });
     elements.addBtn?.addEventListener('click', async () => {

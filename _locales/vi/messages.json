@@ -210,7 +210,7 @@
     "message": "URL pattern"
   },
   "field_pattern_hint": {
-    "message": "Một phần của URL. <code>*</code> khớp mọi thứ; <code>/regex/</code> cũng được."
+    "message": "Một phần của URL. Dùng <code>*</code> để khớp nhiều URL hơn, ví dụ <code>/api/users/*</code>; <code>/regex/</code> cũng được."
   },
   "field_query": {
     "message": "Query parameter"

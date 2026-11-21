@@ -121,7 +121,9 @@ namespace NetworkOverridesUi {
       void refreshApis(capturedRefreshButton);
     });
     elements.infoBtn?.addEventListener('click', () => {
-      chrome.tabs.create?.({ url: chrome.runtime.getURL?.('guide.html') || 'guide.html' });
+      // The guide in the language the UI shows: each locale names its guide page.
+      const page = t('guide_page');
+      chrome.tabs.create?.({ url: chrome.runtime.getURL?.(page) || page });
     });
     elements.addApiBtn?.addEventListener('click', () => {
       state.currentEditIndex = null;

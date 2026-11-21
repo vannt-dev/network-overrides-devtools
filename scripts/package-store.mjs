@@ -13,6 +13,7 @@ const requiredPaths = [
   'panel.html',
   'popup.html',
   'guide.html',
+  'guide-vi.html',
   'styles.css',
   'styles',
   'dist',

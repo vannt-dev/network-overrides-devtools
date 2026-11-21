@@ -154,7 +154,8 @@ dist/                        # Bundled JavaScript outputs (background.bundle.js,
 devtools.html                # DevTools tab registrar page
 panel.html                   # DevTools panel page
 popup.html                   # Extension action popup page
-guide.html                   # Bundled offline user guide
+guide.html                   # Bundled offline user guide (English)
+guide-vi.html                # The same guide in Vietnamese
 manifest.json                # Chrome Manifest V3 configuration
 ```
 

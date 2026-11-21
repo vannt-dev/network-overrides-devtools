@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>Network Overrides — Hướng dẫn sử dụng</title>
+    <link rel="stylesheet" href="styles/guide.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Network Overrides DevTools <small>Hướng dẫn sử dụng</small></h1>
+      <p class="guide-language">
+        Bản khác: <a href="guide.html" hreflang="en" lang="en">English</a>
+      </p>
+
+      <div class="toc">
+        <h3>Mục lục</h3>
+        <ol>
+          <li><a href="#introduction">Giới thiệu</a></li>
+          <li><a href="#installation">Cài đặt</a></li>
+          <li><a href="#interface">Giao diện</a></li>
+          <li><a href="#basic-usage">Cách dùng cơ bản</a></li>
+          <li><a href="#patterns">URL pattern</a></li>
+          <li><a href="#override-body">Body ghi đè</a></li>
+          <li><a href="#redirect">Chuyển hướng URL</a></li>
+          <li><a href="#managing-rules">Quản lý rule</a></li>
+          <li><a href="#features">Tính năng khác</a></li>
+          <li><a href="#notes">Lưu ý quan trọng</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ol>
+      </div>
+
+      <!-- ============ 1 ============ -->
+      <h2 id="introduction">1. Giới thiệu</h2>
+      <p>
+        <strong>Network Overrides DevTools</strong> là extension Chrome/Edge cho developer, dùng để
+        <strong>chặn và ghi đè</strong> response của API ngay trong trình duyệt, không cần sửa code
+        backend.
+      </p>
+      <h3>Công dụng chính</h3>
+      <ul>
+        <li>Mock API response để test frontend khi backend chưa sẵn sàng.</li>
+        <li>
+          Debug bằng cách đổi response để thử các trạng thái khác nhau (lỗi, dữ liệu rỗng, trường
+          hợp biên).
+        </li>
+        <li>Chuyển request từ API cũ sang API mới mà không sửa code frontend.</li>
+        <li>Xem nhanh các API request đã bắt và chép thành lệnh cURL.</li>
+      </ul>
+
+      <!-- ============ 2 ============ -->
+      <h2 id="installation">2. Cài đặt</h2>
+      <h3>Yêu cầu</h3>
+      <ul>
+        <li>Chrome hoặc Microsoft Edge (bản mới nhất).</li>
+        <li>Extension được nạp dạng unpacked từ source.</li>
+      </ul>
+      <h3>Các bước</h3>
+      <ol>
+        <li>Mở <code>chrome://extensions</code> (hoặc <code>edge://extensions</code>).</li>
+        <li>Bật <strong>Developer mode</strong> (góc trên bên phải).</li>
+        <li>Bấm <strong>Load unpacked</strong>.</li>
+        <li>Chọn thư mục gốc của project (thư mục chứa <code>manifest.json</code>).</li>
+        <li>Icon extension sẽ xuất hiện trên thanh toolbar.</li>
+      </ol>
+      <h3>Kiểm tra</h3>
+      <ul>
+        <li>Icon extension xuất hiện trên thanh toolbar.</li>
+        <li>Mở DevTools (F12) → tab <strong>Overrides</strong>.</li>
+      </ul>
+
+      <!-- ============ 3 ============ -->
+      <h2 id="interface">3. Giao diện</h2>
+      <h3>3.1. Popup</h3>
+      <p>Bấm icon extension trên toolbar. Popup gồm:</p>
+      <ul>
+        <li>
+          <strong>Tiêu đề</strong>: "Network Overrides API" với hai nút nhỏ:
+          <strong>Làm mới danh sách request</strong> và <strong>Mở hướng dẫn sử dụng</strong>.
+        </li>
+        <li><strong>Bật ghi đè</strong>: bật/tắt tính năng ghi đè.</li>
+        <li>
+          <strong>Ngôn ngữ</strong>: Tự động, English hoặc Tiếng Việt (xem
+          <a href="#features">9.14</a>).
+        </li>
+        <li>
+          <strong>3 tab</strong>:
+          <ul>
+            <li>
+              <strong>API đã bắt (N)</strong>: các request đã bắt, đếm theo thời gian thực, nhóm
+              theo loại resource (XHR, Fetch, Doc, JS, CSS).
+            </li>
+            <li>
+              <strong>Đã ghi đè (N)</strong>: số API đang khớp một rule đang bật, đếm theo thời gian
+              thực.
+            </li>
+            <li><strong>Rule (N)</strong>: tổng số và danh sách mọi rule đã lưu.</li>
+          </ul>
+        </li>
+        <li><strong>Ô tìm kiếm</strong>: lọc API theo một phần của URL.</li>
+      </ul>
+
+      <h3>3.2. DevTools Panel</h3>
+      <p>Mở DevTools (F12) → tab <strong>Overrides</strong>. Giống popup, có thêm:</p>
+      <ul>
+        <li>
+          <strong>Form nhập nhanh</strong>: form thêm rule nhanh (pattern + body) phía trên tab
+          Rule.
+        </li>
+        <li>
+          <strong>Tự nạp HAR</strong>: khi mở panel, tự nạp lịch sử request từ
+          <code>chrome.devtools.network.getHAR()</code>.
+        </li>
+      </ul>
+
+      <h3>3.3. Modal tạo/sửa rule</h3>
+      <p>
+        Bấm <strong>Mock request này</strong> trên một API (hoặc bấm vào dòng API) để mở modal.
+        Modal hiện các field hay dùng trước:
+      </p>
+      <ul>
+        <li>
+          <strong>Mẫu nhanh</strong>: một click điền sẵn các field bên dưới.
+          <strong>Danh sách rỗng</strong> (status 200 và <code>[]</code>, hoặc chính object JSON đó
+          với các mảng bị làm rỗng), <strong>Lỗi server</strong> (status 500),
+          <strong>Chậm (3 s)</strong> (delay 3000 ms) và <strong>Mất mạng</strong> (lỗi mạng,
+          <code>InternetDisconnected</code>).
+        </li>
+        <li><strong>URL pattern</strong>: pattern để khớp URL.</li>
+        <li>
+          <strong>Method</strong>: danh sách (<code>Bất kỳ</code>, <code>GET</code>,
+          <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) để giới hạn
+          rule theo method. Mặc định là <code>Bất kỳ</code>, khớp mọi method. Khi mở từ một API đã
+          bắt, method được điền sẵn theo request đó.
+        </li>
+        <li>
+          <strong>Mock response / Chuyển hướng / Lỗi mạng / WebSocket</strong>: chọn loại rule.
+        </li>
+        <li>
+          <strong>Status code</strong> (mock response): để trống thì giữ status thật. Được điền sẵn
+          từ request đã bắt nếu status đó mang được body.
+        </li>
+        <li><strong>Response body</strong>: nội dung response tự đặt (với mock response).</li>
+        <li>
+          <strong>URL chuyển hướng</strong>: URL đích, dùng được <code>*</code> để thay giá trị.
+        </li>
+        <li><strong>Định dạng JSON</strong>: làm đẹp JSON body.</li>
+        <li><strong>Lưu rule</strong>: lưu rule.</li>
+      </ul>
+      <p>Các tùy chọn còn lại nằm trong mục <strong>Nâng cao</strong> (thu gọn sẵn), chia nhóm:</p>
+      <ul>
+        <li>
+          <strong>Điều kiện</strong>: GraphQL operation (xem <a href="#graphql-operation">5.8</a>),
+          query parameter, request header và đoạn text mà request body phải chứa (xem
+          <a href="#match-conditions">5.7</a>), và
+          <strong>Áp dụng trên mọi trang (rule toàn cục)</strong>.
+        </li>
+        <li>
+          <strong>Thời gian &amp; lỗi</strong>: <strong>Độ trễ (ms)</strong>;
+          <strong>Giả lập lỗi mạng</strong> cho loại Lỗi mạng (<code>Failed</code>,
+          <code>TimedOut</code>, <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
+          <code>InternetDisconnected</code>; kết hợp <code>TimedOut</code> với delay dài để giả lập
+          timeout thật); và <strong>Trả lời mà không gọi server</strong> (mock response: request
+          được trả lời ngay trong trình duyệt trước khi gửi đi, nên server không bao giờ bị gọi và
+          host không truy cập được vẫn nhận mock; status để trống = 200; CORS preflight được trả lời
+          giúp bạn).
+        </li>
+        <li>
+          <strong>Response header</strong>: header thêm vào response (mỗi dòng một
+          <code>Header-Name: value</code>; trùng tên thì ghi đè header gốc).
+        </li>
+        <li>
+          <strong>Kiểu body: patch &amp; script</strong>: response body là Text, Base64 thô, Script
+          (JavaScript) hoặc <strong>Patch JSON response thật</strong> (xem
+          <a href="#patch-response">6.6</a>), và có điền placeholder <code>{{...}}</code> hay không.
+        </li>
+        <li>
+          <strong>Đổi request</strong>: thay request body gửi tới server, thêm hoặc thay request
+          header.
+        </li>
+      </ul>
+      <p>
+        Nhóm nào đang có giá trị sẽ hiện số đếm trên tiêu đề và tự mở ra khi bạn sửa rule, nên không
+        thiết lập nào bị giấu.
+      </p>
+
+      <!-- ============ 4 ============ -->
+      <h2 id="basic-usage">4. Cách dùng cơ bản</h2>
+      <h3>Bước 1: Mở extension</h3>
+      <ul>
+        <li><strong>Cách A</strong>: bấm icon extension trên toolbar → mở popup.</li>
+        <li><strong>Cách B</strong>: mở DevTools (F12) → tab <strong>Overrides</strong>.</li>
+      </ul>
+
+      <h3>Bước 2: Bật ghi đè</h3>
+      <p>Gạt <strong>Bật ghi đè</strong> sang ON.</p>
+      <blockquote>
+        Extension sẽ gắn debugger vào tab hiện tại và bắt đầu theo dõi request.
+      </blockquote>
+
+      <h3>Bước 3: Bắt API</h3>
+      <p>
+        Dùng ứng dụng như bình thường. Các API request sẽ tự xuất hiện trong tab
+        <strong>API đã bắt</strong>.
+      </p>
+
+      <h3>Bước 4: Tạo rule</h3>
+      <p><strong>Cách 1 (bấm vào API):</strong></p>
+      <ol>
+        <li>Vào tab <strong>API đã bắt</strong> hoặc <strong>Đã ghi đè</strong>.</li>
+        <li>
+          Bấm <strong>Mock request này</strong> trên API muốn ghi đè (bấm vào dòng cũng vậy). Nếu đã
+          có rule áp dụng cho API này, modal mở rule đó để sửa.
+        </li>
+        <li>
+          Modal mở với pattern và status thật được điền sẵn, và <strong>Method</strong> chọn sẵn
+          theo method của request nếu đó là
+          <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code>DELETE</code>
+          (nếu không thì là <code>Bất kỳ</code>).
+        </li>
+        <li>Nếu API có response body đã lưu, body được tự điền.</li>
+        <li>Sửa nội dung → <strong>Lưu rule</strong>.</li>
+      </ol>
+      <p><strong>Cách 2 (nhập tay, chỉ ở DevTools panel):</strong></p>
+      <ol>
+        <li>Vào tab <strong>Rule</strong>.</li>
+        <li>
+          Trong form phía trên, nhập <strong>Pattern</strong> và <strong>Response body</strong>.
+        </li>
+        <li>Bấm <strong>Thêm thủ công</strong>.</li>
+      </ol>
+
+      <h3>Bước 5: Kiểm tra</h3>
+      <ul>
+        <li>API bị ghi đè có viền xanh trong danh sách.</li>
+        <li>Tab <strong>Đã ghi đè</strong> hiện số lượng và danh sách API đang khớp.</li>
+        <li>Response thật được thay bằng nội dung của bạn.</li>
+      </ul>
+
+      <h3>Bước 6: Tắt</h3>
+      <ul>
+        <li>Gạt công tắc sang OFF để tắt mọi rule.</li>
+        <li>Hoặc vào tab <strong>Rule</strong> → bấm <strong>Xóa</strong> trên rule cần bỏ.</li>
+      </ul>
+
+      <!-- ============ 5 ============ -->
+      <h2 id="patterns">5. URL pattern</h2>
+
+      <h3>5.1. Chuỗi con (mặc định)</h3>
+      <p>Mọi URL <strong>chứa</strong> chuỗi pattern đều khớp.</p>
+      <pre>
+Pattern:  /api/users
+Matches:  https://example.com/api/users
+          https://example.com/api/users/123
+          https://example.com/v2/api/users/list
+No match: https://example.com/api/admin</pre>
+
+      <h3>5.2. Wildcard <code>*</code></h3>
+      <p>
+        Dùng <code>*</code> để khớp một đoạn bất kỳ của URL. Mỗi <code>*</code> cũng
+        <strong>bắt</strong> giá trị đã khớp để dùng trong URL chuyển hướng.
+      </p>
+      <pre>
+Pattern:  /api/*/users/*
+Matches:  /api/v1/users/123  → captures: ["v1", "123"]
+          /api/v2/users/abc  → captures: ["v2", "abc"]</pre>
+
+      <h3>5.3. Regex <code>/pattern/flags</code></h3>
+      <p>
+        Pattern bắt đầu và kết thúc bằng <code>/</code> được hiểu là regex. Flag (nếu có) đặt sau
+        dấu <code>/</code> cuối.
+      </p>
+      <pre>
+Pattern:  /\/api\/v\d+\/users/i
+Matches:  /api/v1/users (case-insensitive)
+          /API/V2/Users
+No match: /api/admin/users</pre>
+
+      <pre>
+Pattern:  /\/api\/user\/(\d+)/
+Matches:  /api/user/42 (captures: ["42"])</pre>
+
+      <h3>5.4. Khớp tất cả</h3>
+      <pre>
+Pattern: *
+Pattern: all</pre>
+      <p>Khớp <strong>mọi request</strong>.</p>
+
+      <h3>5.5. Thứ tự rule</h3>
+      <p>
+        Rule được xét theo thứ tự trong danh sách. <strong>Rule đầu tiên khớp sẽ được dùng</strong>.
+        Để đổi ưu tiên, kéo rule bằng tay cầm <code>⠿</code> và thả vào nửa trên hoặc nửa dưới của
+        rule khác, hoặc focus tay cầm rồi bấm phím mũi tên lên/xuống. Thứ tự mới được lưu ngay. Rule
+        của domain luôn chạy trước rule toàn cục, nên rule chỉ di chuyển trong nhóm của nó.
+      </p>
+
+      <h3>5.6. HTTP method</h3>
+      <p>
+        Ngoài URL pattern, rule còn có thể giới hạn theo HTTP method qua field
+        <strong>Method</strong> trong modal (xem <a href="#interface">3.3</a> và
+        <a href="#basic-usage">4</a>). Rule có method cụ thể (<code>GET</code>, <code>POST</code>,
+        <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) chỉ áp dụng cho request dùng
+        method đó; <code>Bất kỳ</code> (mặc định) khớp mọi method, với mọi kiểu pattern.
+      </p>
+
+      <h3 id="match-conditions">5.7. Điều kiện query, header và body</h3>
+      <p>
+        Mở <strong>Nâng cao → Điều kiện</strong> trong modal để thu hẹp rule về một số request cùng
+        URL. Mọi điều kiện bạn điền đều phải đúng, cùng với pattern và method. Để trống thì rule
+        khớp như cũ.
+      </p>
+      <ul>
+        <li>
+          <strong>Query parameter</strong>: viết như trong URL, ví dụ <code>page=2&amp;debug</code>.
+          <code>page=2</code> cần <code>page</code> bằng <code>2</code> (một trong các giá trị, nếu
+          lặp lại; so sánh sau khi URL decode). <code>debug</code> đứng một mình cần
+          <code>debug</code> có mặt, giá trị bất kỳ. Tên phân biệt hoa thường.
+        </li>
+        <li>
+          <strong>Request header</strong>: mỗi dòng một header. <code>X-Tenant: acme</code> cần
+          header đó với đúng giá trị đó; <code>Authorization</code> đứng một mình chỉ cần header có
+          mặt. Tên header không phân biệt hoa thường.
+        </li>
+        <li>
+          <strong>Request body chứa</strong>: request body phải chứa đoạn text này, ví dụ
+          <code>"plan":"pro"</code>. Phân biệt hoa thường. Nếu trình duyệt không đưa body cho
+          extension (ví dụ upload dạng stream), điều kiện không khớp.
+        </li>
+      </ul>
+      <p>
+        Dòng của rule trong danh sách rule có hiện điều kiện, ví dụ <code>+ query page=2</code>.
+        CORS preflight không mang header lẫn body của request phía sau, nên với preflight chỉ điều
+        kiện query được xét.
+      </p>
+
+      <h3 id="graphql-operation">5.8. GraphQL operation</h3>
+      <p>
+        Field <strong>GraphQL operation</strong> thu hẹp rule về một operation gửi tới URL chung như
+        <code>/graphql</code>. Rule khớp khi <code>operationName</code> trong JSON request body bằng
+        giá trị này (không phân biệt hoa thường); nếu không có thì khi <code>query</code> chứa giá
+        trị; nếu không nữa thì khi body thô chứa giá trị. Request không có body thì không khớp.
+      </p>
+
+      <!-- ============ 6 ============ -->
+      <h2 id="override-body">6. Body ghi đè</h2>
+
+      <h3>6.1. Chế độ Text</h3>
+      <p>Nội dung được mã hóa base64 và trả về làm response body.</p>
+      <pre><code>{
+  "status": "ok",
+  "data": [
+    { "id": 1, "name": "Alice" },
+    { "id": 2, "name": "Bob" }
+  ]
+}</code></pre>
+
+      <h3>6.2. Chế độ Base64 thô</h3>
+      <p>
+        Dùng khi bạn đã có nội dung mã hóa base64 (ví dụ dữ liệu nhị phân, ảnh, file đã mã hóa sẵn).
+      </p>
+
+      <h3>6.3. Nhãn kiểu body</h3>
+      <ul>
+        <li><span class="tag tag-blue">text</span> — nội dung không phải JSON hợp lệ.</li>
+        <li>
+          <span class="tag tag-green">json</span> — nội dung là JSON hợp lệ (tự nhận ra khi bạn gõ).
+        </li>
+      </ul>
+
+      <h3>6.4. Định dạng JSON</h3>
+      <p>
+        Bấm <strong>Định dạng JSON</strong> để làm đẹp response body. Nếu nội dung không phải JSON
+        hợp lệ, nút báo lỗi và không đổi gì.
+      </p>
+
+      <h3>6.5. Tự điền</h3>
+      <p>Khi tạo rule mới từ một API:</p>
+      <ul>
+        <li>
+          Nếu API có response body đã lưu (trong <code>recentApiBodies</code>), body được điền sẵn.
+        </li>
+        <li>
+          Nếu không, extension gửi message <code>getApiData</code> tới background worker để lấy body
+          đã lưu.
+        </li>
+        <li>
+          Tính năng này chỉ chạy khi <strong>Auto-fill on open</strong> đang bật (mặc định: bật).
+        </li>
+      </ul>
+
+      <h3 id="patch-response">6.6. Patch JSON response thật</h3>
+      <p>
+        Chọn <strong>Patch JSON response thật</strong> trong danh sách
+        <strong>Response body là</strong>
+        khi bạn muốn giữ dữ liệu thật và chỉ đổi vài trường, ví dụ bật gói trả phí hoặc ẩn banner.
+        Request vẫn tới server; rule chỉ đổi các trường bạn liệt kê trong JSON response. Mỗi dòng
+        một thay đổi:
+      </p>
+      <pre>
+set data.user.plan = "pro"
+remove data.ads
+set data.items[0].price = 0
+set data.flags = {"beta": true}</pre>
+      <ul>
+        <li>
+          <code>set &lt;path&gt; = &lt;value&gt;</code> đặt giá trị tại path. Giá trị là JSON: text
+          viết trong ngoặc kép (<code>"pro"</code>), còn số, <code>true</code>, <code>false</code>,
+          <code>null</code>, object và mảng viết như bình thường.
+        </li>
+        <li>
+          <code>remove &lt;path&gt;</code> xóa một trường, hoặc một phần tử mảng (các phần tử sau
+          dồn lên).
+        </li>
+        <li>
+          Path dùng dấu chấm cho trường và <code>[0]</code> cho phần tử mảng:
+          <code>data.items[0].name</code>. Key có dấu chấm, dấu cách hoặc <code>=</code> thì đặt
+          trong ngoặc kép: <code>data["user.name"]</code>. Path bắt đầu bằng <code>/</code> là JSON
+          Pointer: <code>/data/items/0/name</code>.
+        </li>
+        <li>
+          <code>[-]</code> (hoặc <code>-</code> trong JSON Pointer) là cuối mảng:
+          <code>set data.items[-] = {"id": 99}</code> thêm một phần tử.
+        </li>
+        <li>
+          Khi path của <code>set</code> chưa tồn tại, các object còn thiếu được tạo ra (là mảng khi
+          phần kế tiếp là <code>[0]</code> hoặc <code>[-]</code>). <code>remove</code> một thứ không
+          có thì không làm gì.
+        </li>
+      </ul>
+      <p>
+        Status và header thật được giữ; <strong>Status code</strong>,
+        <strong>Response header</strong> và <strong>Độ trễ</strong> vẫn áp dụng nếu bạn điền.
+        <code>Content-Length</code> được tính lại cho body mới. JSON được trả về dạng gọn.
+        Placeholder không được điền trong giá trị patch, và không có tùy chọn
+        <strong>Trả lời mà không gọi server</strong>, vì patch cần response thật.
+      </p>
+      <p>
+        Khi response không phải JSON hoặc không có body (trang HTML, <code>204</code>, redirect), nó
+        đi qua nguyên vẹn và panel hiện cảnh báo. Thay đổi nào không áp dụng được, như path đi qua
+        một trường text hoặc chỉ số mảng vượt quá cuối, sẽ bị bỏ qua và được nêu trong cùng cảnh
+        báo; các thay đổi khác vẫn áp dụng. Dòng của rule trong tab Rule kết thúc bằng
+        <code>patch N fields</code>; rê chuột lên để xem các thay đổi.
+      </p>
+
+      <h3 id="script-response">6.7. Response bằng script</h3>
+      <p>
+        Với kiểu body <strong>Script (JavaScript)</strong>, rule tự tính response. Body là thân của
+        một hàm async nhận <code>request</code> và trả về response:
+      </p>
+      <pre>
+// Keep the real response, but only its first three items.
+const data = JSON.parse(request.response.body);
+return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
+      <ul>
+        <li>
+          <code>request</code> có <code>url</code>, <code>method</code>, <code>headers</code> (tên
+          viết thường), <code>query</code>, <code>params</code> (phần mà mỗi <code>*</code> khớp),
+          <code>body</code> và <code>response</code> (<code>status</code>, <code>headers</code> và
+          <code>body</code> gốc).
+        </li>
+        <li>
+          Trả về một string làm body, <code>{ status, headers, body }</code>, hoặc giá trị khác để
+          gửi dạng JSON. Status hay header trả về sẽ thắng cấu hình của rule; delay vẫn áp dụng.
+          Placeholder không được điền trong script.
+        </li>
+        <li>
+          Script chạy trong trang đang inspect, nên dùng được <code>fetch</code>,
+          <code>localStorage</code> và biến toàn cục của trang. Script có 5 giây; script ném lỗi,
+          không trả gì hoặc quá giờ sẽ trả status <code>500</code> kèm header
+          <code>x-network-overrides-error: script</code>.
+        </li>
+        <li>
+          Rule nhập vào có thể chứa script, và script chạy trong các trang mà rule khớp: chỉ nhập
+          file bạn tin cậy.
+        </li>
+      </ul>
+
+      <!-- ============ 7 ============ -->
+      <h2 id="redirect">7. Chuyển hướng URL</h2>
+
+      <h3>7.1. Cách hoạt động</h3>
+      <p>
+        Khi chọn loại <strong>Chuyển hướng</strong>, thay vì ghi đè response body, extension chuyển
+        request sang URL khác ngay ở <strong>giai đoạn request</strong> (trước khi request thật được
+        gửi).
+      </p>
+
+      <h3>7.2. Thay wildcard</h3>
+      <p>
+        Dùng <code>*</code> trong URL chuyển hướng để thay bằng các giá trị đã bắt khi khớp pattern.
+      </p>
+      <table>
+        <tr>
+          <th>Pattern</th>
+          <th>Request URL</th>
+          <th>Giá trị bắt</th>
+          <th>URL chuyển hướng</th>
+          <th>Kết quả</th>
+        </tr>
+        <tr>
+          <td><code>/api/*</code></td>
+          <td><code>https://site.com/api/user</code></td>
+          <td><code>["user"]</code></td>
+          <td><code>https://site.com/api/v2/*</code></td>
+          <td><code>https://site.com/api/v2/user</code></td>
+        </tr>
+        <tr>
+          <td><code>/api/old/*/data</code></td>
+          <td><code>/api/old/v1/data</code></td>
+          <td><code>["v1"]</code></td>
+          <td><code>/api/new/*/data</code></td>
+          <td><code>/api/new/v1/data</code></td>
+        </tr>
+        <tr>
+          <td><code>https://old.com/*/item/*</code></td>
+          <td><code>https://old.com/shop/item/5</code></td>
+          <td><code>["shop","5"]</code></td>
+          <td><code>https://new.com/*/product/*</code></td>
+          <td><code>https://new.com/shop/product/5</code></td>
+        </tr>
+      </table>
+      <p>
+        Nếu còn <code>*</code> nào chưa được thay, extension ghi lỗi vào log và để request đi bình
+        thường (không chuyển hướng).
+      </p>
+      <p><strong>Lỗi hay gặp:</strong> pattern có 1 <code>*</code> nhưng URL chuyển hướng có 2:</p>
+      <table>
+        <tr>
+          <th>Pattern</th>
+          <th>Request URL</th>
+          <th>Giá trị bắt</th>
+          <th>URL chuyển hướng</th>
+          <th>Kết quả</th>
+        </tr>
+        <tr>
+          <td><code>https://site.com/api/*</code></td>
+          <td><code>https://site.com/api/user</code></td>
+          <td><code>["user"]</code></td>
+          <td><code>https://site.com/api/v2/**</code></td>
+          <td>❌ <code>*</code> thứ hai không được thay</td>
+        </tr>
+      </table>
+
+      <h3>7.3. Khi nào nên dùng</h3>
+      <ul>
+        <li>Chuyển từ API cũ sang API mới mà không sửa code frontend.</li>
+        <li>Trỏ request từ production sang server staging/local để debug.</li>
+        <li>Chặn một số request bằng cách chuyển chúng tới một endpoint rỗng.</li>
+      </ul>
+
+      <!-- ============ 8 ============ -->
+      <h2 id="managing-rules">8. Quản lý rule</h2>
+
+      <h3>8.1. Xem rule</h3>
+      <p>Vào tab <strong>Rule</strong>. Mỗi rule hiện:</p>
+      <ul>
+        <li><strong>Ô bật/tắt</strong>: ở đầu dòng. Bỏ chọn nghĩa là rule đang tắt (xem 8.5).</li>
+        <li>
+          <strong>Nhãn <code>TOÀN CỤC</code></strong
+          >: rule áp dụng trên mọi trang.
+        </li>
+        <li>
+          <strong>Tóm tắt một dòng</strong>: rule khớp gì → rule làm gì, ví dụ
+          <code>GET /api/orders + query page=2 → 500 · chậm 3 s</code>,
+          <code>POST /graphql (op: GetUser) → patch 2 fields</code>,
+          <code>/api/* → lỗi mạng</code> hoặc <code>ws wss://example.com/socket → thay frame</code>.
+          Rê chuột lên để xem chi tiết; bấm vào để mở trình sửa.
+        </li>
+        <li>
+          <strong>Số lần áp dụng</strong>: con số nhỏ sau rule, số lần rule được áp dụng trong phiên
+          này. <code>0</code> màu xám, số lớn hơn màu xanh. Rê chuột lên (hoặc Tab tới) để xem lần
+          áp dụng gần nhất và URL nào. Một request chỉ được đếm khi rule thật sự đổi nó. Rule đang
+          bật mà vẫn <code>0</code> sau khi đã có request đi qua sẽ có viền đứt: kiểm tra pattern,
+          method và điều kiện. Số đếm đi theo rule khi bạn đổi thứ tự hoặc tắt rồi bật lại, và đếm
+          lại từ đầu khi bạn sửa rule. <strong>Đặt lại số đếm</strong> phía trên danh sách đưa mọi
+          số về 0, tắt chặn request cũng vậy. Số đếm không bao giờ được lưu, xuất hay nhập cùng
+          rule.
+        </li>
+      </ul>
+
+      <h3>8.2. Sửa rule</h3>
+      <p>
+        Bấm <strong>Sửa</strong> cạnh rule (hoặc bấm vào phần tóm tắt) → modal mở với giá trị hiện
+        tại → sửa → <strong>Lưu rule</strong>. <strong>Nhân bản</strong> tạo bản sao của rule.
+      </p>
+
+      <h3>8.3. Xóa rule</h3>
+      <p>Bấm <strong>Xóa</strong> → rule bị xóa ngay.</p>
+
+      <h3>8.4. Lưu trữ</h3>
+      <p>
+        Rule được lưu trong <code>chrome.storage.local</code> →
+        <strong>không bao giờ mất</strong> khi tải lại trang, đóng DevTools hay khởi động lại trình
+        duyệt.
+      </p>
+
+      <h3>8.5. Bật/tắt một rule</h3>
+      <p>
+        Mỗi rule có một ô chọn ở đầu dòng. Bỏ chọn sẽ <strong>tắt</strong> rule (<code
+          >enabled: false</code
+        >) mà không xóa:
+      </p>
+      <ul>
+        <li>Rule vẫn hiện trong danh sách <strong>Rule</strong>, nhưng mờ đi.</li>
+        <li>
+          API mà rule nhắm tới vẫn nằm trong tab <strong>Đã ghi đè</strong> (vẫn "sẽ khớp" theo
+          pattern và method) nhưng cũng hiện mờ, vì rule đã tắt không còn được áp dụng.
+        </li>
+        <li>Background service worker bỏ qua rule đã tắt khi chọn rule để áp dụng cho request.</li>
+      </ul>
+      <p>
+        Chọn lại ô sẽ bật lại rule. Rule mới, và rule có từ trước khi có tính năng này, mặc định là
+        <strong>bật</strong>.
+      </p>
+
+      <h3>8.6. Xuất rule</h3>
+      <p>
+        Bấm <strong>Xuất</strong> trong tab <strong>Rule</strong> để tải các rule của
+        <strong>domain hiện tại</strong> về thành file JSON (đặt tên theo domain). File có dạng:
+      </p>
+      <pre><code>{
+  "version": 1,
+  "domain": "https://example.com",
+  "exportedAt": "2026-07-07T00:00:00.000Z",
+  "overrides": [
+    /* OverrideRule[] */
+  ]
+}</code></pre>
+      <p>Chỉ xuất rule của domain đang mở trong panel, không phải mọi domain.</p>
+
+      <h3>8.7. Nhập rule</h3>
+      <p>
+        Bấm <strong>Nhập → File rule (.json)</strong> trong tab <strong>Rule</strong> và chọn một
+        file JSON đã xuất trước đó (hoặc tự viết):
+      </p>
+      <ul>
+        <li>
+          Nếu file có field <code>domain</code> và không khớp domain đang mở trong panel, một hộp
+          thoại cảnh báo và hỏi có nhập vào domain hiện tại không. Hủy thì không có gì thay đổi.
+        </li>
+        <li>
+          Nếu domain hiện tại <strong>đã có rule</strong>, một hộp thoại hỏi cách gộp:
+          <strong>Thêm vào cuối</strong> thêm các rule nhập vào cuối danh sách hiện có;
+          <strong>Thay toàn bộ</strong> thay mọi rule của domain hiện tại bằng các rule nhập vào.
+          Đóng hộp thoại là hủy việc nhập.
+        </li>
+        <li>Nếu domain hiện tại <strong>chưa có rule</strong>, rule được nhập luôn, không hỏi.</li>
+        <li>
+          File không hợp lệ (không phải JSON hợp lệ, thiếu mảng <code>overrides</code>, hoặc có rule
+          thiếu field bắt buộc) bị từ chối kèm thông báo, và không có gì thay đổi.
+        </li>
+        <li>
+          Chỉ các field rule đã biết (<code>pattern</code>, <code>mode</code>, <code>body</code>,
+          <code>redirectUrl</code>, <code>method</code>, <code>enabled</code>) được giữ lại từ mỗi
+          rule nhập vào; các thuộc tính khác trong file bị bỏ.
+        </li>
+        <li>
+          Các điều kiện khớp <code>matchQuery</code>, <code>matchHeaders</code> và
+          <code>matchBody</code> (xem <a href="#match-conditions">5.7</a>) cũng được giữ. File xuất
+          từ trước khi có chúng vẫn nhập được như cũ.
+        </li>
+        <li>
+          Rule patch (<code>"mode": "patch"</code>, xem <a href="#patch-response">6.6</a>) giữ danh
+          sách <code>patch</code> gồm các thao tác
+          <code>{ "op": "set" | "remove", "path": "...", "value": ... }</code>. File có thao tác
+          patch sai định dạng bị từ chối như mọi file không hợp lệ khác.
+        </li>
+      </ul>
+      <p>
+        Giống Xuất, Nhập luôn làm việc trên domain đang mở trong panel, không bao giờ trên mọi
+        domain cùng lúc.
+      </p>
+
+      <!-- ============ 9 ============ -->
+      <h2 id="features">9. Tính năng khác</h2>
+
+      <h3>9.1. Chép cURL</h3>
+      <p>Mỗi API có nút <strong>cURL</strong>. Bấm để chép request thành lệnh cURL:</p>
+      <pre><code>curl 'https://api.example.com/data' \
+  -X 'POST' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer xxx' \
+  --data-raw '{"key":"value"}'</code></pre>
+
+      <h3>9.2. Tìm API</h3>
+      <p>
+        Ô tìm kiếm ở tab <strong>API đã bắt</strong> và <strong>Đã ghi đè</strong>. Tìm theo một
+        phần của URL (không phân biệt hoa thường). Phần khớp được tô nền vàng.
+      </p>
+
+      <h3>9.3. Làm mới danh sách API</h3>
+      <p>
+        Bấm <strong>Làm mới danh sách request</strong> trên tiêu đề hoặc nút làm mới cạnh bộ lọc.
+        Icon quay và tạm khóa trong lúc nạp danh sách API. Nếu danh sách rỗng, extension tự thử lại.
+      </p>
+
+      <h3>9.4. Mở hướng dẫn sử dụng</h3>
+      <p>
+        Bấm <strong>Mở hướng dẫn sử dụng</strong> trên tiêu đề. Hướng dẫn mở trong một tab riêng,
+        nên popup hay DevTools panel vẫn dùng được. Hướng dẫn mở theo ngôn ngữ extension đang hiện:
+        bản tiếng Việt này khi giao diện là Tiếng Việt, bản tiếng Anh trong các trường hợp khác.
+      </p>
+
+      <h3>9.5. Nhóm theo loại</h3>
+      <p>
+        API được nhóm theo loại resource: XHR, Fetch, JS, CSS, Img, Media, Font, Doc, WS, Manifest,
+        EventSource, TextTrack, Other.
+      </p>
+      <p>Bấm tiêu đề nhóm để thu gọn/mở rộng. Trạng thái thu gọn được lưu lại.</p>
+
+      <h3>9.6. Header đánh dấu</h3>
+      <p>Khi một request bị ghi đè, extension thêm các response header sau:</p>
+      <ul>
+        <li><code>x-network-overrides: true</code></li>
+        <li><code>x-network-overrides-pattern: &lt;pattern&gt;</code></li>
+      </ul>
+      <p>Nhờ đó bạn dễ nhận ra request bị ghi đè trong tab Network của DevTools.</p>
+
+      <h3>9.7. Response động bằng placeholder</h3>
+      <p>Chèn placeholder động vào body của mock response:</p>
+      <ul>
+        <li><code>{{$uuid}}</code> — UUID v4 ngẫu nhiên</li>
+        <li><code>{{$isoDate}}</code> — thời điểm dạng ISO 8601</li>
+        <li><code>{{$epoch}}</code> — Unix timestamp tính bằng ms</li>
+        <li><code>{{$randomEmail}}</code> — địa chỉ email ngẫu nhiên</li>
+        <li><code>{{$randomName}}</code> — họ tên ngẫu nhiên</li>
+        <li><code>{{$randomInt(1, 100)}}</code> — số nguyên ngẫu nhiên trong khoảng</li>
+        <li><code>{{$query(name)}}</code> — giá trị query parameter trong URL của request</li>
+      </ul>
+
+      <h3>9.8. Rule toàn cục (mọi domain)</h3>
+      <p>
+        Chọn <strong>Nâng cao → Điều kiện → Áp dụng trên mọi trang (rule toàn cục)</strong> để chặn
+        các request khớp trên mọi domain. Rule toàn cục có nhãn <code>TOÀN CỤC</code> trong danh
+        sách rule.
+      </p>
+
+      <h3>9.9. Đổi payload của request</h3>
+      <p>
+        Ghi đè payload của request <code>POST</code>, <code>PUT</code> hoặc <code>PATCH</code> trước
+        khi tới server, trong <strong>Nâng cao → Đổi request</strong>.
+      </p>
+
+      <h3>9.10. Giới hạn mạng và thống kê traffic</h3>
+      <p>
+        Dùng danh sách <strong>Mạng</strong> để giả lập <strong>Fast 3G</strong>,
+        <strong>Slow 3G</strong> hoặc <strong>Mất mạng</strong> cho tab đang gắn. Bộ đếm trực tiếp
+        hiện số request đã ghi đè và bị lỗi, và vẫn giữ khi service worker khởi động lại.
+      </p>
+
+      <h3>9.11. Nhập file HAR</h3>
+      <p>
+        Trong tab <strong>Rule</strong>, bấm
+        <strong>Nhập → cURL hoặc OpenAPI / Swagger…</strong> rồi dán hoặc chọn một file
+        <code>.har</code> (HTTP Archive) để tạo hàng loạt mock rule từ traffic đã ghi. Cùng hộp
+        thoại đó nhận cả lệnh cURL hoặc spec OpenAPI / Swagger.
+      </p>
+
+      <h3>9.12. Phím tắt trong trình sửa</h3>
+      <ul>
+        <li><code>Ctrl + Enter</code> / <code>Cmd + Enter</code> — lưu rule</li>
+        <li><code>Ctrl + Shift + F</code> / <code>Cmd + Shift + F</code> — định dạng JSON body</li>
+      </ul>
+
+      <h3 id="websocket-frames">9.13. WebSocket frame</h3>
+      <p>
+        Để đổi nội dung một WebSocket, mở modal (hoặc bấm một mục <strong>WS</strong> trong danh
+        sách API) và chọn <strong>WebSocket</strong>. Rule khớp URL của socket
+        (<code>wss://api.example.com/*</code>), chiều (gửi, nhận hoặc cả hai) và, nếu cần, text của
+        frame (chứa, hoặc regex). Rule đang bật đầu tiên phù hợp sẽ được áp dụng:
+      </p>
+      <ul>
+        <li>
+          <strong>Thay cả frame</strong>: frame được thay bằng body (dùng được placeholder như
+          <code>{{now}}</code>).
+        </li>
+        <li>
+          <strong>Thay phần khớp</strong>: mọi chỗ khớp được thay bằng body; <code>$1</code>… là các
+          nhóm của regex.
+        </li>
+        <li><strong>Chặn frame</strong>: frame bị bỏ.</li>
+        <li>
+          <strong>Trễ frame</strong>: frame chờ số mili giây đã đặt; các frame phía sau vẫn giữ thứ
+          tự.
+        </li>
+      </ul>
+      <p>
+        Chỉ text frame bị đổi (binary frame đi qua nguyên vẹn); socket mở từ Web Worker hoặc iframe
+        khác origin không được hỗ trợ; frame mà trang nhận sau khi rule đã đổi có
+        <code>event.isTrusted</code> là <code>false</code>. Tải lại trang sau khi thêm rule
+        WebSocket đầu tiên nếu socket đã mở từ trước.
+      </p>
+
+      <h3>9.14. Ngôn ngữ</h3>
+      <p>
+        Danh sách <strong>Ngôn ngữ</strong> cạnh <strong>Bật ghi đè</strong> chọn
+        <strong>Tự động</strong> (theo ngôn ngữ trình duyệt), <strong>English</strong> hoặc
+        <strong>Tiếng Việt</strong>. Chữ đổi ngay, lựa chọn được lưu trong trình duyệt này, và hướng
+        dẫn sử dụng mở theo cùng ngôn ngữ.
+      </p>
+
+      <!-- ============ 10 ============ -->
+      <h2 id="notes">10. Lưu ý quan trọng</h2>
+
+      <h3>10.1. Phạm vi</h3>
+      <ul>
+        <li>Rule chỉ áp dụng cho <strong>tab đang được gắn</strong>.</li>
+        <li>Mỗi lần bật ON, extension gắn vào <strong>tab đang mở</strong>.</li>
+        <li>Chuyển sang tab khác thì tab mới chưa có ghi đè cho tới khi bạn bật lại.</li>
+      </ul>
+
+      <h3>10.2. Giới hạn dung lượng</h3>
+      <ul>
+        <li>Tối đa <strong>500 URL</strong> trong danh sách API gần đây.</li>
+        <li>Tối đa <strong>100 response body</strong> được lưu.</li>
+        <li>Khi vượt quá, mục cũ nhất bị bỏ trước (FIFO).</li>
+      </ul>
+
+      <h3>10.3. Lưu body</h3>
+      <ul>
+        <li>
+          Chỉ response body của <strong>XHR</strong> và <strong>Fetch</strong> được lưu (để tự
+          điền).
+        </li>
+        <li>Các loại khác (JS, CSS, ảnh...) không được lưu.</li>
+      </ul>
+
+      <h3>10.4. Phụ thuộc Tab ID</h3>
+      <p>
+        API gần đây và response body được lưu theo <code>tabId</code>. Khi đóng tab rồi mở lại,
+        <code>tabId</code> mới khác → dữ liệu cũ không hiện.
+      </p>
+
+      <h3>10.5. Không dùng cho production</h3>
+      <p>
+        Extension này chỉ dành cho <strong>developer debug</strong>. Đừng dùng trong môi trường
+        production của người dùng cuối.
+      </p>
+
+      <h3>10.6. Quyền cần có</h3>
+      <ul>
+        <li><code>debugger</code> — để chặn network request.</li>
+        <li><code>storage</code> — để lưu rule và dữ liệu.</li>
+        <li><code>&lt;all_urls&gt;</code> — để gắn debugger vào bất kỳ tab nào.</li>
+      </ul>
+
+      <h3>10.7. Thông báo lưu và áp dụng</h3>
+      <p>Các thao tác với rule báo kết quả bằng thông báo ở góc trên bên phải:</p>
+      <ul>
+        <li><strong>Xanh lá</strong>: thay đổi đã được lưu và áp dụng cho tab hiện tại.</li>
+        <li>
+          <strong>Vàng</strong>: thay đổi đã được lưu, nhưng không cập nhật được việc chặn. Thường
+          là do một debugger hoặc phiên DevTools khác đang giữ tab. Bấm
+          <strong>Thử lại</strong> trong thông báo sau khi xử lý xung đột; không cần lưu lại rule.
+        </li>
+        <li>
+          <strong>Đỏ</strong>: thao tác thất bại và chưa được lưu. Thông báo có kèm lỗi storage,
+          import, profile hoặc background nếu có.
+        </li>
+      </ul>
+      <p>
+        Lỗi kiểm tra dữ liệu trong modal hiện ngay phía trên <strong>Lưu rule</strong>. Modal vẫn mở
+        và focus vào field cần sửa. Trong lúc lưu, nút hiện <strong>Đang lưu…</strong> và không bấm
+        lần hai được.
+      </p>
+
+      <!-- ============ 11 ============ -->
+      <h2 id="faq">11. FAQ</h2>
+
+      <div class="faq-q">H: Rule không chạy?</div>
+      <div class="faq-a">
+        <strong>Kiểm tra:</strong>
+        <ol>
+          <li><strong>Bật ghi đè</strong> đã bật chưa?</li>
+          <li>Pattern có khớp URL không? Thử <code>*</code> để khớp tất cả.</li>
+          <li>Tab hiện tại có phải tab đang được debug không? Thử tải lại extension.</li>
+          <li>Mở DevTools → Console của extension để xem lỗi.</li>
+        </ol>
+      </div>
+
+      <div class="faq-q">H: Đã bấm Lưu rule mà không thấy gì xảy ra?</div>
+      <div class="faq-a">
+        Xem thông báo phía trên nút Lưu và thông báo ở góc trên bên phải. Màu đỏ nghĩa là rule chưa
+        được lưu. Màu vàng nghĩa là rule đã lưu nhưng chưa áp dụng được cho tab hiện tại; đóng phiên
+        DevTools/debugger đang tranh tab rồi bấm <strong>Thử lại</strong> trong thông báo đó.
+      </div>
+
+      <div class="faq-q">H: Đã tắt ghi đè mà request vẫn bị đổi?</div>
+      <div class="faq-a">Thử tải lại trang. Nếu vẫn bị, tắt rồi bật lại extension.</div>
+
+      <div class="faq-q">H: Làm sao xóa hết rule một lần?</div>
+      <div class="faq-a">
+        Vào tab <strong>Rule</strong> và bấm <strong>Xóa</strong> trên từng rule. Chưa có nút "Xóa
+        tất cả".
+      </div>
+
+      <div class="faq-q">H: Extension không chạy ở chế độ ẩn danh?</div>
+      <div class="faq-a">
+        Vào <code>chrome://extensions</code> → bấm <strong>Details</strong> của extension → bật
+        <strong>Allow in incognito</strong>.
+      </div>
+
+      <div class="faq-q">H: Làm sao biết một request đã bị ghi đè?</div>
+      <div class="faq-a">
+        Xem tab Network của DevTools:
+        <ul>
+          <li>Có thêm response header <code>x-network-overrides: true</code>.</li>
+          <li>Trong extension, API đó được tô xanh và nằm trong tab <strong>Đã ghi đè</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="faq-q">H: API không hiện trong tab API đã bắt?</div>
+      <div class="faq-a">
+        Bấm <strong>Làm mới danh sách request</strong>. Extension tự thử lại trong một lúc ngắn. Nếu
+        danh sách vẫn rỗng:
+        <ol>
+          <li>Kiểm tra công tắc đang ON.</li>
+          <li>Xem tab Network để chắc request có được gửi đi.</li>
+          <li>Thử dùng DevTools panel thay vì popup.</li>
+        </ol>
+      </div>
+
+      <div class="faq-q">H: Có ghi đè được WebSocket không?</div>
+      <div class="faq-a">
+        Được, với các text frame mà trang gửi hoặc nhận qua WebSocket: thay, thay một phần, chặn
+        hoặc làm trễ chúng bằng rule WebSocket. Xem <a href="#websocket-frames">9.13</a>.
+      </div>
+
+      <div class="faq-q">H: Có dùng sync storage không?</div>
+      <div class="faq-a">
+        Không. Extension dùng <code>chrome.storage.local</code> (giới hạn 10MB). Không dùng sync
+        storage vì rule có thể chứa response body lớn.
+      </div>
+
+      <div class="faq-q">H: Nhập được rule xuất từ domain khác không?</div>
+      <div class="faq-a">
+        Được. Nhập luôn ghi vào domain đang mở trong panel, bất kể field <code>domain</code> của
+        file ghi domain nào — nhưng nếu field đó không khớp domain hiện tại, hộp thoại nhập sẽ cảnh
+        báo trước, nên không có chuyện lệch mà không biết. Nếu đã có rule, hộp thoại tiếp theo cho
+        chọn rõ <strong>Thêm vào cuối</strong> hoặc <strong>Thay toàn bộ</strong>.
+      </div>
+
+      <hr />
+      <p style="text-align: center; color: var(--text-secondary); font-size: 0.9em">
+        Network Overrides DevTools —
+        <a href="https://github.com/vannt-dev/network-overrides-devtools">GitHub</a>
+      </p>
+    </div>
+  </body>
+</html>

@@ -8,6 +8,9 @@
   <body>
     <div class="container">
       <h1>Network Overrides DevTools <small>User Guide</small></h1>
+      <p class="guide-language">
+        Also in: <a href="guide-vi.html" hreflang="vi" lang="vi">Tiếng Việt</a>
+      </p>
 
       <div class="toc">
         <h3>Table of Contents</h3>
@@ -76,6 +79,9 @@
           <strong>Refresh captured requests</strong> and <strong>Open user guide</strong>.
         </li>
         <li><strong>Enable Overrides toggle</strong>: Turn override functionality on/off.</li>
+        <li>
+          <strong>Language</strong>: Auto, English or Tiếng Việt (see <a href="#features">9.14</a>).
+        </li>
         <li>
           <strong>3 tabs</strong>:
           <ul>
@@ -235,7 +241,9 @@
       <h3>Step 6: Disable</h3>
       <ul>
         <li>Toggle the switch OFF to disable all overrides.</li>
-        <li>Or go to <strong>Rules</strong> tab → click ✕ to delete a specific rule.</li>
+        <li>
+          Or go to <strong>Rules</strong> tab → click <strong>Delete</strong> on a specific rule.
+        </li>
       </ul>
 
       <!-- ============ 5 ============ -->
@@ -371,7 +379,7 @@ Pattern: all</pre>
       <h3>6.4. Format JSON</h3>
       <p>
         Click <strong>Format JSON</strong> to pretty-print the response body. If the content is not
-        valid JSON, the button has no effect.
+        valid JSON, the editor says so and changes nothing.
       </p>
 
       <h3>6.5. Auto-fill</h3>
@@ -483,7 +491,7 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>7.1. How it works</h3>
       <p>
-        When you select <strong>Redirect to URL</strong>, instead of overriding the response body,
+        When you choose the <strong>Redirect</strong> type, instead of overriding the response body,
         the extension redirects the request at the <strong>request stage</strong> (before the actual
         request is sent).
       </p>
@@ -586,12 +594,12 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>8.2. Edit a rule</h3>
       <p>
-        Click <strong>✎</strong> next to a rule → modal opens with current values → edit →
-        <strong>Save Override</strong>.
+        Click <strong>Edit</strong> next to a rule (or its summary) → modal opens with current
+        values → edit → <strong>Save Override</strong>. <strong>Copy</strong> duplicates a rule.
       </p>
 
       <h3>8.3. Delete a rule</h3>
-      <p>Click <strong>✕</strong> → rule is removed immediately.</p>
+      <p>Click <strong>Delete</strong> → rule is removed immediately.</p>
 
       <h3>8.4. Persistence</h3>
       <p>
@@ -649,10 +657,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           current domain anyway. Canceling aborts the import with no changes.
         </li>
         <li>
-          If the current domain <strong>already has rules</strong>, a confirm dialog asks how to
-          combine them: <strong>OK</strong> merges — the imported rules are appended to the end of
-          the existing list; <strong>Cancel</strong> replaces — all existing rules for the current
-          domain are overwritten by the imported ones.
+          If the current domain <strong>already has rules</strong>, a dialog asks how to combine
+          them: <strong>Append rules</strong> adds the imported rules to the end of the existing
+          list; <strong>Replace rules</strong> overwrites all existing rules for the current domain
+          with the imported ones. Closing the dialog cancels the import.
         </li>
         <li>
           If the current domain <strong>has no rules yet</strong>, the import is applied directly
@@ -715,7 +723,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
       <h3>9.4. Open the user guide</h3>
       <p>
         Click <strong>Open user guide</strong> in the header. The complete guide opens in a separate
-        browser tab, so the popup or DevTools panel remains available.
+        browser tab, so the popup or DevTools panel remains available. It opens in the language the
+        extension shows: the Vietnamese guide when the UI is in Tiếng Việt, this English guide
+        otherwise.
       </p>
 
       <h3>9.5. Type grouping</h3>
@@ -807,6 +817,14 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         or cross-origin iframes are not covered; frames the page receives after a rule changed them
         have <code>event.isTrusted</code> set to <code>false</code>. Reload the page after adding
         the first WebSocket rule if the socket was already open.
+      </p>
+
+      <h3>9.14. Language</h3>
+      <p>
+        The <strong>Language</strong> list next to <strong>Enable Overrides</strong> picks
+        <strong>Auto</strong> (the browser's language), <strong>English</strong> or
+        <strong>Tiếng Việt</strong>. The text changes at once, the choice is saved in this browser,
+        and the user guide opens in the same language.
       </p>
 
       <!-- ============ 10 ============ -->
@@ -905,8 +923,8 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <div class="faq-q">Q: How do I delete all rules at once?</div>
       <div class="faq-a">
-        Go to the <strong>Rules</strong> tab and click ✕ on each rule. There is no "Clear all"
-        button.
+        Go to the <strong>Rules</strong> tab and click <strong>Delete</strong> on each rule. There
+        is no "Clear all" button.
       </div>
 
       <div class="faq-q">Q: Extension doesn't work in incognito mode?</div>

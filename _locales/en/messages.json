@@ -290,6 +290,9 @@
   "group_timing": {
     "message": "Timing & failure"
   },
+  "guide_page": {
+    "message": "guide.html"
+  },
   "guide_title": {
     "message": "Open user guide"
   },

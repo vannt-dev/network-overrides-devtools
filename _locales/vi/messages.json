@@ -290,6 +290,9 @@
   "group_timing": {
     "message": "Thời gian & lỗi"
   },
+  "guide_page": {
+    "message": "guide-vi.html"
+  },
   "guide_title": {
     "message": "Mở hướng dẫn sử dụng"
   },

@@ -89,7 +89,7 @@ Bấm **Mock this** trên một API (hoặc click vào dòng API) để mở mod
   - **Server error**: status 500 và `{"error":"Internal Server Error"}`.
   - **Slow (3 s)**: delay 3000 ms; body giữ nguyên.
   - **Offline**: lỗi mạng (`InternetDisconnected`).
-- **URL pattern**: URL pattern để matching.
+- **URL pattern**: URL pattern để matching. Field này sửa được, kể cả sau **Mock this**: đổi `/api/users/42` thành `/api/users/*` để một rule khớp nhiều URL hơn.
 - **Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method. Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
 - **Mock response / Redirect / Network error / WebSocket**: Chọn loại rule.
 - **Status code** (mock response): để trống thì giữ status thật. Được điền sẵn từ request đã capture nếu status đó mang được body (không phải 204, 304 hay 3xx khác).

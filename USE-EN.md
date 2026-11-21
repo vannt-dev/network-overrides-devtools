@@ -89,7 +89,7 @@ Click **Mock this** on an API (or the API row) to open the modal. It shows the e
   - **Server error**: status 500 and `{"error":"Internal Server Error"}`.
   - **Slow (3 s)**: a 3000 ms delay; the body stays as it is.
   - **Offline**: a network error (`InternetDisconnected`).
-- **URL pattern**: URL pattern for matching.
+- **URL pattern**: URL pattern for matching. You can edit it, also after **Mock this**: change `/api/users/42` to `/api/users/*` so one rule matches more URLs.
 - **Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method. Pre-filled from the captured request's method when opening the modal from a captured API.
 - **Mock response / Redirect / Network error / WebSocket**: Choose the rule type.
 - **Status code** (mock response): blank keeps the real status. Pre-filled from the captured request when it can carry a body (not 204, 304 or other 3xx).

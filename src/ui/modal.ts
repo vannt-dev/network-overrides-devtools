@@ -68,7 +68,6 @@ namespace NetworkOverridesUi {
         if (!field.contains(elements.modalGlobalRule || null)) show(field, !isWs);
       });
     show(fieldOf(elements.modalMode), type === 'body');
-    elements.modalPattern.disabled = type === 'body';
     updateScriptHelp(elements);
   }
 
@@ -341,11 +340,8 @@ namespace NetworkOverridesUi {
       `input[name="modal-override-type"][value="${type}"]`
     ) as HTMLInputElement | null;
     if (radio) radio.checked = true;
-    // A preset never locks or unlocks the pattern.
-    const patternDisabled = elements.modalPattern.disabled;
     if (type !== 'body') elements.modalStatus.value = '';
     updateModalVisibility(elements, type);
-    elements.modalPattern.disabled = patternDisabled;
   }
 
   function useTextBody(elements: Elements, body: string, status: string): void {

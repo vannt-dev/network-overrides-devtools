@@ -439,3 +439,60 @@ test('a new rule starts in Text mode even after editing a script rule', async ()
   assert.equal($(harness, '#modal-mode').value, 'text');
   assert.equal($(harness, '#modal-group-body-type').open, false);
 });
+
+test('"Mock this" keeps the URL pattern editable so it can be widened', async () => {
+  const harness = await panelHarness({
+    apis: [{ url: `${TEST_DOMAIN}/api/users/42`, type: 'fetch', method: 'GET', statusCode: 200 }],
+  });
+  click(harness, $(harness, '.api-item .mock-btn'));
+  await flushUi(harness.window);
+
+  const pattern = $(harness, '#modal-pattern');
+  assert.equal(pattern.value, '/api/users/42', 'prefilled from the request');
+  assert.equal(pattern.disabled, false);
+  assert.equal(pattern.readOnly, false);
+  assert.match($(harness, '#modal-pattern-hint').textContent, /Use \* to match more URLs/);
+
+  input(harness, pattern, '/api/users/*');
+  await save(harness);
+  assert.equal(savedRules(harness)[0].pattern, '/api/users/*');
+});
+
+test('a pattern emptied after "Mock this" is refused like a new rule', async () => {
+  const harness = await panelHarness({
+    apis: [{ url: API_URL, type: 'fetch', method: 'GET', statusCode: 200 }],
+  });
+  click(harness, $(harness, '.api-item .mock-btn'));
+  await flushUi(harness.window);
+  input(harness, $(harness, '#modal-pattern'), '   ');
+  await save(harness);
+  assert.equal($(harness, '#modal-feedback').textContent, 'Pattern is required.');
+  assert.equal($(harness, '#modal-pattern').getAttribute('aria-invalid'), 'true');
+  assert.deepEqual(savedRules(harness), []);
+});
+
+test('editing a saved mock rule can change its URL pattern', async () => {
+  const harness = await panelHarness({
+    storageState: { overrides: [{ pattern: '/api/users/42', body: '[]', mode: 'text' }] },
+  });
+  await openTab(harness, 'overrides');
+  click(harness, $(harness, '.edit-btn'));
+  await flushUi(harness.window);
+  const pattern = $(harness, '#modal-pattern');
+  assert.equal(pattern.disabled, false);
+  input(harness, pattern, '/api/users/*');
+  await save(harness);
+  assert.deepEqual(savedRules(harness), [{ pattern: '/api/users/*', body: '[]', mode: 'text' }]);
+});
+
+test('switching the rule type back to a mock keeps the pattern editable', async () => {
+  const harness = await panelHarness();
+  click(harness, $(harness, '#add-api-btn'));
+  await flushUi(harness.window);
+  for (const type of ['redirect', 'body']) {
+    const radio = $(harness, `input[name="modal-override-type"][value="${type}"]`);
+    radio.checked = true;
+    radio.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+  }
+  assert.equal($(harness, '#modal-pattern').disabled, false);
+});

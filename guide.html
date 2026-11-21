@@ -124,7 +124,11 @@
           3000 ms delay) and <strong>Offline</strong> (a network error,
           <code>InternetDisconnected</code>).
         </li>
-        <li><strong>URL pattern</strong>: URL pattern for matching.</li>
+        <li>
+          <strong>URL pattern</strong>: URL pattern for matching. It starts as the URL of the
+          request and can be edited: use <code>*</code> to match more URLs, e.g.
+          <code>/api/users/*</code>.
+        </li>
         <li>
           <strong>Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>, <code>POST</code>,
           <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the rule to a specific

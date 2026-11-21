@@ -125,7 +125,10 @@
           <strong>Chậm (3 s)</strong> (delay 3000 ms) và <strong>Mất mạng</strong> (lỗi mạng,
           <code>InternetDisconnected</code>).
         </li>
-        <li><strong>URL pattern</strong>: pattern để khớp URL.</li>
+        <li>
+          <strong>URL pattern</strong>: pattern để khớp URL. Ban đầu là URL của request và sửa được:
+          dùng <code>*</code> để khớp nhiều URL hơn, vd. <code>/api/users/*</code>.
+        </li>
         <li>
           <strong>Method</strong>: danh sách (<code>Bất kỳ</code>, <code>GET</code>,
           <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) để giới hạn

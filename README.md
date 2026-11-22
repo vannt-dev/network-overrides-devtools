@@ -33,6 +33,7 @@ Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/o
 - **Request changes**: add or overwrite request headers, replace the request payload, or redirect the request to another URL before it is sent.
 - **Narrower matching**: limit a rule to one HTTP method, one GraphQL `operationName`, given query parameters, request headers or a text in the request body, or match URLs with a regular expression.
 - **Computed responses and WebSocket frames**: a script rule builds the response in JavaScript from the request and the real response; WebSocket rules replace, substitute, block or delay text frames.
+- **Inject JS/CSS into the real page**: an inject rule adds your script and stylesheet to every page a pattern matches, while the page itself still comes from the server. The page keeps its Content-Security-Policy; only the injected code is let through, by its hash.
 
 🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
 
@@ -108,6 +109,7 @@ src/
 ├── ui.ts                    # Shared UI state & controller orchestration
 ├── shared.ts                # Shared OverrideRule, ApiEntry, and header types
 ├── tab-state.ts             # Per-tab state store, session persistence, & worker rehydration
+├── static-files.ts          # Content-Type guessing, HTML injection & CSP hash helpers
 ├── utils.ts                 # Pattern matching, wildcard, dynamic templates, LRU regex cache, & origin helpers
 ├── background/
 │   ├── api-capture.ts       # CDP Network event listener & API tracking
@@ -126,14 +128,17 @@ src/
     ├── dialogs.ts           # Prompt & confirmation modal dialogs
     ├── har.ts               # HAR (HTTP Archive) parser and exporter
     ├── headers-editor.ts    # Request & Response headers editor table/textarea
+    ├── i18n.ts              # English/Vietnamese UI text & the language switch
     ├── modal-controller.ts  # Override editor modal event handlers
     ├── modal.ts             # Override modal UI state & visibility
     ├── notifications.ts     # Toast notifications (success/warning/error)
     ├── persistence.ts       # Storage persistence queue & error handler
     ├── primitives.ts        # UI element creation primitives
     ├── profiles.ts          # Per-domain rule profiles & presets
+    ├── rule-summary.ts      # One-line summary of each saved rule
     ├── rules-io-controller.ts # Import/export JSON rules & HAR/Swagger drag-and-drop
     ├── rules-list.ts        # Render saved rules list with action buttons & badges
+    ├── static-rule.ts       # "Use a local file…" picker & Inject JS/CSS fields
     ├── swagger.ts          # Swagger / OpenAPI spec parser
     ├── toolbar-controller.ts# Enable toggle, search, refresh, tabs, & action buttons
     ├── types.ts             # UI state & elements interfaces
@@ -164,11 +169,11 @@ manifest.json                # Chrome Manifest V3 configuration
 
 1. **Initialization**: `devtools.ts` creates a DevTools panel → `panel.ts` fires up UI + listens to `chrome.devtools.network` events (HAR + `onRequestFinished`). Popup uses `popup.ts` instead, without HAR or manual editor.
 
-2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, enables `Network`, applies the selected throttling preset, and enables `Fetch` for both Request and Response stages. Detachment happens on disable, tab close, or debugger disconnect.
+2. **Debugger attachment**: When "Enable Overrides" is checked, `background.ts` calls `chrome.debugger.attach` on the active tab, enables `Network`, turns the browser cache off for the tab (`Network.setCacheDisabled`, so a rule also applies to a file the page had cached), applies the selected throttling preset, and enables `Fetch` for both Request and Response stages. Detachment happens on disable, tab close, or debugger disconnect.
 
 3. **Request interception** (`Fetch.requestPaused`):
    - **Request stage**: Checks override rules in precedence order. A rule with `failReason` kills the request via `Fetch.failRequest` (after `delayMs`, if set). Otherwise a rule with `redirectUrl` redirects via `Fetch.continueRequest` with a modified URL — wildcards (`*`) in the redirect URL are substituted with captured groups from the pattern match. A body rule with `respondAtRequest` is answered here with `Fetch.fulfillRequest`, so the request is never sent.
-   - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with the original status and headers — unless the rule overrides them via `statusCode`/`responseHeaders` (same-name headers overwritten case-insensitively) — plus the `x-network-overrides: true` and `x-network-overrides-pattern` markers, delayed by `delayMs` if set. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
+   - **Response stage**: Checks override rules for a body replacement. If found, `Fetch.fulfillRequest` sends the custom body (base64-encoded) with the original status and headers — unless the rule overrides them via `statusCode`/`responseHeaders` (same-name headers overwritten case-insensitively) — plus the `x-network-overrides: true` and `x-network-overrides-pattern` markers, delayed by `delayMs` if set. An inject rule (`kind: 'inject'`) matches only documents: the real HTML is read with `Fetch.getResponseBody`, the stylesheet is added at the end of `<head>` and the script at the end of `<body>`, and the SHA-256 hashes of both are added to any CSP directive that would block them. If no rule matches, XHR/Fetch response bodies are stored for later auto-fill via `Fetch.getResponseBody`.
 
 4. **Recent API tracking**: `Network.requestWillBeSent` captures request metadata into an in-memory Map (per tabId), mirrored to `chrome.storage.session` under key `tabState_{tabId}` (debounced). Capped at 500 URLs and 100 bodies. On worker startup, this state is rehydrated from `chrome.storage.session` and the debugger is re-attached to tabs that were enabled; any legacy `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys left over from older versions in `chrome.storage.local` are removed automatically.
 
@@ -184,6 +189,8 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 | `overrides_{origin}` | `OverrideRule[]` (rules for one domain, e.g. `overrides_https://a.test`)  | Permanent — survives browser restart                                                                    |
 | `overrides_global`   | `OverrideRule[]` shared across every domain                               | Permanent — survives browser restart                                                                    |
 | `apiSearchTerm`      | `string`                                                                  | Permanent — survives browser restart                                                                    |
+| `uiLanguage`         | `'auto'`, `'en'` or `'vi'`                                                | Permanent — survives browser restart                                                                    |
+| `capturedBodyTypes`  | resource types whose response bodies are kept                             | Permanent — survives browser restart                                                                    |
 | `tabState_{tabId}`   | per-tab snapshot (`enabled`, `origin`, `overrides`, captured APIs/bodies) | `chrome.storage.session` — cleared when the browser exits; rehydrated and re-attached on worker startup |
 
 **Important**: Override rules are never lost. Recent API data is keyed by `tabId`, lives only for the current browser session, and is only visible when the same tab is active. Legacy keys from older extension versions are migrated automatically: a flat `overrides` list is moved to the current domain's `overrides_{origin}` key on UI load, and `recentApis_{tabId}` / `recentApiBodies_{tabId}` keys are removed from `chrome.storage.local` on worker startup.
@@ -283,18 +290,23 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 
 Optional fields on an override rule:
 
-| Field              | Type                        | Description                                                                                           |
-| ------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `statusCode`       | optional integer 100–599    | Forces the mocked response status (body rules only).                                                  |
-| `responseHeaders`  | optional `{name, value}[]`  | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
-| `delayMs`          | optional number 0–120000    | Delays the response/failure by N ms (body and fail rules).                                            |
-| `failReason`       | optional enum               | Makes the rule fail the request at the network layer instead of answering.                            |
-| `respondAtRequest` | optional boolean            | Body rules: answer before the request is sent, so the server is never called (see below).             |
-| `patch`            | `{op, path, value?}[]`      | With `"mode": "patch"`: changes applied to the real JSON response (see above).                        |
-| `graphqlOperation` | optional string             | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
-| `matchQuery`       | optional `{name, value?}[]` | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
-| `matchHeaders`     | optional `{name, value?}[]` | Applies the rule only when every request header is present (and equal); names ignore case.            |
-| `matchBody`        | optional string             | Applies the rule only when the request body contains this text.                                       |
+| Field              | Type                                           | Description                                                                                           |
+| ------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`       | optional integer 100–599                       | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders`  | optional `{name, value}[]`                     | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`          | optional number 0–120000                       | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`       | optional enum                                  | Makes the rule fail the request at the network layer instead of answering.                            |
+| `respondAtRequest` | optional boolean                               | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `patch`            | `{op, path, value?}[]`                         | With `"mode": "patch"`: changes applied to the real JSON response (see above).                        |
+| `graphqlOperation` | optional string                                | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+| `matchQuery`       | optional `{name, value?}[]`                    | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
+| `matchHeaders`     | optional `{name, value?}[]`                    | Applies the rule only when every request header is present (and equal); names ignore case.            |
+| `matchBody`        | optional string                                | Applies the rule only when the request body contains this text.                                       |
+| `fileName`         | optional string                                | Body rules: the local file the body was loaded from; such a rule answers with 200 by default.         |
+| `kind`             | optional `'http'`, `'websocket'` or `'inject'` | `'inject'` adds `injectScript` / `injectStyle` to matched pages instead of answering requests.        |
+| `injectScript`     | optional string                                | Inject rules: JavaScript added at the end of `<body>`.                                                |
+| `injectStyle`      | optional string                                | Inject rules: CSS added at the end of `<head>`.                                                       |
+| `relaxCsp`         | optional boolean                               | Inject rules: remove the page's Content-Security-Policy instead of adding hashes (off by default).    |
 
 ### Answer without calling the server
 
@@ -461,6 +473,9 @@ Produces a ZIP in `release/` containing only the runtime files (`manifest.json`,
 - Recent API data is capped at 500 URLs and 100 response bodies per tab.
 - Recent API bodies are only stored for XHR and Fetch resource types by default. Tick more types (Doc, JS, CSS) in the capture filters of the APIs tab; the choice is saved (`capturedBodyTypes` in `chrome.storage.local`) and kept when the service worker restarts or the panel is opened again.
 - Recent API lists are keyed by `tabId` and reset when the tab is closed and reopened.
+- Rules, including files loaded with **Use a local file…**, share the browser's extension storage (about 10 MB); the editor warns above 2 MB.
+- A replaced script or stylesheet whose tag has an `integrity` (SRI) attribute is refused by the page. Requests a service worker answers itself are not intercepted.
+- Inject rules change only successful (2xx) UTF-8 HTML pages, and need a page reload after they are saved. A CSP `sandbox` without `allow-scripts` still stops the injected script.
 - The extension is designed for developer debugging only, not for end-user production use.
 
 ## License

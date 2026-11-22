@@ -7,6 +7,8 @@
 The Extension does **not** collect, transmit, or share any user data with external servers. All data processed by the Extension remains local to the user's device:
 
 - **Override rules**: Stored locally using Chrome's `chrome.storage.local` API
+- **Local files**: A file you pick with "Use a local file…" is read in the browser and saved inside its rule; it is never uploaded
+- **Injected code**: Scripts and stylesheets of inject rules are added only to the pages their rules match, on your device
 - **Captured network requests**: Kept in memory only for the duration of the debugging session
 - **No analytics or tracking**: No third-party analytics or tracking code is included
 

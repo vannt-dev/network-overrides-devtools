@@ -4,7 +4,7 @@
 /// <reference path="../utils.ts" />
 
 namespace NetworkOverridesUi {
-  export type ModalType = 'body' | 'redirect' | 'fail' | 'websocket';
+  export type ModalType = 'body' | 'redirect' | 'fail' | 'websocket' | 'inject';
 
   export const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   export type OverrideMode = NetworkOverridesShared.OverrideMode;
@@ -51,7 +51,7 @@ namespace NetworkOverridesUi {
     modalHeaders: HTMLTextAreaElement;
     modalFailFields: HTMLDivElement;
     modalFailReason: HTMLSelectElement;
-    modalAdvancedFields: HTMLDivElement;
+    modalAdvancedFields: HTMLDetailsElement;
     modalWsFields: HTMLDivElement;
     modalWsDirection: HTMLSelectElement;
     modalWsMatch: HTMLInputElement;
@@ -98,6 +98,18 @@ namespace NetworkOverridesUi {
     curlSwaggerFileInput?: HTMLInputElement;
     curlSwaggerImportBtn?: HTMLButtonElement;
     curlSwaggerCloseModal?: HTMLElement;
+    importMenuBtn?: HTMLButtonElement;
+    importMenu?: HTMLElement;
+    modalPresets?: HTMLElement;
+    modalInjectFields?: HTMLDivElement;
+    modalInjectScript?: HTMLTextAreaElement;
+    modalInjectStyle?: HTMLTextAreaElement;
+    modalInjectRelaxCsp?: HTMLInputElement;
+    modalBodyFile?: HTMLInputElement;
+    modalBodyFileBtn?: HTMLButtonElement;
+    modalBodyFileInfo?: HTMLElement;
+    modalBodyFileName?: HTMLElement;
+    modalBodyFileClear?: HTMLButtonElement;
   }
 
   export interface AppOptions {

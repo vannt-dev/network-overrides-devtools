@@ -9,13 +9,19 @@
   <body>
     <div class="header-row">
       <h2>Network Overrides API</h2>
-      <div class="header-actions" aria-label="Popup actions">
+      <div
+        class="header-actions"
+        aria-label="Popup actions"
+        data-i18n-aria-label="header_actions_label"
+      >
         <button
           id="refresh-apis"
           type="button"
           class="header-btn"
           title="Refresh captured requests"
           aria-label="Refresh captured requests"
+          data-i18n-title="refresh_title"
+          data-i18n-aria-label="refresh_title"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 6v5h-5"></path>
@@ -30,6 +36,8 @@
           class="header-btn info-btn"
           title="Open user guide"
           aria-label="Open user guide"
+          data-i18n-title="guide_title"
+          data-i18n-aria-label="guide_title"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9"></circle>
@@ -45,23 +53,39 @@
         <input id="enable" type="checkbox" />
         <span class="switch-slider"></span>
       </label>
-      <label for="enable" class="switch-label">Enable Overrides</label>
+      <label for="enable" class="switch-label" data-i18n="enable_label">Enable Overrides</label>
       <span id="attach-status" class="attach-status" style="display: none"></span>
+      <select
+        id="ui-language"
+        class="ui-language-select"
+        title="Language"
+        aria-label="Language"
+        data-i18n-title="language_label"
+        data-i18n-aria-label="language_label"
+      >
+        <option value="auto" data-i18n="language_auto">Auto</option>
+        <option value="en">English</option>
+        <option value="vi">Tiếng Việt</option>
+      </select>
     </div>
-    <div class="runtime-controls" aria-label="Network conditions and traffic analytics">
+    <div
+      class="runtime-controls"
+      aria-label="Network conditions and traffic analytics"
+      data-i18n-aria-label="runtime_controls_label"
+    >
       <label class="throttle-control" for="throttle-preset">
-        Network
+        <span data-i18n="throttle_label">Network</span>
         <select id="throttle-preset">
-          <option value="none">No throttling</option>
+          <option value="none" data-i18n="throttle_none">No throttling</option>
           <option value="fast3g">Fast 3G</option>
           <option value="slow3g">Slow 3G</option>
-          <option value="offline">Offline</option>
+          <option value="offline" data-i18n="throttle_offline">Offline</option>
         </select>
       </label>
       <span id="traffic-stats" class="traffic-stats">Overridden 0 · Failed 0</span>
     </div>
 
-    <p class="hint">
+    <p class="hint" data-i18n-html="hint_tip">
       Tip: use <code>*</code> as wildcard in patterns (e.g.,
       <code>https://old.com/api/*/users</code>), <code>*</code>/<code>all</code> for all requests,
       or regex <code>/pattern/flags</code>. Use <code>*</code> in Redirect URL to substitute
@@ -69,25 +93,86 @@
     </p>
 
     <div id="override-modal" class="modal" style="display: none">
-      <div class="modal-content modal-content--override">
+      <div
+        class="modal-content modal-content--override"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title-text"
+      >
         <header class="modal-header">
           <h4 class="modal-title">
             <span id="modal-title-text"></span>
             <span id="modal-url"></span>
           </h4>
-          <button class="close modal-close" type="button" aria-label="Close override editor">
+          <button
+            class="close modal-close"
+            type="button"
+            aria-label="Close override editor"
+            data-i18n-aria-label="modal_close"
+          >
             &times;
           </button>
         </header>
         <div class="modal-scroll-body">
+          <div
+            id="modal-presets"
+            class="modal-presets"
+            role="group"
+            aria-label="Presets"
+            data-i18n-aria-label="presets_label"
+          >
+            <span class="modal-presets-label" aria-hidden="true" data-i18n="presets_label"
+              >Presets</span
+            >
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="empty-list"
+              title="Answer 200 with an empty list: [] or the same JSON with its lists emptied"
+              data-i18n-title="preset_empty_list_title"
+            >
+              <span data-i18n="preset_empty_list">Empty list</span>
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="server-error"
+              title="Answer with status 500 and a small JSON error"
+              data-i18n-title="preset_server_error_title"
+            >
+              <span data-i18n="preset_server_error">Server error</span>
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="slow"
+              title="Wait 3 seconds before the answer arrives"
+              data-i18n-title="preset_slow_title"
+            >
+              <span data-i18n="preset_slow">Slow (3 s)</span>
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="offline"
+              title="Fail the request as if the network were down"
+              data-i18n-title="preset_offline_title"
+            >
+              <span data-i18n="preset_offline">Offline</span>
+            </button>
+          </div>
+          <div class="modal-field">
+            <label for="modal-pattern"><span data-i18n="field_pattern">URL pattern</span></label>
+            <input id="modal-pattern" type="text" aria-describedby="modal-pattern-hint" />
+            <p id="modal-pattern-hint" class="modal-field-hint" data-i18n-html="field_pattern_hint">
+              Part of the URL. Use <code>*</code> to match more URLs, e.g.
+              <code>/api/users/*</code>; <code>/regex/</code> also works.
+            </p>
+          </div>
           <label class="modal-field">
-            <span>Pattern</span>
-            <input id="modal-pattern" type="text" />
-          </label>
-          <label class="modal-field">
-            <span>Method</span>
+            <span data-i18n="field_method">Method</span>
             <select id="modal-method">
-              <option value="ANY">Any</option>
+              <option value="ANY" data-i18n="method_any">Any</option>
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
@@ -95,105 +180,101 @@
               <option value="DELETE">DELETE</option>
             </select>
           </label>
-          <label class="modal-field">
-            <span>GraphQL Operation (optional)</span>
-            <input
-              id="modal-graphql-op"
-              type="text"
-              placeholder="e.g. GetUserProfile or query name"
-            />
-          </label>
-          <details id="modal-match-fields" class="modal-match-fields">
-            <summary>Only when the request has… (optional)</summary>
-            <p class="modal-field-help">
-              Every condition you fill in must hold, together with the pattern, method and GraphQL
-              operation. A rule with none of them matches as before.
-            </p>
-            <label class="modal-field">
-              <span>Query parameters</span>
-              <input
-                id="modal-match-query"
-                type="text"
-                placeholder="e.g. page=2&amp;debug (a name alone: present with any value)"
-              />
-            </label>
-            <label class="modal-field">
-              <span>Request headers (one per line; names ignore case)</span>
-              <textarea
-                id="modal-match-headers"
-                rows="2"
-                placeholder="X-Tenant: acme&#10;Authorization"
-              ></textarea>
-            </label>
-            <label class="modal-field">
-              <span>Request body contains</span>
-              <input
-                id="modal-match-body"
-                type="text"
-                placeholder='e.g. "plan":"pro" (no match when the browser sends no body text)'
-              />
-            </label>
-          </details>
-          <label class="type-radio" title="Apply this rule on every domain">
-            <input id="modal-global-rule" type="checkbox" />
-            <span>Global rule (all domains)</span>
-          </label>
-          <div class="override-type-selector">
-            <label class="type-radio">
+          <div
+            class="override-type-selector"
+            role="radiogroup"
+            aria-label="What the rule does"
+            data-i18n-aria-label="type_group_label"
+          >
+            <label
+              class="type-radio"
+              title="Answer with your own status and body"
+              data-i18n-title="type_body_title"
+            >
               <input type="radio" name="modal-override-type" value="body" checked />
-              <span>Override body</span>
+              <span data-i18n="type_body">Mock response</span>
             </label>
-            <label class="type-radio">
+            <label
+              class="type-radio"
+              title="Send the request to another URL"
+              data-i18n-title="type_redirect_title"
+            >
               <input type="radio" name="modal-override-type" value="redirect" />
-              <span>Redirect to URL</span>
+              <span data-i18n="type_redirect">Redirect</span>
             </label>
-            <label class="type-radio">
+            <label
+              class="type-radio"
+              title="Make the request fail as if the network broke"
+              data-i18n-title="type_fail_title"
+            >
               <input type="radio" name="modal-override-type" value="fail" />
-              <span>Fail request</span>
+              <span data-i18n="type_fail">Network error</span>
             </label>
-            <label class="type-radio">
+            <label
+              class="type-radio"
+              title="Change WebSocket messages"
+              data-i18n-title="type_ws_title"
+            >
               <input type="radio" name="modal-override-type" value="websocket" />
-              <span>WebSocket frames</span>
+              <span data-i18n="type_ws">WebSocket</span>
+            </label>
+            <label
+              class="type-radio"
+              title="Add your own script or stylesheet to matching pages"
+              data-i18n-title="type_inject_title"
+            >
+              <input type="radio" name="modal-override-type" value="inject" />
+              <span data-i18n="type_inject">Inject JS/CSS</span>
             </label>
           </div>
+          <div class="modal-field" id="modal-status-field">
+            <label for="modal-status"><span data-i18n="field_status">Status code</span></label>
+            <input
+              id="modal-status"
+              type="number"
+              min="100"
+              max="599"
+              placeholder="e.g. 500"
+              data-i18n-placeholder="field_status_placeholder"
+              aria-describedby="modal-status-hint"
+            />
+            <p id="modal-status-hint" class="modal-field-hint" data-i18n-html="field_status_hint">
+              Blank keeps the real status.
+            </p>
+          </div>
           <div id="modal-body-fields">
-            <label class="modal-field">
-              <span>Response body</span>
-              <select id="modal-mode">
-                <option value="text">Text</option>
-                <option value="file">Raw base64</option>
-                <option value="script">Script (JavaScript)</option>
-                <option value="patch">Patch the real JSON response</option>
-              </select>
-              <p id="modal-script-help" class="modal-script-help" style="display: none">
+            <div class="modal-field">
+              <label for="modal-body"><span data-i18n="field_body">Response body</span></label>
+              <p
+                id="modal-script-help"
+                class="modal-script-help"
+                style="display: none"
+                data-i18n-html="field_script_help"
+              >
                 The body of an async function that receives <code>request</code> and returns the
                 response: a string, or <code>{ status, headers, body }</code>. It runs in the page.
                 <code>request</code> has <code>url</code>, <code>method</code>,
                 <code>headers</code>, <code>query</code>, <code>params</code>, <code>body</code> and
                 the original <code>response</code>.
               </p>
-              <p id="modal-patch-help" class="modal-script-help" style="display: none">
+              <p
+                id="modal-patch-help"
+                class="modal-script-help"
+                style="display: none"
+                data-i18n-html="field_patch_help"
+              >
                 The request goes to the server and only these fields of its JSON response change.
                 One change per line: <code>set data.user.plan = "pro"</code> (the value is JSON) or
                 <code>remove data.ads</code>. Paths use dots and <code>[0]</code> for array items,
                 or a JSON Pointer such as <code>/data/items/0</code>. A response that is not JSON
                 passes through unchanged.
               </p>
-              <textarea id="modal-body" rows="8" placeholder="Custom response body"></textarea>
-              <label
-                class="type-radio"
-                title="Resolve dynamic {{...}} placeholders at request time"
-              >
-                <input id="modal-process-templates" type="checkbox" checked />
-                <span>Process dynamic templates</span>
-              </label>
-              <label
-                class="type-radio"
-                title="Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
-              >
-                <input id="modal-respond-at-request" type="checkbox" />
-                <span>Answer without calling the server</span>
-              </label>
+              <textarea
+                id="modal-body"
+                rows="8"
+                placeholder="Custom response body"
+                data-i18n-placeholder="modal_body_placeholder"
+              ></textarea>
               <div class="modal-body-footer">
                 <button
                   id="format-json-btn"
@@ -201,8 +282,30 @@
                   class="modal-action-btn body-format-btn"
                   style="display: none"
                   title="Pretty-print the JSON response body"
+                  data-i18n-title="format_json_title"
                 >
-                  Format JSON
+                  <span data-i18n="format_json">Format JSON</span>
+                </button>
+                <button
+                  id="modal-body-file-btn"
+                  type="button"
+                  class="modal-action-btn body-file-btn"
+                  title="Answer with a file from your computer: a script, stylesheet, page, image or font"
+                  data-i18n-title="file_pick_title"
+                >
+                  <span data-i18n="file_pick">Use a local file…</span>
+                </button>
+                <input id="modal-body-file" type="file" hidden />
+              </div>
+              <div id="modal-body-file-info" class="modal-body-file-info" hidden>
+                <span id="modal-body-file-name"></span>
+                <button
+                  id="modal-body-file-clear"
+                  type="button"
+                  class="modal-action-btn"
+                  data-i18n="file_remove"
+                >
+                  Remove file
                 </button>
               </div>
               <div
@@ -210,151 +313,385 @@
                 class="modal-preview-container"
                 style="display: none"
               ></div>
-            </label>
+            </div>
           </div>
           <div id="modal-redirect-fields" style="display: none">
             <label class="modal-field">
-              <span>Redirect URL (uses * for captured wildcards)</span>
+              <span data-i18n="field_redirect">Redirect URL (uses * for captured wildcards)</span>
               <input
                 id="modal-redirect-url"
                 type="text"
                 placeholder="e.g. https://new-api.example.com/api/*"
+                data-i18n-placeholder="field_redirect_placeholder"
               />
-            </label>
-          </div>
-          <div id="modal-fail-fields" style="display: none">
-            <label class="modal-field">
-              <span>Fail reason</span>
-              <select id="modal-fail-reason">
-                <option value="Failed">Failed</option>
-                <option value="TimedOut">TimedOut</option>
-                <option value="ConnectionRefused">ConnectionRefused</option>
-                <option value="NameNotResolved">NameNotResolved</option>
-                <option value="InternetDisconnected">InternetDisconnected</option>
-              </select>
             </label>
           </div>
           <div id="modal-ws-fields" style="display: none">
             <label class="modal-field">
-              <span>Direction</span>
+              <span data-i18n="ws_direction">Direction</span>
               <select id="modal-ws-direction">
-                <option value="receive">Receive (server → page)</option>
-                <option value="send">Send (page → server)</option>
-                <option value="both">Both</option>
+                <option value="receive" data-i18n="ws_receive">Receive (server → page)</option>
+                <option value="send" data-i18n="ws_send">Send (page → server)</option>
+                <option value="both" data-i18n="ws_both">Both</option>
               </select>
             </label>
             <label class="modal-field">
-              <span>Match frame (blank = every text frame)</span>
-              <input id="modal-ws-match" type="text" placeholder='e.g. "type":"price"' />
+              <span data-i18n="ws_match">Match frame (blank = every text frame)</span>
+              <input
+                id="modal-ws-match"
+                type="text"
+                placeholder='e.g. "type":"price"'
+                data-i18n-placeholder="ws_match_placeholder"
+              />
             </label>
             <label class="type-radio">
               <input id="modal-ws-regex" type="checkbox" />
-              <span>Match is a regular expression</span>
+              <span data-i18n="ws_regex">Match is a regular expression</span>
             </label>
             <label class="modal-field">
-              <span>Action</span>
+              <span data-i18n="ws_action">Action</span>
               <select id="modal-ws-action">
-                <option value="replace">Replace whole frame</option>
-                <option value="substitute">Substitute match</option>
-                <option value="block">Block frame</option>
-                <option value="delay">Delay frame</option>
+                <option value="replace" data-i18n="ws_replace">Replace whole frame</option>
+                <option value="substitute" data-i18n="ws_substitute">Substitute match</option>
+                <option value="block" data-i18n="ws_block">Block frame</option>
+                <option value="delay" data-i18n="ws_delay">Delay frame</option>
               </select>
             </label>
           </div>
-          <div id="modal-advanced-fields">
-            <label class="modal-field" id="modal-request-body-field">
-              <span>Override Request Payload (optional)</span>
+          <div id="modal-inject-fields" style="display: none">
+            <p class="modal-field-help" data-i18n-html="field_inject_help">
+              Adds your code to every page whose address matches the URL pattern, e.g.
+              <code>https://example.com/*</code>. The CSS goes at the end of
+              <code>&lt;head&gt;</code>, the script at the end of <code>&lt;body&gt;</code>. Reload
+              the page after saving.
+            </p>
+            <label class="modal-field">
+              <span data-i18n="field_inject_script">Script to add (JavaScript)</span>
               <textarea
-                id="modal-request-body"
-                rows="3"
-                placeholder='e.g. {"name":"mock"}'
+                id="modal-inject-script"
+                rows="5"
+                placeholder="e.g. console.log('injected');"
+                data-i18n-placeholder="field_inject_script_placeholder"
               ></textarea>
-            </label>
-            <label class="modal-field" id="modal-request-headers-field">
-              <span>Override Request Headers (Key-Value or Raw)</span>
-              <textarea
-                id="modal-request-headers"
-                rows="2"
-                placeholder="Authorization: Bearer mock-token"
-              ></textarea>
-              <div id="modal-request-headers-table" class="modal-headers-table"></div>
-            </label>
-            <label class="modal-field" id="modal-status-field">
-              <span>Status (blank = keep original)</span>
-              <input id="modal-status" type="number" min="100" max="599" placeholder="e.g. 500" />
             </label>
             <label class="modal-field">
-              <span>Delay (ms)</span>
-              <input id="modal-delay" type="number" min="0" max="120000" placeholder="0" />
+              <span data-i18n="field_inject_style">Stylesheet to add (CSS)</span>
+              <textarea
+                id="modal-inject-style"
+                rows="4"
+                placeholder="e.g. .banner { display: none; }"
+                data-i18n-placeholder="field_inject_style_placeholder"
+              ></textarea>
             </label>
-            <label class="modal-field" id="modal-headers-field">
-              <span>Extra Response Headers (Key-Value or Raw)</span>
-              <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
-              <div id="modal-response-headers-table" class="modal-headers-table"></div>
-            </label>
+            <div class="modal-field modal-check-field">
+              <label class="type-radio">
+                <input
+                  id="modal-inject-relax-csp"
+                  type="checkbox"
+                  aria-describedby="modal-inject-relax-csp-hint"
+                />
+                <span data-i18n="field_relax_csp">Remove the page's Content-Security-Policy</span>
+              </label>
+              <p
+                id="modal-inject-relax-csp-hint"
+                class="modal-field-hint"
+                data-i18n-html="field_relax_csp_hint"
+              >
+                Rarely needed: the injected code is let through the page's CSP by its hash, and the
+                rest of the policy stays. Turn this on only if your code loads other scripts, uses
+                eval or inline event handlers: the page then loads without its CSP while the rule is
+                on.
+              </p>
+            </div>
           </div>
+          <details id="modal-advanced-fields" class="modal-advanced">
+            <summary>
+              <span class="modal-group-title" data-i18n="group_advanced">Advanced</span>
+              <span class="modal-group-count" hidden></span>
+            </summary>
+            <details id="modal-match-fields" class="modal-group modal-match-fields">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_conditions">Conditions</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <p class="modal-field-help" data-i18n="conditions_help">
+                Match only some requests. Every condition you fill in must hold, together with the
+                URL pattern and method. Leave them blank to match every request.
+              </p>
+              <div class="modal-field">
+                <label for="modal-graphql-op"
+                  ><span data-i18n="field_graphql">GraphQL operation</span></label
+                >
+                <input
+                  id="modal-graphql-op"
+                  type="text"
+                  placeholder="e.g. GetUserProfile"
+                  data-i18n-placeholder="field_graphql_placeholder"
+                  aria-describedby="modal-graphql-op-hint"
+                />
+                <p
+                  id="modal-graphql-op-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_graphql_hint"
+                >
+                  The operation name the page sends to a GraphQL endpoint.
+                </p>
+              </div>
+              <label class="modal-field">
+                <span data-i18n="field_query">Query parameters</span>
+                <input
+                  id="modal-match-query"
+                  type="text"
+                  placeholder="e.g. page=2&amp;debug (a name alone: present with any value)"
+                  data-i18n-placeholder="field_query_placeholder"
+                />
+              </label>
+              <label class="modal-field">
+                <span data-i18n="field_match_headers"
+                  >Request headers (one per line; names ignore case)</span
+                >
+                <textarea
+                  id="modal-match-headers"
+                  rows="2"
+                  placeholder="X-Tenant: acme&#10;Authorization"
+                ></textarea>
+              </label>
+              <label class="modal-field">
+                <span data-i18n="field_match_body">Request body contains</span>
+                <input
+                  id="modal-match-body"
+                  type="text"
+                  placeholder='e.g. "plan":"pro" (no match when the browser sends no body text)'
+                  data-i18n-placeholder="field_match_body_placeholder"
+                />
+              </label>
+              <div class="modal-field modal-check-field">
+                <label
+                  class="type-radio"
+                  title="Apply this rule on every domain"
+                  data-i18n-title="field_global_title"
+                >
+                  <input
+                    id="modal-global-rule"
+                    type="checkbox"
+                    aria-describedby="modal-global-rule-hint"
+                  />
+                  <span data-i18n="field_global">Apply on every site (global rule)</span>
+                </label>
+                <p
+                  id="modal-global-rule-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_global_hint"
+                >
+                  Off: the rule only works on the site it was made on.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-timing" class="modal-group">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_timing">Timing &amp; failure</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <div class="modal-field">
+                <label for="modal-delay"><span data-i18n="field_delay">Delay (ms)</span></label>
+                <input
+                  id="modal-delay"
+                  type="number"
+                  min="0"
+                  max="120000"
+                  placeholder="0"
+                  aria-describedby="modal-delay-hint"
+                />
+                <p id="modal-delay-hint" class="modal-field-hint" data-i18n-html="field_delay_hint">
+                  Wait this long before answering, to test loading states. 3000 = 3 seconds.
+                </p>
+              </div>
+              <div id="modal-fail-fields" class="modal-field" style="display: none">
+                <label for="modal-fail-reason"
+                  ><span data-i18n="field_fail">Simulate a network error</span></label
+                >
+                <select id="modal-fail-reason" aria-describedby="modal-fail-reason-hint">
+                  <option value="Failed">Failed</option>
+                  <option value="TimedOut">TimedOut</option>
+                  <option value="ConnectionRefused">ConnectionRefused</option>
+                  <option value="NameNotResolved">NameNotResolved</option>
+                  <option value="InternetDisconnected">InternetDisconnected</option>
+                </select>
+                <p
+                  id="modal-fail-reason-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_fail_hint"
+                >
+                  The error the page sees instead of a response.
+                </p>
+              </div>
+              <div class="modal-field modal-check-field">
+                <label
+                  class="type-radio"
+                  title="Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
+                  data-i18n-title="field_respond_title"
+                >
+                  <input
+                    id="modal-respond-at-request"
+                    type="checkbox"
+                    aria-describedby="modal-respond-at-request-hint"
+                  />
+                  <span data-i18n="field_respond">Answer without calling the server</span>
+                </label>
+                <p
+                  id="modal-respond-at-request-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_respond_hint"
+                >
+                  The server is never contacted: works for endpoints that do not exist yet.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-response-headers" class="modal-group">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_response_headers"
+                  >Response headers</span
+                >
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <label class="modal-field" id="modal-headers-field">
+                <span data-i18n="field_response_headers"
+                  >Headers to add to the response (Key-Value or Raw)</span
+                >
+                <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
+                <div id="modal-response-headers-table" class="modal-headers-table"></div>
+              </label>
+            </details>
+            <details id="modal-group-body-type" class="modal-group">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_body_type"
+                  >Body type: patch &amp; script</span
+                >
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <div class="modal-field">
+                <label for="modal-mode"
+                  ><span data-i18n="field_mode">The response body is</span></label
+                >
+                <select id="modal-mode" aria-describedby="modal-mode-hint">
+                  <option value="text" data-i18n="mode_text">Text</option>
+                  <option value="file" data-i18n="mode_file">Raw base64</option>
+                  <option value="script" data-i18n="mode_script">Script (JavaScript)</option>
+                  <option value="patch" data-i18n="mode_patch">Patch the real JSON response</option>
+                </select>
+                <p id="modal-mode-hint" class="modal-field-hint" data-i18n-html="field_mode_hint">
+                  Text answers with the body as typed. Patch changes a few fields of the real
+                  response; Script computes the answer.
+                </p>
+              </div>
+              <div class="modal-field modal-check-field">
+                <label
+                  class="type-radio"
+                  title="Resolve dynamic {{...}} placeholders at request time"
+                  data-i18n-title="field_templates_title"
+                >
+                  <input
+                    id="modal-process-templates"
+                    type="checkbox"
+                    checked
+                    aria-describedby="modal-process-templates-hint"
+                  />
+                  <span data-i18n="field_templates">Fill in {{...}} placeholders</span>
+                </label>
+                <p
+                  id="modal-process-templates-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_templates_hint"
+                  data-i18n-args="{{$uuid}}"
+                >
+                  Placeholders such as <code>{{$uuid}}</code> get a fresh value on every request.
+                </p>
+              </div>
+            </details>
+            <details id="modal-group-request" class="modal-group">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_request">Change the request</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <label class="modal-field" id="modal-request-body-field">
+                <span data-i18n="field_request_body"
+                  >Replace the request body sent to the server</span
+                >
+                <textarea
+                  id="modal-request-body"
+                  rows="3"
+                  placeholder='e.g. {"name":"mock"}'
+                  data-i18n-placeholder="field_request_body_placeholder"
+                ></textarea>
+              </label>
+              <label class="modal-field" id="modal-request-headers-field">
+                <span data-i18n="field_request_headers"
+                  >Request headers to add or replace (Key-Value or Raw)</span
+                >
+                <textarea
+                  id="modal-request-headers"
+                  rows="2"
+                  placeholder="Authorization: Bearer mock-token"
+                ></textarea>
+                <div id="modal-request-headers-table" class="modal-headers-table"></div>
+              </label>
+            </details>
+          </details>
         </div>
         <footer class="modal-footer">
           <div id="modal-feedback" class="modal-feedback" role="status" aria-live="polite"></div>
-          <button id="save-override">Save Override</button>
+          <button id="save-override" data-i18n="modal_save">Save Override</button>
         </footer>
       </div>
     </div>
 
-    <!-- cURL / Swagger Import Modal -->
-    <div id="curl-swagger-modal" class="modal" style="display: none">
-      <div class="modal-content">
-        <span id="curl-swagger-close" class="close">&times;</span>
-        <h3>Import Rules from cURL or OpenAPI / Swagger Spec</h3>
-        <label class="modal-field">
-          <span>Paste cURL command or OpenAPI/Swagger JSON/YAML spec:</span>
-          <textarea
-            id="curl-swagger-textarea"
-            rows="6"
-            placeholder='curl -X POST https://api.example.com/users -H "Authorization: Bearer token" -d &apos;{"name":"John"}&apos;&#10;&#10;Or paste Swagger/OpenAPI JSON content...'
-          ></textarea>
-        </label>
-        <div class="curl-swagger-file-row">
-          <span>Or choose file (.json, .yaml, .yml, .curl, .txt):</span>
-          <input id="curl-swagger-file-input" type="file" accept=".json,.yaml,.yml,.curl,.txt" />
-        </div>
-        <button
-          id="curl-swagger-import-btn"
-          type="button"
-          class="btn btn-primary"
-          style="margin-top: 10px"
-        >
-          Import Rules
-        </button>
-      </div>
-    </div>
-
     <div class="tabs">
-      <button class="tab-btn active" data-tab="other">Captured APIs</button>
-      <button class="tab-btn" data-tab="overridden">Overridden</button>
-      <button class="tab-btn" data-tab="overrides">Rules</button>
+      <button class="tab-btn active" data-tab="other" data-i18n="tab_captured_plain">
+        Captured APIs
+      </button>
+      <button class="tab-btn" data-tab="overridden" data-i18n="tab_overridden_plain">
+        Overridden
+      </button>
+      <button class="tab-btn" data-tab="overrides" data-i18n="tab_rules_plain">Rules</button>
     </div>
 
     <div id="new-row" class="tab-content" style="display: none">
-      <input id="pattern" placeholder="URL pattern" />
+      <input id="pattern" placeholder="URL pattern" data-i18n-placeholder="field_pattern" />
       <input
         id="redirect-url"
         type="text"
         placeholder="Optional redirect URL (use * for wildcards)"
+        data-i18n-placeholder="manual_redirect_placeholder"
       />
       <select id="mode">
-        <option value="text">Text</option>
-        <option value="file">Raw base64</option>
+        <option value="text" data-i18n="mode_text">Text</option>
+        <option value="file" data-i18n="mode_file">Raw base64</option>
       </select>
-      <textarea id="body" rows="6" placeholder="Response body"></textarea>
-      <button id="add">Add Manual</button>
+      <textarea
+        id="body"
+        rows="6"
+        placeholder="Response body"
+        data-i18n-placeholder="field_body"
+      ></textarea>
+      <button id="add" data-i18n="manual_add">Add Manual</button>
     </div>
 
     <div id="apis-section" class="tab-content" style="display: none">
       <div class="api-controls">
         <div class="api-search-row">
-          <input id="api-search" type="search" placeholder="Search APIs..." />
-          <button id="add-api-btn" type="button" class="add-api-btn" title="Add custom API">
+          <input
+            id="api-search"
+            type="search"
+            placeholder="Search APIs..."
+            data-i18n-placeholder="api_search_placeholder"
+          />
+          <button
+            id="add-api-btn"
+            type="button"
+            class="add-api-btn"
+            title="Add custom API"
+            data-i18n-title="api_add_title"
+          >
             +
           </button>
           <button
@@ -362,12 +699,13 @@
             type="button"
             class="export-har-btn"
             title="Export the captured requests as a HAR file"
+            data-i18n-title="api_export_har_title"
           >
             HAR
           </button>
         </div>
         <div class="captured-types-bar">
-          <span class="captured-types-label">Capture Body:</span>
+          <span class="captured-types-label" data-i18n="capture_body_label">Capture Body:</span>
           <label class="type-check"
             ><input type="checkbox" class="capture-type-cb" value="xhr" checked /> XHR</label
           >
@@ -390,18 +728,51 @@
 
     <div id="overrides-section" class="tab-content" style="display: none">
       <div class="rules-io-row">
-        <button id="export-rules-btn" type="button" class="rules-io-btn">Export</button>
-        <button id="import-rules-btn" type="button" class="rules-io-btn">Import</button>
-        <button id="import-curl-swagger-btn" type="button" class="rules-io-btn">
-          cURL / Swagger
+        <button id="export-rules-btn" type="button" class="rules-io-btn" data-i18n="rules_export">
+          Export
         </button>
+        <div class="import-menu">
+          <button
+            id="import-menu-btn"
+            type="button"
+            class="rules-io-btn"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="import-menu"
+          >
+            <span data-i18n="rules_import">Import</span> ▾
+          </button>
+          <div id="import-menu" class="import-menu-list" role="menu" hidden>
+            <button
+              id="import-rules-btn"
+              type="button"
+              role="menuitem"
+              tabindex="-1"
+              title="Load rules exported from this extension"
+              data-i18n-title="import_rules_file_title"
+            >
+              <span data-i18n="import_rules_file">Rules file (.json)</span>
+            </button>
+            <button
+              id="import-curl-swagger-btn"
+              type="button"
+              role="menuitem"
+              tabindex="-1"
+              title="Make rules from a cURL command or an OpenAPI / Swagger spec"
+              data-i18n-title="import_curl_title"
+            >
+              <span data-i18n="import_curl">cURL or OpenAPI / Swagger…</span>
+            </button>
+          </div>
+        </div>
         <button
           id="reset-rule-hits-btn"
           type="button"
           class="rules-io-btn"
           title="Set the applied count of every rule back to 0"
+          data-i18n-title="reset_counts_title"
         >
-          Reset counts
+          <span data-i18n="reset_counts">Reset counts</span>
         </button>
         <input
           id="import-rules-input"
@@ -412,26 +783,80 @@
       </div>
       <div class="profiles-row">
         <select id="profiles-select" class="profiles-select">
-          <option value="">-- Rule Profiles --</option>
+          <option value="" data-i18n="profiles_placeholder">-- Rule Profiles --</option>
         </select>
         <button
           id="save-profile-btn"
           type="button"
           class="profile-btn"
           title="Save current rules as Profile"
+          data-i18n-title="profile_save_btn_title"
         >
-          Save Profile
+          <span data-i18n="profile_save_btn">Save Profile</span>
         </button>
         <button
           id="delete-profile-btn"
           type="button"
           class="profile-btn"
           title="Delete selected Profile"
+          data-i18n-title="profile_delete_btn_title"
         >
-          Delete
+          <span data-i18n="profile_delete_button">Delete</span>
         </button>
       </div>
       <ul id="list"></ul>
+    </div>
+
+    <div id="curl-swagger-modal" class="modal" style="display: none">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="curl-swagger-title"
+      >
+        <button
+          id="curl-swagger-close"
+          type="button"
+          class="close modal-close"
+          aria-label="Close import dialog"
+          data-i18n-aria-label="import_close"
+        >
+          &times;
+        </button>
+        <h3 id="curl-swagger-title" data-i18n="import_title">
+          Import rules from cURL or OpenAPI / Swagger
+        </h3>
+        <label class="modal-field">
+          <span data-i18n="import_paste"
+            >Paste a cURL command or an OpenAPI / Swagger spec (JSON or YAML)</span
+          >
+          <textarea
+            id="curl-swagger-textarea"
+            rows="6"
+            placeholder='curl -X POST https://api.example.com/users -H "Authorization: Bearer token" -d &apos;{"name":"John"}&apos;&#10;&#10;Or paste Swagger/OpenAPI JSON content...'
+            data-i18n-placeholder="import_paste_placeholder"
+          ></textarea>
+        </label>
+        <div class="curl-swagger-file-row">
+          <label for="curl-swagger-file-input" data-i18n="import_file"
+            >Or choose a file (.json, .yaml, .yml, .har, .curl, .txt):</label
+          >
+          <input
+            id="curl-swagger-file-input"
+            type="file"
+            accept=".json,.yaml,.yml,.curl,.txt,.har"
+          />
+        </div>
+        <button
+          id="curl-swagger-import-btn"
+          type="button"
+          class="btn btn-primary"
+          style="margin-top: 10px"
+          data-i18n="import_button"
+        >
+          Import Rules
+        </button>
+      </div>
     </div>
 
     <script src="dist/ui.bundle.js"></script>

@@ -35,7 +35,8 @@ namespace NetworkOverridesBackground {
   function findOverride(
     request: any,
     overrides: OverrideRule[],
-    postData?: string
+    postData?: string,
+    resourceType?: string
   ): { override: OverrideRule; captures: string[] } | null {
     const url = request?.url || '';
     const method = request?.method;
@@ -47,6 +48,8 @@ namespace NetworkOverridesBackground {
     for (const test of overrides) {
       if (test.kind === 'websocket') continue;
       if (test.enabled === false) continue;
+      // An inject rule only rewrites the page itself, once its response is in.
+      if (test.kind === 'inject' && resourceType !== 'Document') continue;
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;
       if (!NetworkOverridesUtils.matchesRequestConditions(test, conditionRequest)) continue;
@@ -86,7 +89,7 @@ namespace NetworkOverridesBackground {
     overrides: OverrideRule[]
   ): OverrideRule | null {
     for (const rule of overrides) {
-      if (rule.kind === 'websocket' || rule.enabled === false) continue;
+      if (rule.kind === 'websocket' || rule.kind === 'inject' || rule.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(rule.method, method)) continue;
       if (!NetworkOverridesUtils.matchesQuery(rule.matchQuery, url)) continue;
       if (matchPattern(rule.pattern, url) !== null) return rule;
@@ -132,14 +135,26 @@ namespace NetworkOverridesBackground {
 
   /** Tells the open panels why a patch rule left a response (partly) unchanged. */
   function notifyPatchSkipped(tabId: number, pattern: string, url: string, reason: string): void {
-    console.warn('[NetworkOverrides] Patch rule', pattern, 'on', url, '—', reason);
+    notifyRule(tabId, pattern, url, reason, 'patchRuleSkipped');
+  }
+
+  /** Tells the open panels something about a rule, at most once per interval. */
+  function notifyRule(
+    tabId: number,
+    pattern: string,
+    url: string,
+    reason: string,
+    type: 'patchRuleSkipped' | 'injectRuleNotice',
+    code?: 'csp' | 'charset'
+  ): void {
+    console.warn('[NetworkOverrides] Rule', pattern, 'on', url, '—', reason);
     // A rule on a busy endpoint would repeat the same notice for every request.
-    const key = `${tabId} ${pattern}`;
+    const key = `${tabId} ${type} ${pattern}`;
     const now = Date.now();
     const last = lastPatchNotice.get(key);
     if (last !== undefined && now - last < PATCH_NOTICE_INTERVAL_MS) return;
     lastPatchNotice.set(key, now);
-    const message = { type: 'patchRuleSkipped', tabId, pattern, url, message: reason };
+    const message = { type, tabId, pattern, url, message: reason, code };
     TabState.runtime(tabId).subscriberPorts.forEach(port => {
       try {
         port.postMessage(message);
@@ -291,17 +306,25 @@ namespace NetworkOverridesBackground {
         }
       }
       if (!headers.find(h => h.name.toLowerCase() === 'content-type')) {
-        headers.push({ name: 'Content-Type', value: 'application/json; charset=utf-8' });
+        // A replaced script, stylesheet or image needs its own type, or the
+        // browser refuses it; anything else keeps the JSON default.
+        headers.push({
+          name: 'Content-Type',
+          value: NetworkOverridesUtils.guessContentType(url) || 'application/json; charset=utf-8',
+        });
       }
 
       // The markers always win and cannot be removed by rule headers.
       headers.push({ name: 'x-network-overrides', value: 'true' });
       headers.push({ name: 'x-network-overrides-pattern', value: ov.pattern });
 
-      const fallbackCode =
-        typeof params.responseStatusCode === 'number' &&
-        params.responseStatusCode >= 100 &&
-        params.responseStatusCode <= 599
+      // A file loaded from disk replaces the server's file, whatever the
+      // server answered (a 404 would stop the browser from using it).
+      const fallbackCode = ov.fileName
+        ? 200
+        : typeof params.responseStatusCode === 'number' &&
+            params.responseStatusCode >= 100 &&
+            params.responseStatusCode <= 599
           ? params.responseStatusCode
           : 200;
       const ruleCode =
@@ -393,6 +416,181 @@ namespace NetworkOverridesBackground {
       return;
     }
     fulfill(bodyToValidBase64());
+  }
+
+  /** The CSP headers an inject rule adds its hashes to, or removes when it relaxes the policy. */
+  const CSP_HEADERS = new Set(['content-security-policy', 'content-security-policy-report-only']);
+
+  /** Headers that describe the bytes of the server's body, which a rewrite changes. */
+  const REWRITE_DROPPED_HEADERS = new Set([
+    'content-encoding',
+    'content-length',
+    'content-md5',
+    'content-range',
+    'digest',
+    'transfer-encoding',
+    'trailer',
+    'x-network-overrides',
+    'x-network-overrides-pattern',
+  ]);
+
+  /** The real response body decoded as UTF-8, or null when it is missing or not UTF-8. */
+  function readUtf8Body(tabId: number, requestId: string, done: (text: string | null) => void) {
+    chrome.debugger.sendCommand(
+      { tabId },
+      'Fetch.getResponseBody',
+      { requestId },
+      (response: { body?: string; base64Encoded?: boolean } | undefined) => {
+        if (chrome.runtime.lastError || !response || typeof response.body !== 'string') {
+          done(null);
+          return;
+        }
+        if (!response.base64Encoded) {
+          done(response.body);
+          return;
+        }
+        try {
+          const bytes = Uint8Array.from(atob(response.body), char => char.charCodeAt(0));
+          // ignoreBOM keeps a byte order mark, which may be how the page says it is UTF-8.
+          done(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes));
+        } catch {
+          done(null);
+        }
+      }
+    );
+  }
+
+  /**
+   * Adds an inject rule's script and stylesheet to an HTML page: the real
+   * response is read, rewritten and handed to the page with the server's
+   * status and headers. Anything that is not a successful HTML page in UTF-8
+   * passes through untouched. The page's Content-Security-Policy is kept,
+   * with the hashes of the injected code added where it would stop inline
+   * code, so only that code is let through. A rule set to relax the policy
+   * removes it instead. The panel is told when a sandbox still stops scripts.
+   */
+  function answerWithInjection(
+    tabId: number,
+    params: any,
+    rule: OverrideRule,
+    proceed: () => void
+  ): void {
+    const url = params.request?.url || '';
+    const status = params.responseStatusCode;
+    const serverHeaders: FetchHeader[] = Array.isArray(params.responseHeaders)
+      ? params.responseHeaders
+      : [];
+    const headerOf = (name: string) =>
+      serverHeaders.find(header => String(header.name).toLowerCase() === name)?.value;
+    const contentType = String(headerOf('content-type') || '');
+    if (typeof status !== 'number' || status < 200 || status > 299 || !/html/i.test(contentType)) {
+      proceed();
+      return;
+    }
+    const notUtf8 = 'the page is not UTF-8, so nothing was injected';
+    const charset = /charset\s*=\s*"?([^";\s]+)/i.exec(contentType)?.[1]?.toLowerCase();
+    if (charset && charset !== 'utf-8' && charset !== 'utf8') {
+      notifyRule(tabId, rule.pattern, url, notUtf8, 'injectRuleNotice', 'charset');
+      proceed();
+      return;
+    }
+    const hitKey = TabState.ruleHitKey(tabId, rule);
+    readUtf8Body(tabId, params.requestId, text => {
+      void fulfillInjected(text);
+    });
+
+    async function fulfillInjected(text: string | null): Promise<void> {
+      try {
+        if (text === null) {
+          notifyRule(tabId, rule.pattern, url, notUtf8, 'injectRuleNotice', 'charset');
+          proceed();
+          return;
+        }
+        const relax = rule.relaxCsp === true;
+        const code = NetworkOverridesUtils.injectedCode({
+          script: rule.injectScript,
+          style: rule.injectStyle,
+        });
+        const policies = serverHeaders
+          .filter(header => String(header.name).toLowerCase().trim() === 'content-security-policy')
+          .map(header => String(header.value))
+          .concat(NetworkOverridesUtils.cspMetaPolicies(text));
+        const hasCsp =
+          policies.length > 0 ||
+          serverHeaders.some(header => CSP_HEADERS.has(String(header.name).toLowerCase().trim()));
+        const hashes =
+          !relax && hasCsp
+            ? {
+                script: code.script ? await NetworkOverridesUtils.sha256Base64(code.script) : '',
+                style: code.style ? await NetworkOverridesUtils.sha256Base64(code.style) : '',
+              }
+            : {};
+        const page = relax
+          ? NetworkOverridesUtils.removeCspMeta(text)
+          : hasCsp
+            ? NetworkOverridesUtils.allowHashesInCspMeta(text, hashes)
+            : text;
+        const html = NetworkOverridesUtils.injectIntoHtml(page, {
+          script: rule.injectScript,
+          style: rule.injectStyle,
+        });
+        const headers = serverHeaders
+          .filter(header => {
+            const name = String(header.name).toLowerCase().trim();
+            return !REWRITE_DROPPED_HEADERS.has(name) && !(relax && CSP_HEADERS.has(name));
+          })
+          .map(header => {
+            const name = String(header.name).toLowerCase().trim();
+            const value = String(header.value);
+            return {
+              name: header.name,
+              value: CSP_HEADERS.has(name)
+                ? NetworkOverridesUtils.allowHashesInCsp(value, hashes)
+                : value,
+            };
+          });
+        headers.push({ name: 'x-network-overrides', value: 'true' });
+        headers.push({ name: 'x-network-overrides-pattern', value: rule.pattern });
+        const headerPolicies = serverHeaders
+          .filter(header => String(header.name).toLowerCase().trim() === 'content-security-policy')
+          .map(header => String(header.value));
+        if (
+          !relax &&
+          code.script &&
+          NetworkOverridesUtils.cspSandboxBlocksScripts(headerPolicies)
+        ) {
+          notifyRule(
+            tabId,
+            rule.pattern,
+            url,
+            "the page's Content-Security-Policy sandbox stops all scripts, so the injected script will not run",
+            'injectRuleNotice',
+            'csp'
+          );
+        }
+        TabState.recordOverrideStat(tabId, false);
+        TabState.recordRuleHit(tabId, hitKey, url);
+        chrome.debugger.sendCommand(
+          { tabId },
+          'Fetch.fulfillRequest',
+          {
+            requestId: params.requestId,
+            responseCode: status,
+            responseHeaders: headers,
+            body: NetworkOverridesStringToBase64Local(html),
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error('fulfillRequest (inject) failed:', chrome.runtime.lastError.message);
+              proceed();
+            }
+          }
+        );
+      } catch (error) {
+        console.error(error);
+        proceed();
+      }
+    }
   }
 
   export function handleRequestPaused(tabId: number, params: any): void {
@@ -578,7 +776,7 @@ namespace NetworkOverridesBackground {
       });
 
       const postData = params.request?.postData || state.recentApis.get(url)?.postData;
-      const match = findOverride(params.request, state.overrides, postData);
+      const match = findOverride(params.request, state.overrides, postData, params.resourceType);
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (shouldCaptureBody(resourceType)) {
@@ -595,6 +793,11 @@ namespace NetworkOverridesBackground {
       // Fail rules are consumed at the request stage; seeing one here means a stale pause.
       if (match.override.failReason || match.override.redirectUrl) {
         proceed();
+        return;
+      }
+
+      if (match.override.kind === 'inject') {
+        answerWithInjection(tabId, params, match.override, proceed);
         return;
       }
 

@@ -8,10 +8,12 @@ const releaseDir = path.join(repoRoot, 'release');
 
 const requiredPaths = [
   'manifest.json',
+  '_locales',
   'devtools.html',
   'panel.html',
   'popup.html',
   'guide.html',
+  'guide-vi.html',
   'styles.css',
   'styles',
   'dist',
@@ -161,9 +163,20 @@ async function prepareZipTarget(canonicalZipPath) {
   return { finalZipPath, warnings };
 }
 
+// The manifest names the extension through _locales (`__MSG_ext_name__`); the
+// ZIP keeps the English name.
+async function englishName(manifest) {
+  const match = /^__MSG_(\w+)__$/.exec(manifest.name || '');
+  if (!match) return manifest.name;
+  const locale = manifest.default_locale || 'en';
+  const messagesPath = path.join(repoRoot, '_locales', locale, 'messages.json');
+  const messages = JSON.parse(await fs.readFile(messagesPath, 'utf8'));
+  return messages[match[1]]?.message;
+}
+
 async function main() {
   const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-  const baseZipName = `${slugify(manifest.name || 'extension')}-v${manifest.version || '0.0.0'}-store.zip`;
+  const baseZipName = `${slugify((await englishName(manifest)) || 'extension')}-v${manifest.version || '0.0.0'}-store.zip`;
   const canonicalZipPath = path.join(releaseDir, baseZipName);
 
   await fs.mkdir(releaseDir, { recursive: true });

@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
 /// <reference path="./utils.ts" />
+/// <reference path="./ui/i18n.ts" />
 /// <reference path="./ui/types.ts" />
 /// <reference path="./ui/view-utils.ts" />
 /// <reference path="./ui/primitives.ts" />
@@ -72,7 +73,7 @@ namespace NetworkOverridesUi {
       modalHeaders: document.getElementById('modal-headers') as HTMLTextAreaElement,
       modalFailFields: document.getElementById('modal-fail-fields') as HTMLDivElement,
       modalFailReason: document.getElementById('modal-fail-reason') as HTMLSelectElement,
-      modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDivElement,
+      modalAdvancedFields: document.getElementById('modal-advanced-fields') as HTMLDetailsElement,
       modalWsFields: document.getElementById('modal-ws-fields') as HTMLDivElement,
       modalWsDirection: document.getElementById('modal-ws-direction') as HTMLSelectElement,
       modalWsMatch: document.getElementById('modal-ws-match') as HTMLInputElement,
@@ -120,6 +121,18 @@ namespace NetworkOverridesUi {
       curlSwaggerFileInput: document.getElementById('curl-swagger-file-input') as HTMLInputElement,
       curlSwaggerImportBtn: document.getElementById('curl-swagger-import-btn') as HTMLButtonElement,
       curlSwaggerCloseModal: document.getElementById('curl-swagger-close') as HTMLElement,
+      importMenuBtn: document.getElementById('import-menu-btn') as HTMLButtonElement,
+      importMenu: document.getElementById('import-menu') as HTMLElement,
+      modalPresets: document.getElementById('modal-presets') as HTMLElement,
+      modalInjectFields: document.getElementById('modal-inject-fields') as HTMLDivElement,
+      modalInjectScript: document.getElementById('modal-inject-script') as HTMLTextAreaElement,
+      modalInjectStyle: document.getElementById('modal-inject-style') as HTMLTextAreaElement,
+      modalInjectRelaxCsp: document.getElementById('modal-inject-relax-csp') as HTMLInputElement,
+      modalBodyFile: document.getElementById('modal-body-file') as HTMLInputElement,
+      modalBodyFileBtn: document.getElementById('modal-body-file-btn') as HTMLButtonElement,
+      modalBodyFileInfo: document.getElementById('modal-body-file-info') as HTMLElement,
+      modalBodyFileName: document.getElementById('modal-body-file-name') as HTMLElement,
+      modalBodyFileClear: document.getElementById('modal-body-file-clear') as HTMLButtonElement,
       modalRequestHeadersTable: document.getElementById(
         'modal-request-headers-table'
       ) as HTMLDivElement,
@@ -133,6 +146,7 @@ namespace NetworkOverridesUi {
     addApis: (apis: ApiEntry[]) => void;
   } {
     const elements = getElements();
+    applyI18n(document);
     upgradeUiPrimitives();
     const state: UiState = {
       overrides: [],
@@ -177,7 +191,11 @@ namespace NetworkOverridesUi {
     }
 
     function renderRuntimeState(): void {
-      elements.trafficStats.textContent = `Overridden ${state.stats.totalOverridden} · Failed ${state.stats.totalFailed}`;
+      elements.trafficStats.textContent = t(
+        'traffic_stats',
+        state.stats.totalOverridden,
+        state.stats.totalFailed
+      );
       elements.throttleSelect.value = state.throttlePreset;
     }
 
@@ -247,7 +265,7 @@ namespace NetworkOverridesUi {
     }
 
     function notifyBackground(overrides = state.overrides, isRetry = false): Promise<void> {
-      if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
+      if (activeTabId === null) return Promise.reject(new Error(t('error_no_active_tab')));
       return new Promise((resolve, reject) => {
         try {
           chrome.runtime.sendMessage(
@@ -275,7 +293,7 @@ namespace NetworkOverridesUi {
                 return;
               }
               if (!response || response.success === false) {
-                reject(new Error(response?.error || 'Background did not confirm the update'));
+                reject(new Error(response?.error || t('error_background_no_confirm')));
                 return;
               }
               resolve();
@@ -295,7 +313,7 @@ namespace NetworkOverridesUi {
       void persistRuleChange(
         saveState,
         nextOverrides,
-        enabled ? 'Rule enabled' : 'Rule disabled',
+        enabled ? t('toast_rule_enabled') : t('toast_rule_disabled'),
         renderRules
       );
     }
@@ -303,7 +321,7 @@ namespace NetworkOverridesUi {
     function deleteRule(index: number): void {
       if (index < 0 || index >= state.overrides.length) return;
       const nextOverrides = state.overrides.filter((_, ruleIndex) => ruleIndex !== index);
-      void persistRuleChange(saveState, nextOverrides, 'Rule deleted', renderRules);
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_deleted'), renderRules);
     }
 
     function duplicateRule(index: number): void {
@@ -311,7 +329,7 @@ namespace NetworkOverridesUi {
       const copy = JSON.parse(JSON.stringify(state.overrides[index]));
       const nextOverrides = [...state.overrides];
       nextOverrides.splice(index + 1, 0, copy);
-      void persistRuleChange(saveState, nextOverrides, 'Rule duplicated', renderRules);
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_duplicated'), renderRules);
     }
 
     function reorderRule(from: number, target: number, placement: RulePlacement): void {
@@ -319,7 +337,7 @@ namespace NetworkOverridesUi {
       const nextOverrides = moveRule(state.overrides, from, target, placement);
       if (!nextOverrides) return;
       const newIndex = nextOverrides.indexOf(moved);
-      void persistRuleChange(saveState, nextOverrides, 'Rule moved', () => {
+      void persistRuleChange(saveState, nextOverrides, t('toast_rule_moved'), () => {
         renderRules();
         // The list is rebuilt on every render; keep the keyboard on the rule that moved.
         elements.listEl.querySelectorAll<HTMLElement>('.rule-drag-handle')[newIndex]?.focus();
@@ -331,7 +349,7 @@ namespace NetworkOverridesUi {
       if (!rule) return;
 
       state.currentEditIndex = index;
-      elements.modalTitleText.textContent = 'Edit override';
+      elements.modalTitleText.textContent = t('modal_title_edit');
       elements.modalUrl.textContent = rule.pattern;
       elements.modalPattern.value = rule.pattern;
       const storedMethod = (rule.method || 'ANY').toUpperCase();
@@ -339,6 +357,7 @@ namespace NetworkOverridesUi {
 
       let type: ModalType = 'body';
       if (rule.kind === 'websocket') type = 'websocket';
+      else if (rule.kind === 'inject') type = 'inject';
       else if (rule.failReason) type = 'fail';
       else if (rule.redirectUrl) type = 'redirect';
 
@@ -358,6 +377,7 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = rule.redirectUrl || '';
 
       prefillAdvancedFields(elements, rule);
+      prefillStaticFields(elements, rule);
       updateBodyFormatAction(elements);
       updateImagePreview(elements, elements.modalBody.value);
       openModal(elements);
@@ -368,6 +388,14 @@ namespace NetworkOverridesUi {
       // A script or a patch is not a response body: keep what the rule holds.
       const mode = elements.modalMode.value;
       if (mode === 'script' || mode === 'patch') return;
+      // Nor is a file loaded from disk or an inject rule's code.
+      if (mode === 'file' || heldFileName(elements)) return;
+      if (
+        state.currentEditIndex !== null &&
+        state.overrides[state.currentEditIndex]?.kind === 'inject'
+      ) {
+        return;
+      }
       const response = await new Promise<any>(resolve => {
         chrome.runtime.sendMessage({ type: 'getApiData', tabId: activeTabId, url }, resolve);
       });
@@ -388,7 +416,7 @@ namespace NetworkOverridesUi {
 
       if (api.type.toLowerCase() === 'websocket') {
         state.currentEditIndex = null;
-        elements.modalTitleText.textContent = 'Add override';
+        elements.modalTitleText.textContent = t('modal_title_add');
         elements.modalUrl.textContent = api.url;
         elements.modalPattern.value = api.url;
         const wsRadio = elements.modal.querySelector(
@@ -399,6 +427,7 @@ namespace NetworkOverridesUi {
         elements.modalRedirectUrl.value = '';
         prefillAdvancedFields(elements, null);
         prefillWebSocketFields(elements, null);
+        prefillStaticFields(elements, null);
         updateModalVisibility(elements, 'websocket');
         updateBodyFormatAction(elements);
         openModal(elements);
@@ -406,7 +435,7 @@ namespace NetworkOverridesUi {
       }
 
       state.currentEditIndex = null;
-      elements.modalTitleText.textContent = 'Add override';
+      elements.modalTitleText.textContent = t('modal_title_add');
       elements.modalUrl.textContent = api.url;
 
       try {
@@ -429,6 +458,14 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = '';
 
       prefillAdvancedFields(elements, null);
+      prefillStaticFields(elements, null);
+      // Start from the real status, unless it cannot carry the mocked body.
+      const status = api.statusCode;
+      if (typeof status === 'number' && status >= 200 && status <= 599) {
+        if (status !== 204 && (status < 300 || status >= 400)) {
+          elements.modalStatus.value = String(status);
+        }
+      }
       updateBodyFormatAction(elements);
       updateImagePreview(elements, elements.modalBody.value);
       openModal(elements);
@@ -453,7 +490,7 @@ namespace NetworkOverridesUi {
       loadApis: () => loadApisWithRetry(),
       notifyBackground,
       setThrottle: preset => {
-        if (activeTabId === null) return Promise.reject(new Error('No active tab is available'));
+        if (activeTabId === null) return Promise.reject(new Error(t('error_no_active_tab')));
         return new Promise((resolve, reject) => {
           chrome.runtime.sendMessage(
             { type: 'setThrottle', tabId: activeTabId, preset },
@@ -461,7 +498,7 @@ namespace NetworkOverridesUi {
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
               } else if (!response?.success) {
-                reject(new Error(response?.error || 'Could not update network throttling'));
+                reject(new Error(response?.error || t('error_throttle_failed')));
               } else {
                 state.throttlePreset = preset;
                 renderRuntimeState();
@@ -492,7 +529,7 @@ namespace NetworkOverridesUi {
     /** Downloads every request captured for the active tab as a HAR 1.2 file. */
     async function exportHar(): Promise<void> {
       if (activeTabId === null) {
-        showNotification('No active tab to export from.', 'error');
+        showNotification(t('toast_har_no_tab'), 'error');
         return;
       }
       try {
@@ -504,7 +541,7 @@ namespace NetworkOverridesUi {
         });
         const apis: UiApi[] = Array.isArray(response?.apis) ? response.apis : [];
         if (apis.length === 0) {
-          showNotification('Nothing captured yet; there is nothing to export.', 'error');
+          showNotification(t('toast_har_empty'), 'error');
           return;
         }
         const har = buildHar(apis, {
@@ -522,12 +559,9 @@ namespace NetworkOverridesUi {
         anchor.remove();
         URL.revokeObjectURL(url);
         const withBody = apis.filter(api => typeof api.body === 'string').length;
-        showNotification(
-          `Exported ${apis.length} request(s), ${withBody} with a response body.`,
-          'success'
-        );
+        showNotification(t('toast_har_exported', apis.length, withBody), 'success');
       } catch (error) {
-        showNotification(`Failed to export HAR: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_har_failed', errorMessage(error)), 'error');
       }
     }
     elements.exportHarBtn?.addEventListener('click', () => void exportHar());
@@ -624,12 +658,16 @@ namespace NetworkOverridesUi {
           } else if (msg.type === 'stats') {
             updateRuntimeState(msg);
           } else if (msg.type === 'wsRuleError') {
-            showNotification(
-              `WebSocket rule "${msg.pattern}" was skipped: ${msg.message}`,
-              'error'
-            );
+            showNotification(t('toast_ws_rule_skipped', msg.pattern, msg.message), 'error');
           } else if (msg.type === 'patchRuleSkipped') {
-            showNotification(`Patch rule "${msg.pattern}": ${msg.message}`, 'warning');
+            showNotification(t('toast_patch_rule_skipped', msg.pattern, msg.message), 'warning');
+          } else if (msg.type === 'injectRuleNotice') {
+            showNotification(
+              msg.code === 'csp'
+                ? t('toast_inject_csp', msg.pattern)
+                : t('toast_inject_not_utf8', msg.pattern),
+              'warning'
+            );
           } else if (msg.type === 'throttle') {
             updateRuntimeState(msg);
           } else if (msg.type === 'status') {
@@ -693,6 +731,14 @@ namespace NetworkOverridesUi {
 
     void refreshActiveTab();
     renderRuntimeState();
+    // A language picked in the switch redraws the text drawn from code.
+    initLanguageSwitch(() => {
+      renderRules();
+      renderRuntimeState();
+      if (elements.attachStatus.style.display !== 'none') {
+        elements.attachStatus.textContent = attachStatusText(state);
+      }
+    });
     window.addEventListener('focus', () => void refreshActiveTab());
 
     function addApis(newApis: ApiEntry[]): void {

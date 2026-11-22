@@ -31,7 +31,7 @@ namespace NetworkOverridesUi {
   ): { rule: OverrideRule } | { error: string; field: HTMLElement } {
     if (!NetworkOverridesUtils.isRegexPattern(pattern) && !/^(wss?:\/\/|\*)/i.test(pattern)) {
       return {
-        error: 'A WebSocket pattern starts with ws://, wss:// or *.',
+        error: t('error_ws_pattern'),
         field: elements.modalPattern,
       };
     }
@@ -44,16 +44,16 @@ namespace NetworkOverridesUi {
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         return {
-          error: `Match is not a valid regular expression: ${reason}`,
+          error: t('error_ws_regex', reason),
           field: elements.modalWsMatch,
         };
       }
     }
     if (action === 'substitute' && !match) {
-      return { error: 'Substitute needs a Match to replace.', field: elements.modalWsMatch };
+      return { error: t('error_ws_substitute'), field: elements.modalWsMatch };
     }
     if (action === 'delay' && !delayMs) {
-      return { error: 'Delay frame needs a delay above 0 ms.', field: elements.modalDelay };
+      return { error: t('error_ws_delay'), field: elements.modalDelay };
     }
 
     const usesBody = action === 'replace' || action === 'substitute';
@@ -73,17 +73,5 @@ namespace NetworkOverridesUi {
     }
     if (elements.modalGlobalRule?.checked) rule.isGlobal = true;
     return { rule };
-  }
-
-  export function describeWebSocketRule(rule: OverrideRule): string {
-    const direction = rule.wsDirection || 'receive';
-    const match = rule.wsMatch
-      ? rule.wsMatchRegex
-        ? `/${rule.wsMatch}/`
-        : `contains "${rule.wsMatch}"`
-      : 'any frame';
-    const action = rule.wsAction || 'replace';
-    const suffix = action === 'delay' ? ` ${rule.delayMs || 0}ms` : '';
-    return `${direction} · ${match} → ${action}${suffix}`;
   }
 }

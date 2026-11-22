@@ -4,6 +4,7 @@
 /// <reference path="./modal.ts" />
 /// <reference path="./notifications.ts" />
 /// <reference path="./websocket-rule.ts" />
+/// <reference path="./static-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface ModalControllerOptions {
@@ -29,6 +30,7 @@ namespace NetworkOverridesUi {
     elements.modalFeedback.textContent = message;
     elements.modalFeedback.className = `modal-feedback is-${kind}`;
     if (field) {
+      revealField(field);
       field.setAttribute('aria-invalid', 'true');
       field.focus();
       field.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
@@ -47,12 +49,23 @@ namespace NetworkOverridesUi {
     const { elements, state, saveState, renderRules } = options;
 
     elements.closeModal?.addEventListener('click', () => closeModal(elements));
+    bindLocalFilePicker(elements);
     elements.modal?.addEventListener('click', event => {
       if (event.target === elements.modal) closeModal(elements);
     });
     elements.modal?.addEventListener('input', event => {
       (event.target as HTMLElement).removeAttribute?.('aria-invalid');
       if (elements.modalFeedback.classList.contains('is-error')) clearModalFeedback(elements);
+      syncAdvancedGroups(elements);
+    });
+    // Counts follow every change, including header rows added or removed
+    // with the table editor's buttons.
+    elements.modal?.addEventListener('change', () => syncAdvancedGroups(elements));
+    elements.modal?.addEventListener('click', () => syncAdvancedGroups(elements));
+    elements.modalPresets?.addEventListener('click', event => {
+      const button = (event.target as HTMLElement).closest?.('[data-preset]') as HTMLElement | null;
+      if (!button) return;
+      applyPreset(elements, button.dataset.preset as PresetName);
     });
     elements.modal?.addEventListener('keydown', (event: KeyboardEvent) => {
       const isCtrlOrCmd = event.ctrlKey || event.metaKey;
@@ -79,12 +92,7 @@ namespace NetworkOverridesUi {
         updateBodyFormatAction(elements);
         updateImagePreview(elements, elements.modalBody.value);
       } catch {
-        showModalFeedback(
-          elements,
-          'Response body is not valid JSON.',
-          'error',
-          elements.modalBody
-        );
+        showModalFeedback(elements, t('error_body_not_json'), 'error', elements.modalBody);
       }
     });
 
@@ -92,11 +100,18 @@ namespace NetworkOverridesUi {
     typeRadios.forEach(radio => {
       radio.addEventListener('change', event => {
         const value = (event.target as HTMLInputElement).value as ModalType;
+        // The status is hidden for other types: a prefilled one must not be saved with them.
+        if (value !== 'body') elements.modalStatus.value = '';
         updateModalVisibility(elements, value);
+        // The error to simulate lives under Timing & failure: show it.
+        if (value === 'fail') revealField(elements.modalFailReason);
+        syncAdvancedGroups(elements);
       });
     });
     elements.modalWsAction?.addEventListener('change', () => {
       updateModalVisibility(elements, 'websocket');
+      if (elements.modalWsAction.value === 'delay') revealField(elements.modalDelay);
+      syncAdvancedGroups(elements);
     });
 
     elements.saveOverrideBtn?.addEventListener('click', async () => {
@@ -107,21 +122,21 @@ namespace NetworkOverridesUi {
         if (state.currentEditIndex !== null) nextOverrides[state.currentEditIndex] = rule;
         else nextOverrides.push(rule);
 
-        const originalButtonText = elements.saveOverrideBtn.textContent || 'Save Override';
+        const originalButtonText = elements.saveOverrideBtn.textContent || t('modal_save');
         elements.saveOverrideBtn.disabled = true;
-        elements.saveOverrideBtn.textContent = 'Saving…';
-        showModalFeedback(elements, 'Saving override…', 'info');
+        elements.saveOverrideBtn.textContent = t('modal_saving_button');
+        showModalFeedback(elements, t('modal_saving'), 'info');
         try {
           const result = await saveState(nextOverrides);
           renderRules();
           closeModal(elements);
-          showPersistenceNotification('Override saved', result);
+          showPersistenceNotification(t('toast_override_saved'), result);
         } catch (error) {
           state.overrides = previousOverrides;
           const reason = error instanceof Error ? error.message : String(error);
           showModalFeedback(
             elements,
-            `Could not save override${reason ? `: ${reason}` : '.'}`,
+            reason ? t('error_save_override_reason', reason) : t('error_save_override'),
             'error'
           );
         } finally {
@@ -132,7 +147,17 @@ namespace NetworkOverridesUi {
 
       const pattern = elements.modalPattern.value.trim();
       if (!pattern) {
-        showModalFeedback(elements, 'Pattern is required.', 'error', elements.modalPattern);
+        showModalFeedback(elements, t('error_pattern_required'), 'error', elements.modalPattern);
+        return;
+      }
+      const patternProblem = NetworkOverridesUtils.patternError(pattern);
+      if (patternProblem) {
+        showModalFeedback(
+          elements,
+          t('error_pattern_invalid', patternProblem),
+          'error',
+          elements.modalPattern
+        );
         return;
       }
 
@@ -163,7 +188,7 @@ namespace NetworkOverridesUi {
         if (!redirectUrl) {
           showModalFeedback(
             elements,
-            'Redirect URL is required for a redirect override.',
+            t('error_redirect_required'),
             'error',
             elements.modalRedirectUrl
           );
@@ -176,12 +201,7 @@ namespace NetworkOverridesUi {
       if (overrideType !== 'websocket' && elements.modalStatus.value.trim()) {
         statusCode = parseInt(elements.modalStatus.value.trim(), 10);
         if (isNaN(statusCode) || statusCode < 100 || statusCode > 599) {
-          showModalFeedback(
-            elements,
-            'Status code must be between 100 and 599.',
-            'error',
-            elements.modalStatus
-          );
+          showModalFeedback(elements, t('error_status_range'), 'error', elements.modalStatus);
           return;
         }
       }
@@ -190,14 +210,19 @@ namespace NetworkOverridesUi {
       if (elements.modalDelay.value.trim()) {
         delayMs = parseInt(elements.modalDelay.value.trim(), 10);
         if (isNaN(delayMs) || delayMs < 0 || delayMs > 120000) {
-          showModalFeedback(
-            elements,
-            'Delay must be between 0 and 120000 ms.',
-            'error',
-            elements.modalDelay
-          );
+          showModalFeedback(elements, t('error_delay_range'), 'error', elements.modalDelay);
           return;
         }
+      }
+
+      if (overrideType === 'inject') {
+        const result = readInjectRule(elements, pattern);
+        if ('error' in result) {
+          showModalFeedback(elements, result.error, 'error', result.field);
+          return;
+        }
+        await commit(result.rule);
+        return;
       }
 
       if (overrideType === 'websocket') {
@@ -211,12 +236,7 @@ namespace NetworkOverridesUi {
       }
 
       if (hasMalformedHeaderLine(elements.modalHeaders.value)) {
-        showModalFeedback(
-          elements,
-          'Extra response headers must use one “Header-Name: value” per line.',
-          'error',
-          elements.modalHeaders
-        );
+        showModalFeedback(elements, t('error_response_headers'), 'error', elements.modalHeaders);
         return;
       }
       if (
@@ -225,7 +245,7 @@ namespace NetworkOverridesUi {
       ) {
         showModalFeedback(
           elements,
-          'Request headers must use one “Header-Name: value” per line.',
+          t('error_request_headers'),
           'error',
           elements.modalRequestHeaders
         );
@@ -237,6 +257,10 @@ namespace NetworkOverridesUi {
         ? parseHeadersText(elements.modalRequestHeaders.value)
         : undefined;
       const rule: OverrideRule = { pattern, body, mode };
+      const fileName = heldFileName(elements);
+      if (overrideType === 'body' && fileName && (mode === 'text' || mode === 'file')) {
+        rule.fileName = fileName;
+      }
       if (patch) rule.patch = patch;
       if (redirectUrl) rule.redirectUrl = redirectUrl;
       if (method && method !== 'ANY') rule.method = method;

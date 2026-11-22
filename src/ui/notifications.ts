@@ -60,7 +60,7 @@ namespace NetworkOverridesUi {
           toast.remove();
         } catch (error) {
           actionButton.disabled = false;
-          showNotification(`Retry failed: ${errorMessage(error)}`, 'error', 7000);
+          showNotification(t('toast_retry_failed', errorMessage(error)), 'error', 7000);
         }
       });
       toast.appendChild(actionButton);
@@ -69,7 +69,7 @@ namespace NetworkOverridesUi {
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'notification-toast__close';
-    close.setAttribute('aria-label', 'Dismiss notification');
+    close.setAttribute('aria-label', t('toast_dismiss'));
     close.textContent = '\u00d7';
     close.addEventListener('click', () => toast.remove());
     toast.appendChild(close);
@@ -85,19 +85,21 @@ namespace NetworkOverridesUi {
 
   export function showPersistenceNotification(action: string, result: PersistenceResult): void {
     if (result.applied) {
-      showNotification(`${action} and applied to the active tab.`, 'success');
+      showNotification(t('toast_applied', action), 'success');
       return;
     }
     showNotification(
-      `${action}, but interception was not updated${result.warning ? `: ${result.warning}` : '.'}`,
+      result.warning
+        ? t('toast_not_applied_reason', action, result.warning)
+        : t('toast_not_applied', action),
       'warning',
       7000,
       result.retry
         ? {
-            label: 'Retry',
+            label: t('toast_retry'),
             run: async () => {
               await result.retry!();
-              showNotification('Interception updated for the active tab.', 'success');
+              showNotification(t('toast_retry_done'), 'success');
             },
           }
         : undefined
@@ -105,6 +107,6 @@ namespace NetworkOverridesUi {
   }
 
   export function errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error || 'Unknown error');
+    return error instanceof Error ? error.message : String(error || t('error_unknown'));
   }
 }

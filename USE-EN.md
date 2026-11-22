@@ -70,7 +70,7 @@ Click the extension icon on the toolbar. Contains:
 - **3 tabs**:
   - **Captured APIs (N)**: List of captured requests, grouped by resource type (XHR, Fetch, JS, CSS, etc.).
   - **Overridden (N)**: APIs currently matched by an active rule.
-  - **Rules (N)**: List of all saved override rules.
+  - **Rules (N)**: List of all saved override rules, one line each: what the rule matches → what it does (for example `GET /api/orders → 500 · slow 3 s`).
 - **Search bar**: Filter APIs by URL substring.
 
 ### 3.2. DevTools Panel
@@ -82,20 +82,31 @@ Open DevTools (F12) → **Overrides** tab. Same as popup, plus:
 
 ### 3.3. Override Modal
 
-Click an API to open the modal with:
+Click **Mock this** on an API (or the API row) to open the modal. It shows the everyday fields first:
 
-- **Pattern**: URL pattern for matching.
-- **HTTP Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method (same as before this field existed). Pre-filled from the captured request's method when opening the modal from a captured API.
-- **Override body / Redirect to URL**: Choose the override type.
-- **Response body**: Custom response content (for body override).
-- **Answer without calling the server** (body override): answer the request in the browser, before it is sent. See [6.6](#66-answer-without-calling-the-server).
-- **Patch the real JSON response** (in the Response body mode list): keep the server's response and change only some of its JSON fields. See [6.7](#67-patch-the-real-json-response).
-- **GraphQL Operation** (optional): apply the rule to one GraphQL operation only. See [5.7](#57-graphql-operation).
-- **Only when the request has…** (optional, folded): query parameters, request headers and a text the request body must contain. See [5.8](#58-query-header-and-body-conditions).
+- **Presets**: one click fills the fields below.
+  - **Empty list**: status 200 and `[]` (or, when the body is a JSON object, the same object with its lists emptied; `{}` when it has none).
+  - **Server error**: status 500 and `{"error":"Internal Server Error"}`.
+  - **Slow (3 s)**: a 3000 ms delay; the body stays as it is.
+  - **Offline**: a network error (`InternetDisconnected`).
+- **URL pattern**: URL pattern for matching. You can edit it, also after **Mock this**: change `/api/users/42` to `/api/users/*` so one rule matches more URLs.
+- **Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method. Pre-filled from the captured request's method when opening the modal from a captured API.
+- **Mock response / Redirect / Network error / WebSocket**: Choose the rule type.
+- **Status code** (mock response): blank keeps the real status. Pre-filled from the captured request when it can carry a body (not 204, 304 or other 3xx).
+- **Response body**: Custom response content (for a mock response).
 - **Redirect URL**: Target URL (for redirect).
 - **Format JSON**: Pretty-print JSON body.
-- **Body type badge**: Auto-detects `text` or `json`.
 - **Save Override**: Save the rule.
+
+Everything else is in the collapsed **Advanced** section, in groups:
+
+- **Conditions**: **GraphQL operation** (see [5.7](#57-graphql-operation)), query parameters, request headers and a text the request body must contain (see [5.8](#58-query-header-and-body-conditions)), and **Apply on every site (global rule)** (see [9.6](#96-global-rules)).
+- **Timing & failure**: **Delay (ms)**, **Simulate a network error** (for the Network error type: the error the page sees), and **Answer without calling the server** (mock response; see [6.6](#66-answer-without-calling-the-server)).
+- **Response headers**: headers to add to the response.
+- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)` or `Patch the real JSON response` (see [6.7](#67-patch-the-real-json-response)), and **Fill in {{...}} placeholders**.
+- **Change the request**: replace the request body sent to the server, and add or replace request headers.
+
+A group that holds a value shows a count on its header, and opens by itself when you edit the rule, so no setting is hidden. Choosing **Network error** opens **Timing & failure** to show the error to simulate.
 
 ---
 
@@ -121,8 +132,8 @@ Browse your application normally. API requests will appear automatically in the 
 **Method 1 (Click API):**
 
 1. Go to **Captured APIs** or **Overridden** tab.
-2. Click an API you want to override.
-3. The modal opens with the pattern pre-filled, and the **Method** dropdown pre-selected to the captured request's method if it's one of `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (otherwise it defaults to `Any`).
+2. Click **Mock this** on the API you want to override (clicking the row does the same). If a rule already covers the API, that rule opens for editing instead of a new one.
+3. The modal opens with the pattern and the real status pre-filled, and the **Method** dropdown pre-selected to the captured request's method if it's one of `GET`/`POST`/`PUT`/`PATCH`/`DELETE` (otherwise it defaults to `Any`).
 4. If the API has a stored response body, it will be auto-filled into the **Response body** field.
 5. Edit the content → **Save Override**.
 
@@ -212,13 +223,13 @@ GraphQL apps usually send every query to one URL, such as `/graphql`. Fill **Gra
 
 ### 5.8. Query, header and body conditions
 
-Open **Only when the request has…** in the modal to narrow a rule to some requests of the same URL. Every condition you fill in must hold, together with the pattern, method and GraphQL operation. Leave them empty and the rule matches as before.
+Open **Advanced → Conditions** in the modal to narrow a rule to some requests of the same URL. Every condition you fill in must hold, together with the pattern, method and GraphQL operation. Leave them empty and the rule matches as before.
 
 - **Query parameters**: write them as in a URL, for example `page=2&debug`. `page=2` needs `page` to equal `2` (one of its values, if it repeats; values are compared after URL decoding). `debug` alone needs `debug` to be present, with any value. Names are case-sensitive.
 - **Request headers**: one per line. `X-Tenant: acme` needs that header with that exact value; `Authorization` alone needs the header to be present. Header names ignore case.
 - **Request body contains**: the request body must contain this text, for example `"plan":"pro"`. Case matters. If the browser does not hand the body to the extension (for example a streamed upload), the condition does not match.
 
-A rule with conditions shows an **IF** badge in the rules list; hover it to see them. A CORS preflight carries neither the headers nor the body of the request behind it, so only the query conditions are checked for the preflight.
+A rule's line in the rules list shows its conditions, such as `+ query page=2`. A CORS preflight carries neither the headers nor the body of the request behind it, so only the query conditions are checked for the preflight.
 
 ---
 
@@ -264,7 +275,7 @@ When creating a new override from an API:
 
 A body rule normally waits for the real response and then replaces it, so the server is always called first: a `POST` still has its side effects, and the mock fails when the host is down or the endpoint does not exist yet.
 
-Tick **Answer without calling the server** to answer the request in the browser instead, before it is sent. The body, **Status** and **Extra Response Headers** of the rule make the whole response, and the delay still applies. A host that cannot be reached gets the mock too. The rule shows a `NO SERVER` badge in the Rules tab.
+Tick **Answer without calling the server** to answer the request in the browser instead, before it is sent. The body, **Status code** and **Response headers** of the rule make the whole response, and the delay still applies. A host that cannot be reached gets the mock too. Its line in the Rules tab ends with `no server`.
 
 Compared with a normal body rule:
 
@@ -293,9 +304,9 @@ set data.flags = {"beta": true}
 - `[-]` (or `-` in a JSON Pointer) means the end of an array: `set data.items[-] = {"id": 99}` appends an item.
 - When a `set` path does not exist yet, the missing objects are created (an array when the next part is `[0]` or `[-]`). A `remove` of something that is not there does nothing.
 
-The real status and headers are kept; **Status**, **Extra Response Headers** and **Delay** still apply when you fill them. `Content-Length` is worked out again for the new body. The JSON is sent back compact, without the server's spacing. Templates such as `{{now}}` are not processed in patch values, and **Answer without calling the server** is not offered, since a patch needs the real response.
+The real status and headers are kept; **Status code**, **Response headers** and **Delay** still apply when you fill them. `Content-Length` is worked out again for the new body. The JSON is sent back compact, without the server's spacing. Templates such as `{{now}}` are not processed in patch values, and **Answer without calling the server** is not offered, since a patch needs the real response.
 
-When the response is not JSON or has no body (an HTML page, a `204`, a redirect), it passes through unchanged and the panel shows a warning. A change that cannot apply, such as a path through a text field or an array index past the end, is skipped and named in the same warning; the other changes still apply. The rule shows a `PATCH` badge with the number of changes in the Rules tab; hover it to see them.
+When the response is not JSON or has no body (an HTML page, a `204`, a redirect), it passes through unchanged and the panel shows a warning. A change that cannot apply, such as a path through a text field or an array index past the end, is skipped and named in the same warning; the other changes still apply. The rule's line in the Rules tab ends with `patch N fields`; hover it to see the changes.
 
 ### 6.8. Script response
 
@@ -311,6 +322,26 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 - Return a string for the body, `{ status, headers, body }` (any of them; `body` is sent as JSON when it is not a string), or any other value to send it as JSON. A status or header the script returns wins over the rule's own; the delay still applies. Templates such as `{{now}}` are not processed in a script.
 - The script runs in the inspected page, so it can use `fetch`, `localStorage` and the page's own globals. It has 5 seconds. A script that throws, returns nothing, returns a status outside 100–599 or runs out of time is answered with status `500`, the error as its text and the header `x-network-overrides-error: script`.
 - Rules imported from a file may contain scripts, which run in the pages they match: import only files you trust.
+
+### 6.9. Replace a static file
+
+A **Mock response** rule also answers scripts, stylesheets, images, fonts and pages. Point the URL pattern at the file (for example `/static/app.js`) and click **Use a local file…** under the response body.
+
+- A text file (JS, CSS, HTML, JSON, SVG, XML) goes into the body box and stays editable. Any other file (an image, a font) is kept as is and shown as _From file name (size)_, with a **Remove file** button.
+- The `Content-Type` is set from the file; change it under **Advanced → Response headers**. The rule answers with status `200` unless you set another, so a file the server does not have (404) still loads.
+- Rules live in browser storage, about 10 MB in all. The editor warns above 2 MB.
+- While a tab is intercepted its browser cache is bypassed, so the rule also applies to a file the page had cached. Reload the page after adding the rule.
+- A script or stylesheet with an `integrity` attribute (SRI) refuses a replaced file. Requests a service worker answers itself are not intercepted.
+
+### 6.10. Inject JS/CSS into a page
+
+Choose the type **Inject JS/CSS** to add your own script and stylesheet to the pages a rule matches, such as `https://example.com/*`. The real page still loads; the rule only adds to it.
+
+- The stylesheet goes at the end of `<head>`; the script goes at the end of `<body>`, so the page's elements exist when it runs.
+- Only pages (documents) are changed, and only successful (2xx) UTF-8 HTML responses. Other rules, such as API mocks, keep working on the same page.
+- A page with a Content-Security-Policy keeps it: the SHA-256 hash of the injected script and stylesheet is added to the policy, so exactly that code runs, while the page's own inline code and the rest of the policy stay as they were. A CSP `sandbox` without `allow-scripts` still stops the script, and the panel warns you.
+- If your code loads other scripts, uses `eval` or inline event handlers, the policy may still block that part. As a last resort tick **Remove the page's Content-Security-Policy**: the matched pages then load without their CSP while the rule is on, which lowers their protection.
+- Reload the page after adding or changing the rule.
 
 ---
 
@@ -355,11 +386,8 @@ If any `*` remains unsubstituted in the Redirect URL, the extension logs an erro
 Go to the **Rules** tab. Each rule displays:
 
 - **Enabled checkbox**: at the start of the row. Unchecked means the rule is disabled (see [8.5](#85-enabledisable-a-rule)).
-- **Pattern**: Bold blue text.
-- **Method badge** (if set to something other than `Any`): a small badge (e.g. `POST`) next to the body preview.
-- **Redirect URL** (if set): Arrow → followed by the URL.
-- **Body preview**: First 80 characters + mode label (`text`/`file`).
-- **`NO SERVER` badge**: the rule answers without calling the server (see [6.6](#66-answer-without-calling-the-server)).
+- **`GLOBAL` badge**: the rule applies on every site (see [9.6](#96-global-rules)).
+- **One-line summary**: what the rule matches → what it does. The left side holds the method (left out for `Any`), the pattern, the GraphQL operation as `(op: GetUser)` and any conditions as `+ query page=2`, `+ header X-Tenant: acme`, `+ body has "plan":"pro"`. The right side holds the status or `mock body`, `patch 2 fields`, `script`, `base64 body`, `redirect to …`, `network error (TimedOut)`, then `no server`, `slow 3 s`, `+1 response header`, `new request body`, `+2 request headers` and `templates off` when they apply. WebSocket rules read like `ws wss://example.com/socket (send, contains "ping") → block frames`. Hover the line for the details; click it to open the editor.
 - **Applied count**: a small number after the rule, the times it was applied in this session. `0` is grey, a higher number is blue. Hover it (or move to it with Tab) to see when the rule was last applied and to which URL. A request counts when the rule really changes it: a rule that only matches behind an earlier rule, or a patch rule that lets a non-JSON response through, is not counted. An enabled rule still at `0` after requests went by gets a dashed outline: check its pattern, method and conditions. The count follows the rule when you reorder it or turn it off and on, and starts again when you edit it. **Reset counts** above the list sets every count back to 0, and so does turning interception off. Counts are never saved, exported or imported with the rules.
 
 ### 8.2. Edit a rule
@@ -402,7 +430,7 @@ Export only includes rules for the domain currently open in the panel, not all d
 
 ### 8.7. Import rules
 
-Click **Import** in the **Rules** tab and pick a previously exported (or hand-crafted) JSON file:
+Click **Import → Rules file (.json)** in the **Rules** tab and pick a previously exported (or hand-crafted) JSON file:
 
 - If the file's `domain` field is present and doesn't match the domain currently active in the panel, a confirm dialog warns you and asks whether to import into the current domain anyway. Canceling aborts the import with no changes.
 - If the current domain **already has rules**, a confirm dialog asks how to combine them: **OK** merges — the imported rules are appended to the end of the existing list; **Cancel** replaces — all existing rules for the current domain are overwritten by the imported ones.
@@ -467,11 +495,11 @@ Insert dynamic placeholders into mock response bodies:
 
 ### 9.6. Global Rules
 
-Check **Global Rule** when creating or editing a rule to apply it across **all domains**. Global rules display a prominent `GLOBAL` badge in the rules list.
+Check **Advanced → Conditions → Apply on every site (global rule)** when creating or editing a rule to apply it across **all domains**. Global rules display a prominent `GLOBAL` badge in the rules list.
 
 ### 9.7. Request Payload Modification
 
-Override outgoing POST, PUT, or PATCH request payloads before they reach the server by filling in the **Request Payload** field in the editor modal.
+Override outgoing POST, PUT, or PATCH request payloads before they reach the server by filling in **Advanced → Change the request → Replace the request body sent to the server** in the editor modal.
 
 ### 9.8. Network Throttling and Traffic Analytics
 
@@ -479,7 +507,7 @@ Use the **Network** selector to simulate **Fast 3G**, **Slow 3G**, or **Offline*
 
 ### 9.9. HAR File Import
 
-Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules.
+Import `.har` files (HTTP Archive exported from DevTools Network tab) to automatically convert recorded network requests into mock rules: in the **Rules** tab, click **Import → cURL or OpenAPI / Swagger…**, then paste the file or choose it. The same dialog takes a cURL command or an OpenAPI / Swagger spec.
 
 #### Exporting a HAR file
 
@@ -524,6 +552,10 @@ When a request is overridden, the extension adds these response headers:
 - `x-network-overrides-pattern: <pattern>`
 
 This lets you easily identify overridden requests in the DevTools Network tab.
+
+### 9.13. Interface language
+
+The interface is in English and Vietnamese. By default it follows the browser's language. The language menu beside the **Enable Overrides** switch changes to **English** or **Tiếng Việt**; **Auto** goes back to the browser's language. The choice is saved locally, and both languages ship inside the extension, so switching needs no network.
 
 ---
 

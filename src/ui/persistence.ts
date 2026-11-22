@@ -15,7 +15,7 @@ namespace NetworkOverridesUi {
       showPersistenceNotification(successMessage, result);
     } catch (error) {
       renderRules();
-      showNotification(`Could not update rules: ${errorMessage(error)}`, 'error');
+      showNotification(t('toast_update_rules_failed', errorMessage(error)), 'error');
     }
   }
 }

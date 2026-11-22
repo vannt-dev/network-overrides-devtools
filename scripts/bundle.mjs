@@ -6,6 +6,7 @@ const distDir = path.join(repoRoot, 'dist');
 
 const backgroundFiles = [
   'utils.js',
+  'static-files.js',
   'shared.js',
   'tab-state.js',
   'background/encoding.js',
@@ -20,7 +21,9 @@ const backgroundFiles = [
 
 const uiFiles = [
   'utils.js',
+  'static-files.js',
   'shared.js',
+  'ui/i18n.js',
   'ui/types.js',
   'ui/view-utils.js',
   'ui/primitives.js',
@@ -34,6 +37,8 @@ const uiFiles = [
   'ui/headers-editor.js',
   'ui/modal.js',
   'ui/websocket-rule.js',
+  'ui/static-rule.js',
+  'ui/rule-summary.js',
   'ui/rules-list.js',
   'ui/api-list.js',
   'ui/profiles.js',
@@ -58,6 +63,22 @@ async function buildWebSocketWrapperSource() {
     parts.push(stripSourceMapComments(text));
   }
   return `(function (rules) {\n${parts.join('\n')}\nNetworkOverridesInjected.install(window, rules);\n})`;
+}
+
+// The UI's messages, key to text, for every language in _locales. The UI falls
+// back to English with them and shows a language the user picks without a fetch.
+async function buildMessagesPrefix() {
+  const localesDir = path.join(repoRoot, '_locales');
+  const messages = {};
+  for (const lang of (await fs.readdir(localesDir)).sort()) {
+    const file = path.join(localesDir, lang, 'messages.json');
+    const parsed = JSON.parse(await fs.readFile(file, 'utf8'));
+    messages[lang] = Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => [key, value.message])
+    );
+  }
+  return `/* --- _locales (messages) --- */
+var NETWORK_OVERRIDES_MESSAGES = ${JSON.stringify(messages)};`;
 }
 
 async function bundleFiles(fileList, outputFile, filterFn, prefix = '') {
@@ -89,7 +110,7 @@ async function main() {
     `/* --- injected/websocket-wrapper (source text) --- */\nvar NETWORK_OVERRIDES_WS_WRAPPER = ${JSON.stringify(wrapperSource)};`
   );
 
-  await bundleFiles(uiFiles, 'ui.bundle.js');
+  await bundleFiles(uiFiles, 'ui.bundle.js', null, await buildMessagesPrefix());
 
   // Entrypoints are kept as standalone files, but their generated source maps
   // are removed from release builds below. Avoid leaving broken map references.

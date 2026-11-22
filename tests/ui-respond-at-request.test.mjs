@@ -44,8 +44,8 @@ test('The modal saves "Answer without calling the server" and shows it again on 
 
   click(harness, harness.document.querySelector('[data-tab="overrides"]'));
   await flushUi(harness.window);
-  const badge = harness.document.querySelector('.override-offline-badge');
-  assert.equal(badge?.textContent, 'NO SERVER');
+  const summary = harness.document.querySelector('.rule-summary');
+  assert.equal(summary?.textContent, '/api/new → mock body · no server');
 
   click(harness, harness.document.querySelector('.override-item .rule-pattern'));
   await flushUi(harness.window);

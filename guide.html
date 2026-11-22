@@ -8,6 +8,9 @@
   <body>
     <div class="container">
       <h1>Network Overrides DevTools <small>User Guide</small></h1>
+      <p class="guide-language">
+        Also in: <a href="guide-vi.html" hreflang="vi" lang="vi">Tiếng Việt</a>
+      </p>
 
       <div class="toc">
         <h3>Table of Contents</h3>
@@ -77,6 +80,9 @@
         </li>
         <li><strong>Enable Overrides toggle</strong>: Turn override functionality on/off.</li>
         <li>
+          <strong>Language</strong>: Auto, English or Tiếng Việt (see <a href="#features">9.14</a>).
+        </li>
+        <li>
           <strong>3 tabs</strong>:
           <ul>
             <li>
@@ -106,59 +112,79 @@
       </ul>
 
       <h3>3.3. Override Modal</h3>
-      <p>Click an API to open the modal with:</p>
+      <p>
+        Click <strong>Mock this</strong> on an API (or the API row) to open the modal. It shows the
+        everyday fields first:
+      </p>
       <ul>
-        <li><strong>Pattern</strong>: URL pattern for matching.</li>
         <li>
-          <strong>HTTP Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>,
-          <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the
-          rule to a specific request method. Defaults to <code>Any</code>, which matches every
-          method (same as before this field existed). Pre-filled from the captured request's method
-          when opening the modal from a captured API.
+          <strong>Presets</strong>: one click fills the fields below.
+          <strong>Empty list</strong> (status 200 and <code>[]</code>, or the JSON object with its
+          lists emptied), <strong>Server error</strong> (status 500), <strong>Slow (3 s)</strong> (a
+          3000 ms delay) and <strong>Offline</strong> (a network error,
+          <code>InternetDisconnected</code>).
         </li>
         <li>
-          <strong>Only when the request has…</strong> (optional, folded): query parameters, request
-          headers and a text the request body must contain. See <a href="#match-conditions">5.7</a>.
+          <strong>URL pattern</strong>: URL pattern for matching. It starts as the URL of the
+          request and can be edited: use <code>*</code> to match more URLs, e.g.
+          <code>/api/users/*</code>.
         </li>
         <li>
-          <strong>Override body / Redirect to URL / Fail request</strong>: Choose the override type
-          via radio buttons.
+          <strong>Method</strong>: Dropdown (<code>Any</code>, <code>GET</code>, <code>POST</code>,
+          <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) to scope the rule to a specific
+          request method. Defaults to <code>Any</code>, which matches every method. Pre-filled from
+          the captured request's method when opening the modal from a captured API.
         </li>
         <li>
-          <strong>Patch the real JSON response</strong> (in the Response body mode list): keep the
-          server's response and change only some of its JSON fields. See
-          <a href="#patch-response">6.6</a>.
+          <strong>Mock response / Redirect / Network error / WebSocket</strong>: Choose the rule
+          type.
         </li>
         <li>
-          <strong>Fail request</strong>: The request never receives a response — it fails at the
-          network layer with the chosen reason (<code>Failed</code>, <code>TimedOut</code>,
-          <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
-          <code>InternetDisconnected</code>). Use it to test offline and timeout handling.
+          <strong>Status code</strong> (mock response): blank keeps the real status. Pre-filled from
+          the captured request when it can carry a body.
         </li>
-        <li>
-          <strong>Advanced row</strong> (body rules): force a <strong>Status</strong> (100–599), add
-          <strong>Extra headers</strong> (one <code>Header-Name: value</code> per line, same names
-          overwrite the original), and set a <strong>Delay</strong> in milliseconds (also available
-          for fail rules — combine <code>TimedOut</code> with a long delay to simulate a real
-          timeout).
-        </li>
-        <li>
-          <strong>Response body</strong>: Custom response content (for body override), with mode
-          selector (Text / Raw base64).
-        </li>
-        <li>
-          <strong>Answer without calling the server</strong> (body rules): the request is answered
-          in the browser before it is sent, so the server is never called and unreachable hosts
-          still get the mock. The rule alone makes the response (blank status = 200); CORS
-          preflights are answered for you.
-        </li>
+        <li><strong>Response body</strong>: Custom response content (for a mock response).</li>
         <li><strong>Redirect URL</strong>: Target URL with wildcard substitution support.</li>
         <li><strong>Format JSON</strong>: Pretty-print JSON body.</li>
-        <li>
-          <strong>Body type badge</strong>: Auto-detects <code>text</code> or <code>json</code>.
-        </li>
         <li><strong>Save Override</strong>: Save the rule.</li>
       </ul>
+      <p>Everything else is in the collapsed <strong>Advanced</strong> section, in groups:</p>
+      <ul>
+        <li>
+          <strong>Conditions</strong>: GraphQL operation (see <a href="#graphql-operation">5.8</a>),
+          query parameters, request headers and a text the request body must contain (see
+          <a href="#match-conditions">5.7</a>), and
+          <strong>Apply on every site (global rule)</strong>.
+        </li>
+        <li>
+          <strong>Timing &amp; failure</strong>: <strong>Delay (ms)</strong>;
+          <strong>Simulate a network error</strong> for the Network error type (<code>Failed</code>,
+          <code>TimedOut</code>, <code>ConnectionRefused</code>, <code>NameNotResolved</code>,
+          <code>InternetDisconnected</code>; combine <code>TimedOut</code> with a long delay to
+          simulate a real timeout); and <strong>Answer without calling the server</strong> (mock
+          response: the request is answered in the browser before it is sent, so the server is never
+          called and unreachable hosts still get the mock; blank status = 200; CORS preflights are
+          answered for you).
+        </li>
+        <li>
+          <strong>Response headers</strong>: headers to add (one <code>Header-Name: value</code> per
+          line; same names overwrite the original).
+        </li>
+        <li>
+          <strong>Body type: patch &amp; script</strong>: the response body is Text, Raw base64,
+          Script (JavaScript) or <strong>Patch the real JSON response</strong> (see
+          <a href="#patch-response">6.6</a>), and whether <code>{{...}}</code> placeholders are
+          filled in.
+        </li>
+        <li>
+          <strong>Change the request</strong>: replace the request body sent to the server, and add
+          or replace request headers.
+        </li>
+      </ul>
+      <p>
+        A group that holds a value shows a count on its header and opens by itself when you edit the
+        rule, so no setting is hidden.
+      </p>
 
       <!-- ============ 4 ============ -->
       <h2 id="basic-usage">4. Basic Usage</h2>
@@ -185,11 +211,16 @@
       <p><strong>Method 1 (Click API):</strong></p>
       <ol>
         <li>Go to <strong>Captured APIs</strong> or <strong>Overridden</strong> tab.</li>
-        <li>Click an API you want to override.</li>
         <li>
-          The modal opens with the pattern pre-filled, and the <strong>Method</strong> dropdown
-          pre-selected to the captured request's method if it's one of
-          <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code>DELETE</code>
+          Click <strong>Mock this</strong> on the API you want to override (clicking the row does
+          the same). If a rule already covers the API, that rule opens for editing instead.
+        </li>
+        <li>
+          The modal opens with the pattern and the real status pre-filled, and the
+          <strong>Method</strong> dropdown pre-selected to the captured request's method if it's one
+          of <code>GET</code>/<code>POST</code>/<code>PUT</code>/<code>PATCH</code>/<code
+            >DELETE</code
+          >
           (otherwise it defaults to <code>Any</code>).
         </li>
         <li>If the API has a stored response body, it will be auto-filled.</li>
@@ -214,7 +245,9 @@
       <h3>Step 6: Disable</h3>
       <ul>
         <li>Toggle the switch OFF to disable all overrides.</li>
-        <li>Or go to <strong>Rules</strong> tab → click ✕ to delete a specific rule.</li>
+        <li>
+          Or go to <strong>Rules</strong> tab → click <strong>Delete</strong> on a specific rule.
+        </li>
       </ul>
 
       <!-- ============ 5 ============ -->
@@ -281,9 +314,9 @@ Pattern: all</pre>
 
       <h3 id="match-conditions">5.7. Query, header and body conditions</h3>
       <p>
-        Open <strong>Only when the request has…</strong> in the modal to narrow a rule to some
-        requests of the same URL. Every condition you fill in must hold, together with the pattern
-        and method. Leave them empty and the rule matches as before.
+        Open <strong>Advanced → Conditions</strong> in the modal to narrow a rule to some requests
+        of the same URL. Every condition you fill in must hold, together with the pattern and
+        method. Leave them empty and the rule matches as before.
       </p>
       <ul>
         <li>
@@ -305,9 +338,9 @@ Pattern: all</pre>
         </li>
       </ul>
       <p>
-        A rule with conditions shows an <strong>IF</strong> badge in the rules list; hover it to see
-        them. A CORS preflight carries neither the headers nor the body of the request behind it, so
-        only the query conditions are checked for the preflight.
+        A rule's line in the rules list shows its conditions, such as
+        <code>+ query page=2</code>. A CORS preflight carries neither the headers nor the body of
+        the request behind it, so only the query conditions are checked for the preflight.
       </p>
 
       <h3 id="graphql-operation">5.8. GraphQL operation</h3>
@@ -350,7 +383,7 @@ Pattern: all</pre>
       <h3>6.4. Format JSON</h3>
       <p>
         Click <strong>Format JSON</strong> to pretty-print the response body. If the content is not
-        valid JSON, the button has no effect.
+        valid JSON, the editor says so and changes nothing.
       </p>
 
       <h3>6.5. Auto-fill</h3>
@@ -408,10 +441,10 @@ set data.flags = {"beta": true}</pre>
         </li>
       </ul>
       <p>
-        The real status and headers are kept; <strong>Status</strong>,
-        <strong>Extra Response Headers</strong> and <strong>Delay</strong> still apply when you fill
-        them. <code>Content-Length</code> is worked out again for the new body. The JSON is sent
-        back compact. Templates are not processed in patch values, and
+        The real status and headers are kept; <strong>Status code</strong>,
+        <strong>Response headers</strong> and <strong>Delay</strong> still apply when you fill them.
+        <code>Content-Length</code> is worked out again for the new body. The JSON is sent back
+        compact. Templates are not processed in patch values, and
         <strong>Answer without calling the server</strong> is not offered, since a patch needs the
         real response.
       </p>
@@ -419,8 +452,8 @@ set data.flags = {"beta": true}</pre>
         When the response is not JSON or has no body (an HTML page, a <code>204</code>, a redirect),
         it passes through unchanged and the panel shows a warning. A change that cannot apply, such
         as a path through a text field or an array index past the end, is skipped and named in the
-        same warning; the other changes still apply. The rule shows a <code>PATCH</code> badge with
-        the number of changes in the Rules tab; hover it to see them.
+        same warning; the other changes still apply. The rule's line in the Rules tab ends with
+        <code>patch N fields</code>; hover it to see the changes.
       </p>
 
       <h3 id="script-response">6.7. Script responses</h3>
@@ -457,12 +490,76 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
       </ul>
 
+      <h3 id="static-files">6.8. Replace a static file</h3>
+      <p>
+        A Mock response rule also answers scripts, stylesheets, images, fonts and pages. Point the
+        URL pattern at the file, for example <code>/static/app.js</code>, and click
+        <strong>Use a local file…</strong> under the response body:
+      </p>
+      <ul>
+        <li>
+          A text file (JS, CSS, HTML, JSON, SVG, XML) goes into the body box, where you can still
+          edit it. Any other file (an image, a font) is kept as it is and shown as
+          <em>From file name (size)</em>, with a <strong>Remove file</strong> button.
+        </li>
+        <li>
+          The <code>Content-Type</code> is set from the file and can be changed under
+          <strong>Advanced → Response headers</strong>. The rule answers with status
+          <code>200</code> unless you set another, so a file the server does not have (404) still
+          loads.
+        </li>
+        <li>
+          Rules are kept in browser storage, which holds about 10&nbsp;MB in all. Above 2&nbsp;MB
+          the editor warns you; keep large files small, or replace only the file you are working on.
+        </li>
+        <li>
+          While a tab is intercepted its browser cache is bypassed, so a rule also applies to a file
+          the page had cached. Reload the page after adding the rule.
+        </li>
+        <li>
+          A page script or stylesheet with an <code>integrity</code> attribute (SRI) refuses a
+          replaced file. Requests a service worker answers itself are not intercepted.
+        </li>
+      </ul>
+
+      <h3 id="inject-code">6.9. Inject JS/CSS into a page</h3>
+      <p>
+        Choose the type <strong>Inject JS/CSS</strong> to add your own code to the pages a rule
+        matches, such as <code>https://example.com/*</code>. The real page still loads; the rule
+        only adds to it.
+      </p>
+      <ul>
+        <li>
+          The stylesheet goes at the end of <code>&lt;head&gt;</code>; the script goes at the end of
+          <code>&lt;body&gt;</code>, so the page's elements already exist when it runs.
+        </li>
+        <li>
+          Only pages (documents) are changed, not API calls, and only successful (2xx) UTF-8 HTML
+          responses. Other rules, such as API mocks, keep working on the same page.
+        </li>
+        <li>
+          A page with a Content-Security-Policy keeps it. The SHA-256 hash of the injected script
+          and stylesheet is added to the policy, so exactly that code runs while the page's own
+          inline code and every other rule of the policy stay as they were. A CSP
+          <code>sandbox</code> without <code>allow-scripts</code> still stops the script; the panel
+          then warns you.
+        </li>
+        <li>
+          If your code loads other scripts, uses <code>eval</code> or inline event handlers, the
+          policy may still block that part. Tick
+          <strong>Remove the page's Content-Security-Policy</strong> in the rule as a last resort:
+          the matched pages then load without their CSP while the rule is on, which lowers their
+          protection.
+        </li>
+        <li>Reload the page after adding or changing the rule.</li>
+      </ul>
+
       <!-- ============ 7 ============ -->
       <h2 id="redirect">7. Redirect URL</h2>
 
       <h3>7.1. How it works</h3>
       <p>
-        When you select <strong>Redirect to URL</strong>, instead of overriding the response body,
+        When you choose the <strong>Redirect</strong> type, instead of overriding the response body,
         the extension redirects the request at the <strong>request stage</strong> (before the actual
         request is sent).
       </p>
@@ -540,15 +637,16 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           <strong>Enabled checkbox</strong>: at the start of the row. Unchecked means the rule is
           disabled (see 8.5).
         </li>
-        <li><strong>Pattern</strong>: Bold blue text.</li>
         <li>
-          <strong>Method badge</strong> (if set to something other than <code>Any</code>): a small
-          badge (e.g. <code>POST</code>) next to the body preview.
+          <strong><code>GLOBAL</code> badge</strong>: the rule applies on every site.
         </li>
-        <li><strong>Redirect URL</strong> (if set): Arrow → followed by the URL.</li>
         <li>
-          <strong>Body preview</strong>: First 80 characters + mode label
-          (<code>text</code>/<code>file</code>).
+          <strong>One-line summary</strong>: what the rule matches → what it does, for example
+          <code>GET /api/orders + query page=2 → 500 · slow 3 s</code>,
+          <code>POST /graphql (op: GetUser) → patch 2 fields</code>,
+          <code>/api/* → network error</code> or
+          <code>ws wss://example.com/socket → replace frames</code>. Hover it for the details; click
+          it to open the editor.
         </li>
         <li>
           <strong>Applied count</strong>: a small number after the rule, the times it was applied in
@@ -564,12 +662,12 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>8.2. Edit a rule</h3>
       <p>
-        Click <strong>✎</strong> next to a rule → modal opens with current values → edit →
-        <strong>Save Override</strong>.
+        Click <strong>Edit</strong> next to a rule (or its summary) → modal opens with current
+        values → edit → <strong>Save Override</strong>. <strong>Copy</strong> duplicates a rule.
       </p>
 
       <h3>8.3. Delete a rule</h3>
-      <p>Click <strong>✕</strong> → rule is removed immediately.</p>
+      <p>Click <strong>Delete</strong> → rule is removed immediately.</p>
 
       <h3>8.4. Persistence</h3>
       <p>
@@ -617,8 +715,8 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>8.7. Import rules</h3>
       <p>
-        Click <strong>Import</strong> in the <strong>Rules</strong> tab and pick a previously
-        exported (or hand-crafted) JSON file:
+        Click <strong>Import → Rules file (.json)</strong> in the <strong>Rules</strong> tab and
+        pick a previously exported (or hand-crafted) JSON file:
       </p>
       <ul>
         <li>
@@ -627,10 +725,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           current domain anyway. Canceling aborts the import with no changes.
         </li>
         <li>
-          If the current domain <strong>already has rules</strong>, a confirm dialog asks how to
-          combine them: <strong>OK</strong> merges — the imported rules are appended to the end of
-          the existing list; <strong>Cancel</strong> replaces — all existing rules for the current
-          domain are overwritten by the imported ones.
+          If the current domain <strong>already has rules</strong>, a dialog asks how to combine
+          them: <strong>Append rules</strong> adds the imported rules to the end of the existing
+          list; <strong>Replace rules</strong> overwrites all existing rules for the current domain
+          with the imported ones. Closing the dialog cancels the import.
         </li>
         <li>
           If the current domain <strong>has no rules yet</strong>, the import is applied directly
@@ -693,7 +791,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
       <h3>9.4. Open the user guide</h3>
       <p>
         Click <strong>Open user guide</strong> in the header. The complete guide opens in a separate
-        browser tab, so the popup or DevTools panel remains available.
+        browser tab, so the popup or DevTools panel remains available. It opens in the language the
+        extension shows: the Vietnamese guide when the UI is in Tiếng Việt, this English guide
+        otherwise.
       </p>
 
       <h3>9.5. Type grouping</h3>
@@ -725,14 +825,15 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>9.8. Global Cross-Domain Rules</h3>
       <p>
-        Mark rules as <strong>Global</strong> to intercept matching requests across all domains.
-        Global rules display a <code>GLOBAL</code> badge in the rules list.
+        Tick <strong>Advanced → Conditions → Apply on every site (global rule)</strong> to intercept
+        matching requests across all domains. Global rules display a <code>GLOBAL</code> badge in
+        the rules list.
       </p>
 
       <h3>9.9. Request Payload Modification</h3>
       <p>
         Override outgoing <code>POST</code>, <code>PUT</code>, or <code>PATCH</code> request
-        payloads before they reach the server.
+        payloads before they reach the server, under <strong>Advanced → Change the request</strong>.
       </p>
 
       <h3>9.10. Network Throttling and Traffic Analytics</h3>
@@ -744,8 +845,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <h3>9.11. HAR File Import</h3>
       <p>
-        Drag &amp; drop or import <code>.har</code> files (HTTP Archive) to generate mock rules in
-        bulk from recorded traffic.
+        In the <strong>Rules</strong> tab, click
+        <strong>Import → cURL or OpenAPI / Swagger…</strong> and paste or choose a
+        <code>.har</code> file (HTTP Archive) to generate mock rules in bulk from recorded traffic.
+        The same dialog takes a cURL command or an OpenAPI / Swagger spec.
       </p>
 
       <h3>9.12. Editor Keyboard Shortcuts</h3>
@@ -782,6 +885,14 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         or cross-origin iframes are not covered; frames the page receives after a rule changed them
         have <code>event.isTrusted</code> set to <code>false</code>. Reload the page after adding
         the first WebSocket rule if the socket was already open.
+      </p>
+
+      <h3>9.14. Language</h3>
+      <p>
+        The <strong>Language</strong> list next to <strong>Enable Overrides</strong> picks
+        <strong>Auto</strong> (the browser's language), <strong>English</strong> or
+        <strong>Tiếng Việt</strong>. The text changes at once, the choice is saved in this browser,
+        and the user guide opens in the same language.
       </p>
 
       <!-- ============ 10 ============ -->
@@ -880,8 +991,8 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
 
       <div class="faq-q">Q: How do I delete all rules at once?</div>
       <div class="faq-a">
-        Go to the <strong>Rules</strong> tab and click ✕ on each rule. There is no "Clear all"
-        button.
+        Go to the <strong>Rules</strong> tab and click <strong>Delete</strong> on each rule. There
+        is no "Clear all" button.
       </div>
 
       <div class="faq-q">Q: Extension doesn't work in incognito mode?</div>

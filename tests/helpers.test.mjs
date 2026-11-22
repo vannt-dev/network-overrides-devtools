@@ -211,3 +211,20 @@ test('UI parses HAR JSON specification into OverrideRules', () => {
   assert.equal(rules[0].statusCode, 201);
   assert.equal(rules[0].body, '{"id":101}');
 });
+
+test('patternError explains a broken /regex/ and accepts every other pattern', () => {
+  const { NetworkOverridesUtils } = createUiContext();
+  assert.match(NetworkOverridesUtils.patternError('/users(/') ?? '', /./);
+  assert.match(NetworkOverridesUtils.patternError('/users/gg') ?? '', /./);
+  for (const ok of [
+    '/users$/',
+    '/api/users/i',
+    '*',
+    'all',
+    '/api/users/*',
+    'api/users',
+    '/api/(x',
+  ]) {
+    assert.equal(NetworkOverridesUtils.patternError(ok), null, ok);
+  }
+});

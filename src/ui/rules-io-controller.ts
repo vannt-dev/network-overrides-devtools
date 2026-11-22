@@ -86,7 +86,14 @@ namespace NetworkOverridesUi {
         (typeof rule.failReason === 'string' &&
           FAIL_REASONS.includes(rule.failReason) &&
           rule.redirectUrl === undefined)) &&
-      (rule.kind === undefined || rule.kind === 'http' || rule.kind === 'websocket') &&
+      (rule.kind === undefined ||
+        rule.kind === 'http' ||
+        rule.kind === 'websocket' ||
+        rule.kind === 'inject') &&
+      (rule.fileName === undefined || typeof rule.fileName === 'string') &&
+      (rule.injectScript === undefined || typeof rule.injectScript === 'string') &&
+      (rule.injectStyle === undefined || typeof rule.injectStyle === 'string') &&
+      (rule.relaxCsp === undefined || typeof rule.relaxCsp === 'boolean') &&
       (rule.wsDirection === undefined || isValidWsDirection(rule.wsDirection)) &&
       (rule.wsMatch === undefined || typeof rule.wsMatch === 'string') &&
       (rule.wsMatchRegex === undefined || typeof rule.wsMatchRegex === 'boolean') &&
@@ -143,6 +150,10 @@ namespace NetworkOverridesUi {
     if (source.wsMatch !== undefined) clean.wsMatch = source.wsMatch;
     if (source.wsMatchRegex !== undefined) clean.wsMatchRegex = source.wsMatchRegex;
     if (source.wsAction !== undefined) clean.wsAction = source.wsAction;
+    if (source.fileName !== undefined) clean.fileName = source.fileName;
+    if (source.injectScript !== undefined) clean.injectScript = source.injectScript;
+    if (source.injectStyle !== undefined) clean.injectStyle = source.injectStyle;
+    if (source.relaxCsp !== undefined) clean.relaxCsp = source.relaxCsp;
     return clean;
   }
 
@@ -176,7 +187,7 @@ namespace NetworkOverridesUi {
         { type: 'application/json' }
       );
     } catch (error) {
-      showNotification(`Failed to export rules: ${errorMessage(error)}`, 'error');
+      showNotification(t('toast_export_failed', errorMessage(error)), 'error');
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -188,7 +199,69 @@ namespace NetworkOverridesUi {
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-    showNotification('Rules exported.', 'success');
+    showNotification(t('toast_exported'), 'success');
+  }
+
+  /**
+   * The Import button opens a small menu: a rules file exported from this
+   * extension, or rules made from cURL / OpenAPI. Arrow keys move between
+   * the items; Escape and Tab close it.
+   */
+  function bindImportMenu(elements: Elements): void {
+    const button = elements.importMenuBtn;
+    const menu = elements.importMenu;
+    if (!button || !menu) return;
+    const items = () => Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    const isOpen = () => !menu.hidden;
+    const close = (focusButton: boolean) => {
+      menu.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+      if (focusButton) button.focus();
+    };
+    const open = (focusIndex: number) => {
+      menu.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      const list = items();
+      list[(focusIndex + list.length) % list.length]?.focus();
+    };
+
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (isOpen()) close(true);
+      else open(0);
+    });
+    button.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        open(event.key === 'ArrowDown' ? 0 : -1);
+      }
+    });
+    menu.addEventListener('keydown', event => {
+      const list = items();
+      const current = list.indexOf(document.activeElement as HTMLElement);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        list[(current + step + list.length) % list.length]?.focus();
+      } else if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        list[event.key === 'Home' ? 0 : list.length - 1]?.focus();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+      } else if (event.key === 'Tab') {
+        close(false);
+      }
+    });
+    // An item runs its own action (bound below); the menu just closes.
+    menu.addEventListener('click', event => {
+      if ((event.target as HTMLElement).closest?.('[role="menuitem"]')) close(false);
+    });
+    document.addEventListener('click', event => {
+      if (isOpen() && !menu.contains(event.target as Node) && event.target !== button) {
+        close(false);
+      }
+    });
   }
 
   export function bindRulesIoController(options: RulesIoControllerOptions): void {
@@ -204,17 +277,17 @@ namespace NetworkOverridesUi {
       try {
         parsed = JSON.parse(await file.text());
       } catch (error) {
-        showNotification(`Invalid file: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_invalid_file', errorMessage(error)), 'error');
         elements.importRulesInput.value = '';
         return;
       }
       if (!parsed || !Array.isArray(parsed.overrides)) {
-        showNotification('Invalid file: missing “overrides” list.', 'error');
+        showNotification(t('toast_invalid_file_list'), 'error');
         elements.importRulesInput.value = '';
         return;
       }
       if (!parsed.overrides.every(isValidImportedRule)) {
-        showNotification('Invalid file: a rule has a missing or invalid field.', 'error');
+        showNotification(t('toast_invalid_file_rule'), 'error');
         elements.importRulesInput.value = '';
         return;
       }
@@ -222,9 +295,9 @@ namespace NetworkOverridesUi {
       const currentDomain = getCurrentDomain();
       if (typeof parsed.domain === 'string' && parsed.domain && parsed.domain !== currentDomain) {
         const continueImport = await showConfirmDialog(
-          'Import rules from another domain?',
-          `This file was exported from “${parsed.domain}”, but the active domain is “${currentDomain}”.`,
-          'Import anyway'
+          t('import_other_domain_title'),
+          t('import_other_domain_message', parsed.domain, currentDomain),
+          t('import_anyway')
         );
         if (!continueImport) return;
       }
@@ -233,10 +306,10 @@ namespace NetworkOverridesUi {
       let nextOverrides: OverrideRule[];
       if (state.overrides.length > 0) {
         const merge = await showConfirmDialog(
-          'Import rules',
-          'Rules already exist for this domain. Choose how the imported rules should be added.',
-          'Append rules',
-          'Replace rules'
+          t('import_merge_title'),
+          t('import_merge_message'),
+          t('import_append'),
+          t('import_replace')
         );
         if (merge === null) return;
         nextOverrides = merge ? [...state.overrides, ...importedRules] : importedRules;
@@ -247,22 +320,39 @@ namespace NetworkOverridesUi {
         const result = await saveState(nextOverrides);
         renderRules();
         showPersistenceNotification(
-          `${importedRules.length} rule${importedRules.length === 1 ? '' : 's'} imported`,
+          importedRules.length === 1
+            ? t('toast_imported_one')
+            : t('toast_imported_other', importedRules.length),
           result
         );
       } catch (error) {
-        showNotification(`Could not import rules: ${errorMessage(error)}`, 'error');
+        showNotification(t('toast_import_failed', errorMessage(error)), 'error');
       } finally {
         elements.importRulesInput.value = '';
       }
     });
 
+    bindImportMenu(elements);
+
     if (elements.importCurlSwaggerBtn && elements.curlSwaggerModal) {
+      const dialog = elements.curlSwaggerModal;
+      let returnFocus: HTMLElement | null = null;
+      const closeDialog = () => {
+        dialog.style.display = 'none';
+        returnFocus?.focus();
+        returnFocus = null;
+      };
       elements.importCurlSwaggerBtn.addEventListener('click', () => {
-        elements.curlSwaggerModal!.style.display = 'flex';
+        returnFocus = elements.importMenuBtn || elements.importCurlSwaggerBtn || null;
+        dialog.style.display = 'flex';
+        elements.curlSwaggerTextarea?.focus();
       });
-      elements.curlSwaggerCloseModal?.addEventListener('click', () => {
-        elements.curlSwaggerModal!.style.display = 'none';
+      elements.curlSwaggerCloseModal?.addEventListener('click', closeDialog);
+      dialog.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeDialog();
+        }
       });
       elements.curlSwaggerImportBtn?.addEventListener('click', async () => {
         const text = elements.curlSwaggerTextarea?.value || '';
@@ -274,23 +364,22 @@ namespace NetworkOverridesUi {
             ? harRules
             : parseSwaggerToRules(text);
         if (newRules.length === 0) {
-          showNotification(
-            'Could not parse any rules from cURL, HAR file, or Swagger/OpenAPI specification.',
-            'error'
-          );
+          showNotification(t('toast_import_nothing'), 'error');
           return;
         }
         try {
           const result = await saveState([...state.overrides, ...newRules]);
           renderRules();
-          elements.curlSwaggerModal!.style.display = 'none';
+          closeDialog();
           if (elements.curlSwaggerTextarea) elements.curlSwaggerTextarea.value = '';
           showPersistenceNotification(
-            `${newRules.length} rule${newRules.length === 1 ? '' : 's'} imported`,
+            newRules.length === 1
+              ? t('toast_imported_one')
+              : t('toast_imported_other', newRules.length),
             result
           );
         } catch (error) {
-          showNotification(`Could not import rules: ${errorMessage(error)}`, 'error');
+          showNotification(t('toast_import_failed', errorMessage(error)), 'error');
         }
       });
       elements.curlSwaggerFileInput?.addEventListener('change', event => {
@@ -303,7 +392,7 @@ namespace NetworkOverridesUi {
           }
         };
         reader.onerror = () => {
-          showNotification('Could not read the selected import file.', 'error');
+          showNotification(t('toast_import_read_failed'), 'error');
         };
         reader.readAsText(file);
         elements.curlSwaggerFileInput!.value = '';

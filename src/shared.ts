@@ -27,7 +27,11 @@ declare namespace NetworkOverridesShared {
     isGlobal?: boolean; // applies across all domains if true
     requestBody?: string; // override outgoing request payload
     respondAtRequest?: boolean; // body rules: answer at the request stage, the server is never called
-    kind?: 'http' | 'websocket'; // undefined = 'http'
+    kind?: 'http' | 'websocket' | 'inject'; // undefined = 'http'
+    fileName?: string; // body rules: the name of the local file the body was loaded from
+    injectScript?: string; // inject rules: JavaScript added at the end of <body>
+    injectStyle?: string; // inject rules: CSS added at the end of <head>
+    relaxCsp?: boolean; // inject rules: drop the page's Content-Security-Policy; default off
     wsDirection?: WsDirection; // websocket rules; undefined = 'receive'
     wsMatch?: string; // websocket rules; empty/undefined = every text frame
     wsMatchRegex?: boolean; // wsMatch is a regular expression

@@ -1,0 +1,953 @@
+{
+  "error_inject_empty": {
+    "message": "Add a script or a stylesheet to inject."
+  },
+  "ext_name": {
+    "message": "Network Overrides API (DevTools)"
+  },
+  "ext_description": {
+    "message": "Debugging tool that intercepts and overrides network API responses from DevTools panel or popup. For developers only."
+  },
+  "action_title": {
+    "message": "Network Overrides"
+  },
+  "api_add_title": {
+    "message": "Add custom API"
+  },
+  "api_copied": {
+    "message": "Copied!"
+  },
+  "api_copy_curl_title": {
+    "message": "Copy cURL command"
+  },
+  "api_export_har_title": {
+    "message": "Export the captured requests as a HAR file"
+  },
+  "api_mock_edit_title": {
+    "message": "Edit the rule that already covers this request"
+  },
+  "api_mock_new_title": {
+    "message": "Open the rule editor filled from this request"
+  },
+  "api_mock_this": {
+    "message": "Mock this"
+  },
+  "api_search_placeholder": {
+    "message": "Search APIs..."
+  },
+  "attach_failed": {
+    "message": "Attach failed: $1"
+  },
+  "attach_off": {
+    "message": "Inactive"
+  },
+  "attach_on": {
+    "message": "Intercepting requests"
+  },
+  "badge_disabled": {
+    "message": "Disabled"
+  },
+  "badge_disabled_title": {
+    "message": "Disabled rule: $1"
+  },
+  "badge_overridden": {
+    "message": "Overridden"
+  },
+  "capture_body_label": {
+    "message": "Capture Body:"
+  },
+  "conditions_help": {
+    "message": "Match only some requests. Every condition you fill in must hold, together with the URL pattern and method. Leave them blank to match every request."
+  },
+  "detail_body_contains": {
+    "message": "body contains $1"
+  },
+  "detail_click_to_edit": {
+    "message": "Click to edit"
+  },
+  "detail_header": {
+    "message": "header $1"
+  },
+  "detail_header_value": {
+    "message": "header $1: $2"
+  },
+  "detail_no_server": {
+    "message": "Answered in the browser; the server is never called"
+  },
+  "detail_only_when": {
+    "message": "Only when the request has:"
+  },
+  "detail_patch": {
+    "message": "Changes these fields of the real JSON response:"
+  },
+  "detail_query": {
+    "message": "query $1"
+  },
+  "dialog_cancel": {
+    "message": "Cancel"
+  },
+  "dialog_confirm": {
+    "message": "Confirm"
+  },
+  "dialog_save": {
+    "message": "Save"
+  },
+  "empty_captured": {
+    "message": "No network requests captured yet. Refresh page or trigger APIs."
+  },
+  "empty_overridden": {
+    "message": "No captured requests match active overrides."
+  },
+  "empty_search": {
+    "message": "No requests match search filter."
+  },
+  "enable_label": {
+    "message": "Enable Overrides"
+  },
+  "error_background_no_confirm": {
+    "message": "Background did not confirm the update"
+  },
+  "error_body_not_json": {
+    "message": "Response body is not valid JSON."
+  },
+  "error_delay_range": {
+    "message": "Delay must be between 0 and 120000 ms."
+  },
+  "error_no_active_tab": {
+    "message": "No active tab is available"
+  },
+  "error_pattern_invalid": {
+    "message": "Invalid regex pattern: $1"
+  },
+  "error_pattern_required": {
+    "message": "Pattern is required."
+  },
+  "error_redirect_required": {
+    "message": "Redirect URL is required for a redirect override."
+  },
+  "error_request_headers": {
+    "message": "Request headers must use one “Header-Name: value” per line."
+  },
+  "error_response_headers": {
+    "message": "Extra response headers must use one “Header-Name: value” per line."
+  },
+  "error_save_override": {
+    "message": "Could not save override."
+  },
+  "error_save_override_reason": {
+    "message": "Could not save override: $1"
+  },
+  "error_status_range": {
+    "message": "Status code must be between 100 and 599."
+  },
+  "error_throttle_failed": {
+    "message": "Could not update network throttling"
+  },
+  "error_unknown": {
+    "message": "Unknown error"
+  },
+  "error_ws_delay": {
+    "message": "Delay frame needs a delay above 0 ms."
+  },
+  "error_ws_pattern": {
+    "message": "A WebSocket pattern starts with ws://, wss:// or *."
+  },
+  "error_ws_regex": {
+    "message": "Match is not a valid regular expression: $1"
+  },
+  "error_ws_substitute": {
+    "message": "Substitute needs a Match to replace."
+  },
+  "field_body": {
+    "message": "Response body"
+  },
+  "field_delay": {
+    "message": "Delay (ms)"
+  },
+  "field_delay_hint": {
+    "message": "Wait this long before answering, to test loading states. 3000 = 3 seconds."
+  },
+  "field_fail": {
+    "message": "Simulate a network error"
+  },
+  "field_fail_hint": {
+    "message": "The error the page sees instead of a response."
+  },
+  "field_global": {
+    "message": "Apply on every site (global rule)"
+  },
+  "field_global_hint": {
+    "message": "Off: the rule only works on the site it was made on."
+  },
+  "field_global_title": {
+    "message": "Apply this rule on every domain"
+  },
+  "field_graphql": {
+    "message": "GraphQL operation"
+  },
+  "field_graphql_hint": {
+    "message": "The operation name the page sends to a GraphQL endpoint."
+  },
+  "field_graphql_placeholder": {
+    "message": "e.g. GetUserProfile"
+  },
+  "field_inject_help": {
+    "message": "Adds your code to every page whose address matches the URL pattern, e.g. <code>https://example.com/*</code>. The CSS goes at the end of <code>&lt;head&gt;</code>, the script at the end of <code>&lt;body&gt;</code>. Reload the page after saving."
+  },
+  "field_inject_script": {
+    "message": "Script to add (JavaScript)"
+  },
+  "field_inject_script_placeholder": {
+    "message": "e.g. console.log('injected');"
+  },
+  "field_inject_style": {
+    "message": "Stylesheet to add (CSS)"
+  },
+  "field_inject_style_placeholder": {
+    "message": "e.g. .banner { display: none; }"
+  },
+  "field_match_body": {
+    "message": "Request body contains"
+  },
+  "field_match_body_placeholder": {
+    "message": "e.g. \"plan\":\"pro\" (no match when the browser sends no body text)"
+  },
+  "field_match_headers": {
+    "message": "Request headers (one per line; names ignore case)"
+  },
+  "field_method": {
+    "message": "Method"
+  },
+  "field_mode": {
+    "message": "The response body is"
+  },
+  "field_mode_hint": {
+    "message": "Text answers with the body as typed. Patch changes a few fields of the real response; Script computes the answer."
+  },
+  "field_patch_help": {
+    "message": "The request goes to the server and only these fields of its JSON response change. One change per line: <code>set data.user.plan = \"pro\"</code> (the value is JSON) or <code>remove data.ads</code>. Paths use dots and <code>[0]</code> for array items, or a JSON Pointer such as <code>/data/items/0</code>. A response that is not JSON passes through unchanged."
+  },
+  "field_pattern": {
+    "message": "URL pattern"
+  },
+  "field_pattern_hint": {
+    "message": "Part of the URL. Use <code>*</code> to match more URLs, e.g. <code>/api/users/*</code>; <code>/regex/</code> also works."
+  },
+  "field_query": {
+    "message": "Query parameters"
+  },
+  "field_query_placeholder": {
+    "message": "e.g. page=2&debug (a name alone: present with any value)"
+  },
+  "field_redirect": {
+    "message": "Redirect URL (uses * for captured wildcards)"
+  },
+  "field_redirect_placeholder": {
+    "message": "e.g. https://new-api.example.com/api/*"
+  },
+  "field_relax_csp": {
+    "message": "Remove the page's Content-Security-Policy"
+  },
+  "field_relax_csp_hint": {
+    "message": "Rarely needed: the injected code is let through the page's CSP by its hash, and the rest of the policy stays. Turn this on only if your code loads other scripts, uses eval or inline event handlers: the page then loads without its CSP while the rule is on."
+  },
+  "field_request_body": {
+    "message": "Replace the request body sent to the server"
+  },
+  "field_request_body_placeholder": {
+    "message": "e.g. {\"name\":\"mock\"}"
+  },
+  "field_request_headers": {
+    "message": "Request headers to add or replace (Key-Value or Raw)"
+  },
+  "field_respond": {
+    "message": "Answer without calling the server"
+  },
+  "field_respond_hint": {
+    "message": "The server is never contacted: works for endpoints that do not exist yet."
+  },
+  "field_respond_title": {
+    "message": "Fulfil the request in the browser with this body, status and headers. The server is never contacted, so this works for unreachable hosts and endpoints that do not exist yet."
+  },
+  "field_response_headers": {
+    "message": "Headers to add to the response (Key-Value or Raw)"
+  },
+  "field_script_help": {
+    "message": "The body of an async function that receives <code>request</code> and returns the response: a string, or <code>{ status, headers, body }</code>. It runs in the page. <code>request</code> has <code>url</code>, <code>method</code>, <code>headers</code>, <code>query</code>, <code>params</code>, <code>body</code> and the original <code>response</code>."
+  },
+  "field_status": {
+    "message": "Status code"
+  },
+  "field_status_hint": {
+    "message": "Blank keeps the real status."
+  },
+  "field_status_placeholder": {
+    "message": "e.g. 500"
+  },
+  "field_templates": {
+    "message": "Fill in {{...}} placeholders"
+  },
+  "field_templates_hint": {
+    "message": "Placeholders such as <code>$1</code> get a fresh value on every request."
+  },
+  "field_templates_title": {
+    "message": "Resolve dynamic {{...}} placeholders at request time"
+  },
+  "file_large_warning": {
+    "message": "$1 takes $2 in the rule. Rules are kept in browser storage, which holds about 10 MB in all, so saving may fail."
+  },
+  "file_loaded": {
+    "message": "From file $1 ($2)"
+  },
+  "file_pick": {
+    "message": "Use a local file…"
+  },
+  "file_pick_title": {
+    "message": "Answer with a file from your computer: a script, stylesheet, page, image or font"
+  },
+  "file_read_failed": {
+    "message": "Could not read the file: $1"
+  },
+  "file_remove": {
+    "message": "Remove file"
+  },
+  "format_json": {
+    "message": "Format JSON"
+  },
+  "format_json_title": {
+    "message": "Pretty-print the JSON response body"
+  },
+  "group_advanced": {
+    "message": "Advanced"
+  },
+  "group_body_type": {
+    "message": "Body type: patch & script"
+  },
+  "group_conditions": {
+    "message": "Conditions"
+  },
+  "group_request": {
+    "message": "Change the request"
+  },
+  "group_response_headers": {
+    "message": "Response headers"
+  },
+  "group_timing": {
+    "message": "Timing & failure"
+  },
+  "guide_page": {
+    "message": "guide.html"
+  },
+  "guide_title": {
+    "message": "Open user guide"
+  },
+  "header_actions_label": {
+    "message": "Popup actions"
+  },
+  "headers_add": {
+    "message": "+ Add Header"
+  },
+  "headers_delete": {
+    "message": "Delete header"
+  },
+  "headers_mode_raw": {
+    "message": "Raw"
+  },
+  "headers_mode_table": {
+    "message": "Key-Value"
+  },
+  "headers_name": {
+    "message": "Header name"
+  },
+  "headers_value": {
+    "message": "Header value"
+  },
+  "hint_tip": {
+    "message": "Tip: use <code>*</code> as wildcard in patterns (e.g., <code>https://old.com/api/*/users</code>), <code>*</code>/<code>all</code> for all requests, or regex <code>/pattern/flags</code>. Use <code>*</code> in Redirect URL to substitute captured wildcards."
+  },
+  "hits_count_one": {
+    "message": "Applied 1 time in this session"
+  },
+  "hits_count_other": {
+    "message": "Applied $1 times in this session"
+  },
+  "hits_idle": {
+    "message": "Not applied yet, although requests went by."
+  },
+  "hits_idle_check": {
+    "message": "Check the pattern, the method and the conditions."
+  },
+  "hits_last": {
+    "message": "Last applied at $1"
+  },
+  "hits_none": {
+    "message": "Not applied yet in this session"
+  },
+  "import_anyway": {
+    "message": "Import anyway"
+  },
+  "import_append": {
+    "message": "Append rules"
+  },
+  "import_button": {
+    "message": "Import Rules"
+  },
+  "import_close": {
+    "message": "Close import dialog"
+  },
+  "import_curl": {
+    "message": "cURL or OpenAPI / Swagger…"
+  },
+  "import_curl_title": {
+    "message": "Make rules from a cURL command or an OpenAPI / Swagger spec"
+  },
+  "import_file": {
+    "message": "Or choose a file (.json, .yaml, .yml, .har, .curl, .txt):"
+  },
+  "import_merge_message": {
+    "message": "Rules already exist for this domain. Choose how the imported rules should be added."
+  },
+  "import_merge_title": {
+    "message": "Import rules"
+  },
+  "import_other_domain_message": {
+    "message": "This file was exported from “$1”, but the active domain is “$2”."
+  },
+  "import_other_domain_title": {
+    "message": "Import rules from another domain?"
+  },
+  "import_paste": {
+    "message": "Paste a cURL command or an OpenAPI / Swagger spec (JSON or YAML)"
+  },
+  "import_paste_placeholder": {
+    "message": "curl -X POST https://api.example.com/users -H \"Authorization: Bearer token\" -d '{\"name\":\"John\"}'\n\nOr paste Swagger/OpenAPI JSON content..."
+  },
+  "import_replace": {
+    "message": "Replace rules"
+  },
+  "import_rules_file": {
+    "message": "Rules file (.json)"
+  },
+  "import_rules_file_title": {
+    "message": "Load rules exported from this extension"
+  },
+  "import_title": {
+    "message": "Import rules from cURL or OpenAPI / Swagger"
+  },
+  "language_auto": {
+    "message": "Auto"
+  },
+  "language_label": {
+    "message": "Language"
+  },
+  "manual_add": {
+    "message": "Add Manual"
+  },
+  "manual_redirect_placeholder": {
+    "message": "Optional redirect URL (use * for wildcards)"
+  },
+  "method_any": {
+    "message": "Any"
+  },
+  "modal_body_placeholder": {
+    "message": "Custom response body"
+  },
+  "modal_close": {
+    "message": "Close override editor"
+  },
+  "modal_save": {
+    "message": "Save Override"
+  },
+  "modal_saving": {
+    "message": "Saving override…"
+  },
+  "modal_saving_button": {
+    "message": "Saving…"
+  },
+  "modal_title_add": {
+    "message": "Add override"
+  },
+  "modal_title_edit": {
+    "message": "Edit override"
+  },
+  "mode_file": {
+    "message": "Raw base64"
+  },
+  "mode_patch": {
+    "message": "Patch the real JSON response"
+  },
+  "mode_script": {
+    "message": "Script (JavaScript)"
+  },
+  "mode_text": {
+    "message": "Text"
+  },
+  "preset_applied": {
+    "message": "Preset applied: $1."
+  },
+  "preset_empty_list": {
+    "message": "Empty list"
+  },
+  "preset_empty_list_title": {
+    "message": "Answer 200 with an empty list: [] or the same JSON with its lists emptied"
+  },
+  "preset_offline": {
+    "message": "Offline"
+  },
+  "preset_offline_title": {
+    "message": "Fail the request as if the network were down"
+  },
+  "preset_server_error": {
+    "message": "Server error"
+  },
+  "preset_server_error_title": {
+    "message": "Answer with status 500 and a small JSON error"
+  },
+  "preset_slow": {
+    "message": "Slow (3 s)"
+  },
+  "preset_slow_title": {
+    "message": "Wait 3 seconds before the answer arrives"
+  },
+  "presets_label": {
+    "message": "Presets"
+  },
+  "preview_alt": {
+    "message": "Image preview"
+  },
+  "profile_delete_btn_title": {
+    "message": "Delete selected Profile"
+  },
+  "profile_delete_button": {
+    "message": "Delete"
+  },
+  "profile_delete_message": {
+    "message": "Delete profile “$1”? This cannot be undone."
+  },
+  "profile_delete_title": {
+    "message": "Delete rule profile"
+  },
+  "profile_name_label": {
+    "message": "Profile name"
+  },
+  "profile_name_placeholder": {
+    "message": "e.g. Staging Mock or Error Flow"
+  },
+  "profile_save_btn": {
+    "message": "Save Profile"
+  },
+  "profile_save_btn_title": {
+    "message": "Save current rules as Profile"
+  },
+  "profile_save_message": {
+    "message": "Save the current rules as a reusable profile for this domain."
+  },
+  "profile_save_title": {
+    "message": "Save rule profile"
+  },
+  "profiles_placeholder": {
+    "message": "-- Rule Profiles --"
+  },
+  "refresh_title": {
+    "message": "Refresh captured requests"
+  },
+  "refreshing_title": {
+    "message": "Refreshing captured requests…"
+  },
+  "reset_counts": {
+    "message": "Reset counts"
+  },
+  "reset_counts_title": {
+    "message": "Set the applied count of every rule back to 0"
+  },
+  "rule_copy": {
+    "message": "Copy"
+  },
+  "rule_copy_title": {
+    "message": "Duplicate rule"
+  },
+  "rule_delete": {
+    "message": "Delete"
+  },
+  "rule_delete_title": {
+    "message": "Delete rule"
+  },
+  "rule_disable": {
+    "message": "Disable rule"
+  },
+  "rule_drag_label": {
+    "message": "Reorder rule $1"
+  },
+  "rule_drag_title": {
+    "message": "Drag to reorder, or press the up and down arrow keys"
+  },
+  "rule_edit": {
+    "message": "Edit"
+  },
+  "rule_edit_title": {
+    "message": "Edit rule"
+  },
+  "rule_enable": {
+    "message": "Enable rule"
+  },
+  "rule_global_badge": {
+    "message": "GLOBAL"
+  },
+  "rules_export": {
+    "message": "Export"
+  },
+  "rules_import": {
+    "message": "Import"
+  },
+  "runtime_controls_label": {
+    "message": "Network conditions and traffic analytics"
+  },
+  "settings_in_use_one": {
+    "message": "1 setting in use"
+  },
+  "settings_in_use_other": {
+    "message": "$1 settings in use"
+  },
+  "summary_base64": {
+    "message": "base64 body"
+  },
+  "summary_body_has": {
+    "message": "+ body has $1"
+  },
+  "summary_csp_relaxed": {
+    "message": "CSP removed"
+  },
+  "summary_graphql_op": {
+    "message": "(op: $1)"
+  },
+  "summary_header": {
+    "message": "+ header $1"
+  },
+  "summary_inject_both": {
+    "message": "inject JS + CSS"
+  },
+  "summary_inject_css": {
+    "message": "inject CSS"
+  },
+  "summary_inject_js": {
+    "message": "inject JS"
+  },
+  "summary_local_file": {
+    "message": "local file $1"
+  },
+  "summary_mock_body": {
+    "message": "mock body"
+  },
+  "summary_network_error": {
+    "message": "network error"
+  },
+  "summary_network_error_reason": {
+    "message": "network error ($1)"
+  },
+  "summary_no_server": {
+    "message": "no server"
+  },
+  "summary_patch_one": {
+    "message": "patch 1 field"
+  },
+  "summary_patch_other": {
+    "message": "patch $1 fields"
+  },
+  "summary_query": {
+    "message": "+ query $1"
+  },
+  "summary_redirect": {
+    "message": "redirect to $1"
+  },
+  "summary_request_body": {
+    "message": "new request body"
+  },
+  "summary_request_headers_one": {
+    "message": "+1 request header"
+  },
+  "summary_request_headers_other": {
+    "message": "+$1 request headers"
+  },
+  "summary_response_headers_one": {
+    "message": "+1 response header"
+  },
+  "summary_response_headers_other": {
+    "message": "+$1 response headers"
+  },
+  "summary_script": {
+    "message": "script"
+  },
+  "summary_slow": {
+    "message": "slow $1"
+  },
+  "summary_templates_off": {
+    "message": "templates off"
+  },
+  "summary_ws_block": {
+    "message": "block frames"
+  },
+  "summary_ws_contains": {
+    "message": "contains \"$1\""
+  },
+  "summary_ws_delay": {
+    "message": "delay frames"
+  },
+  "summary_ws_replace": {
+    "message": "replace frames"
+  },
+  "summary_ws_substitute": {
+    "message": "substitute text in frames"
+  },
+  "tab_captured": {
+    "message": "Captured APIs ($1)"
+  },
+  "tab_captured_plain": {
+    "message": "Captured APIs"
+  },
+  "tab_overridden": {
+    "message": "Overridden ($1)"
+  },
+  "tab_overridden_plain": {
+    "message": "Overridden"
+  },
+  "tab_rules": {
+    "message": "Rules ($1)"
+  },
+  "tab_rules_plain": {
+    "message": "Rules"
+  },
+  "throttle_label": {
+    "message": "Network"
+  },
+  "throttle_none": {
+    "message": "No throttling"
+  },
+  "throttle_offline": {
+    "message": "Offline"
+  },
+  "toast_add_rule_failed": {
+    "message": "Could not add rule: $1"
+  },
+  "toast_applied": {
+    "message": "$1 and applied to the active tab."
+  },
+  "toast_disabled_sync_failed": {
+    "message": "Disabled setting saved, but the background update failed: $1"
+  },
+  "toast_dismiss": {
+    "message": "Dismiss notification"
+  },
+  "toast_enable_save_failed": {
+    "message": "Could not save interception setting: $1"
+  },
+  "toast_enabled_sync_failed": {
+    "message": "Enabled setting saved, but the background update failed: $1"
+  },
+  "toast_export_failed": {
+    "message": "Failed to export rules: $1"
+  },
+  "toast_exported": {
+    "message": "Rules exported."
+  },
+  "toast_har_empty": {
+    "message": "Nothing captured yet; there is nothing to export."
+  },
+  "toast_har_exported": {
+    "message": "Exported $1 request(s), $2 with a response body."
+  },
+  "toast_har_failed": {
+    "message": "Failed to export HAR: $1"
+  },
+  "toast_har_no_tab": {
+    "message": "No active tab to export from."
+  },
+  "toast_import_failed": {
+    "message": "Could not import rules: $1"
+  },
+  "toast_import_nothing": {
+    "message": "Could not parse any rules from cURL, HAR file, or Swagger/OpenAPI specification."
+  },
+  "toast_import_read_failed": {
+    "message": "Could not read the selected import file."
+  },
+  "toast_imported_one": {
+    "message": "1 rule imported"
+  },
+  "toast_imported_other": {
+    "message": "$1 rules imported"
+  },
+  "toast_inject_csp": {
+    "message": "Inject rule \"$1\": the page's Content-Security-Policy sandbox stops all scripts, so the injected script will not run. Tick \"Remove the page's Content-Security-Policy\" in the rule if you need it to run."
+  },
+  "toast_inject_not_utf8": {
+    "message": "Inject rule \"$1\": the page is not UTF-8, so nothing was injected."
+  },
+  "toast_interception_off": {
+    "message": "Interception disabled."
+  },
+  "toast_interception_on": {
+    "message": "Interception enabled."
+  },
+  "toast_invalid_file": {
+    "message": "Invalid file: $1"
+  },
+  "toast_invalid_file_list": {
+    "message": "Invalid file: missing “overrides” list."
+  },
+  "toast_invalid_file_rule": {
+    "message": "Invalid file: a rule has a missing or invalid field."
+  },
+  "toast_language_save_failed": {
+    "message": "Could not save the language: $1"
+  },
+  "toast_not_applied": {
+    "message": "$1, but interception was not updated."
+  },
+  "toast_not_applied_reason": {
+    "message": "$1, but interception was not updated: $2"
+  },
+  "toast_override_saved": {
+    "message": "Override saved"
+  },
+  "toast_patch_rule_skipped": {
+    "message": "Patch rule \"$1\": $2"
+  },
+  "toast_pattern_required": {
+    "message": "Pattern is required before adding a rule."
+  },
+  "toast_persist_disabled_failed": {
+    "message": "Could not persist the disabled interception state: $1"
+  },
+  "toast_profile_delete_failed": {
+    "message": "Could not delete profile: $1"
+  },
+  "toast_profile_deleted": {
+    "message": "Profile “$1” deleted."
+  },
+  "toast_profile_needs_domain": {
+    "message": "A page domain is required before saving a profile."
+  },
+  "toast_profile_save_failed": {
+    "message": "Could not save profile: $1"
+  },
+  "toast_profile_saved": {
+    "message": "Profile “$1” saved."
+  },
+  "toast_profile_select": {
+    "message": "Select a profile to delete."
+  },
+  "toast_profiles_load_failed": {
+    "message": "Could not load rule profiles: $1"
+  },
+  "toast_retry": {
+    "message": "Retry"
+  },
+  "toast_retry_done": {
+    "message": "Interception updated for the active tab."
+  },
+  "toast_retry_failed": {
+    "message": "Retry failed: $1"
+  },
+  "toast_rule_added": {
+    "message": "Rule added"
+  },
+  "toast_rule_deleted": {
+    "message": "Rule deleted"
+  },
+  "toast_rule_disabled": {
+    "message": "Rule disabled"
+  },
+  "toast_rule_duplicated": {
+    "message": "Rule duplicated"
+  },
+  "toast_rule_enabled": {
+    "message": "Rule enabled"
+  },
+  "toast_rule_moved": {
+    "message": "Rule moved"
+  },
+  "toast_throttle_changed": {
+    "message": "Network preset changed to $1."
+  },
+  "toast_throttle_failed": {
+    "message": "Could not update network preset: $1"
+  },
+  "toast_update_rules_failed": {
+    "message": "Could not update rules: $1"
+  },
+  "toast_ws_rule_skipped": {
+    "message": "WebSocket rule \"$1\" was skipped: $2"
+  },
+  "traffic_stats": {
+    "message": "Overridden $1 · Failed $2"
+  },
+  "type_body": {
+    "message": "Mock response"
+  },
+  "type_body_title": {
+    "message": "Answer with your own status and body"
+  },
+  "type_fail": {
+    "message": "Network error"
+  },
+  "type_fail_title": {
+    "message": "Make the request fail as if the network broke"
+  },
+  "type_group_label": {
+    "message": "What the rule does"
+  },
+  "type_inject": {
+    "message": "Inject JS/CSS"
+  },
+  "type_inject_title": {
+    "message": "Add your own script or stylesheet to matching pages"
+  },
+  "type_redirect": {
+    "message": "Redirect"
+  },
+  "type_redirect_title": {
+    "message": "Send the request to another URL"
+  },
+  "type_ws": {
+    "message": "WebSocket"
+  },
+  "type_ws_title": {
+    "message": "Change WebSocket messages"
+  },
+  "ws_action": {
+    "message": "Action"
+  },
+  "ws_block": {
+    "message": "Block frame"
+  },
+  "ws_both": {
+    "message": "Both"
+  },
+  "ws_delay": {
+    "message": "Delay frame"
+  },
+  "ws_direction": {
+    "message": "Direction"
+  },
+  "ws_match": {
+    "message": "Match frame (blank = every text frame)"
+  },
+  "ws_match_placeholder": {
+    "message": "e.g. \"type\":\"price\""
+  },
+  "ws_receive": {
+    "message": "Receive (server → page)"
+  },
+  "ws_regex": {
+    "message": "Match is a regular expression"
+  },
+  "ws_replace": {
+    "message": "Replace whole frame"
+  },
+  "ws_send": {
+    "message": "Send (page → server)"
+  },
+  "ws_substitute": {
+    "message": "Substitute match"
+  }
+}

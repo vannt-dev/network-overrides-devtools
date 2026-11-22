@@ -4,6 +4,7 @@
 /// <reference path="./modal.ts" />
 /// <reference path="./notifications.ts" />
 /// <reference path="./websocket-rule.ts" />
+/// <reference path="./static-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface ModalControllerOptions {
@@ -48,6 +49,7 @@ namespace NetworkOverridesUi {
     const { elements, state, saveState, renderRules } = options;
 
     elements.closeModal?.addEventListener('click', () => closeModal(elements));
+    bindLocalFilePicker(elements);
     elements.modal?.addEventListener('click', event => {
       if (event.target === elements.modal) closeModal(elements);
     });
@@ -213,6 +215,16 @@ namespace NetworkOverridesUi {
         }
       }
 
+      if (overrideType === 'inject') {
+        const result = readInjectRule(elements, pattern);
+        if ('error' in result) {
+          showModalFeedback(elements, result.error, 'error', result.field);
+          return;
+        }
+        await commit(result.rule);
+        return;
+      }
+
       if (overrideType === 'websocket') {
         const result = readWebSocketRule(elements, pattern, delayMs);
         if ('error' in result) {
@@ -245,6 +257,10 @@ namespace NetworkOverridesUi {
         ? parseHeadersText(elements.modalRequestHeaders.value)
         : undefined;
       const rule: OverrideRule = { pattern, body, mode };
+      const fileName = heldFileName(elements);
+      if (overrideType === 'body' && fileName && (mode === 'text' || mode === 'file')) {
+        rule.fileName = fileName;
+      }
       if (patch) rule.patch = patch;
       if (redirectUrl) rule.redirectUrl = redirectUrl;
       if (method && method !== 'ANY') rule.method = method;

@@ -20,6 +20,8 @@ namespace NetworkOverridesUi {
       }
       return `ws ${rule.pattern}${details.length ? ` (${details.join(', ')})` : ''}`;
     }
+    // An inject rule matches pages by their address only.
+    if (rule.kind === 'inject') return rule.pattern;
     const parts: string[] = [];
     if (rule.method && rule.method.toUpperCase() !== 'ANY') parts.push(rule.method.toUpperCase());
     parts.push(rule.pattern);
@@ -59,6 +61,20 @@ namespace NetworkOverridesUi {
       return parts;
     }
 
+    if (rule.kind === 'inject') {
+      const js = !!rule.injectScript?.trim();
+      const css = !!rule.injectStyle?.trim();
+      const parts = [
+        js && css
+          ? t('summary_inject_both')
+          : js
+            ? t('summary_inject_js')
+            : t('summary_inject_css'),
+      ];
+      if (rule.relaxCsp) parts.push(t('summary_csp_relaxed'));
+      return parts;
+    }
+
     const parts: string[] = [];
     const status = typeof rule.statusCode === 'number' ? String(rule.statusCode) : null;
     if (rule.failReason) {
@@ -75,6 +91,7 @@ namespace NetworkOverridesUi {
         const fields = rule.patch?.length || 0;
         parts.push(fields === 1 ? t('summary_patch_one') : t('summary_patch_other', fields));
       } else if (rule.mode === 'script') parts.push(t('summary_script'));
+      else if (rule.fileName) parts.push(t('summary_local_file', rule.fileName));
       else if (rule.mode === 'file') parts.push(t('summary_base64'));
       else if (!status) parts.push(t('summary_mock_body'));
       if (rule.respondAtRequest && rule.mode !== 'patch') parts.push(t('summary_no_server'));

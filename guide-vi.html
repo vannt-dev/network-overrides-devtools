@@ -477,6 +477,59 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
       </ul>
 
+      <h3 id="static-files">6.8. Thay một file tĩnh</h3>
+      <p>
+        Rule Mock response cũng trả lời được script, stylesheet, ảnh, font và trang. Đặt URL pattern
+        trỏ tới file, ví dụ <code>/static/app.js</code>, rồi bấm
+        <strong>Dùng file trên máy…</strong> dưới ô body:
+      </p>
+      <ul>
+        <li>
+          File chữ (JS, CSS, HTML, JSON, SVG, XML) được đưa vào ô body, vẫn sửa được. File khác
+          (ảnh, font) được giữ nguyên và hiện là <em>Từ file tên (dung lượng)</em>, kèm nút
+          <strong>Bỏ file</strong>.
+        </li>
+        <li>
+          <code>Content-Type</code> được đặt theo file và đổi được ở
+          <strong>Nâng cao → Response header</strong>. Rule trả về status <code>200</code> nếu bạn
+          không đặt status khác, nên file mà server không có (404) vẫn tải được.
+        </li>
+        <li>
+          Rule được lưu trong bộ nhớ của trình duyệt, tổng cộng khoảng 10&nbsp;MB. Trên 2&nbsp;MB
+          editor sẽ cảnh báo; hãy giữ file nhỏ, hoặc chỉ thay file bạn đang làm.
+        </li>
+        <li>
+          Khi một tab đang được chặn request, cache của trình duyệt bị bỏ qua, nên rule vẫn áp dụng
+          cho file trang đã cache. Tải lại trang sau khi thêm rule.
+        </li>
+        <li>
+          Script hay stylesheet có thuộc tính <code>integrity</code> (SRI) sẽ từ chối file đã thay.
+          Request do service worker tự trả lời thì không bị chặn.
+        </li>
+      </ul>
+
+      <h3 id="inject-code">6.9. Chèn JS/CSS vào trang</h3>
+      <p>
+        Chọn kiểu <strong>Chèn JS/CSS</strong> để thêm code của bạn vào các trang khớp rule, ví dụ
+        <code>https://example.com/*</code>. Trang thật vẫn tải; rule chỉ thêm vào.
+      </p>
+      <ul>
+        <li>
+          Stylesheet được đặt ở cuối <code>&lt;head&gt;</code>; script ở cuối
+          <code>&lt;body&gt;</code>, nên khi chạy thì các phần tử của trang đã có.
+        </li>
+        <li>
+          Chỉ trang (document) bị thay đổi, không phải API, và chỉ response HTML UTF-8 thành công
+          (2xx). Rule khác, như mock API, vẫn chạy trên cùng trang.
+        </li>
+        <li>
+          Một số trang cấm code inline bằng Content-Security-Policy. Khi đó panel sẽ cảnh báo. Tick
+          <strong>Nới Content-Security-Policy của trang</strong> trong rule để bỏ policy đó khỏi các
+          trang khớp; mặc định tắt, và nó làm trang kém an toàn hơn khi rule đang bật.
+        </li>
+        <li>Tải lại trang sau khi thêm hoặc sửa rule.</li>
+      </ul>
+
       <!-- ============ 7 ============ -->
       <h2 id="redirect">7. Chuyển hướng URL</h2>
 

@@ -140,6 +140,7 @@ namespace NetworkOverridesUi {
       if (bodyRadio) bodyRadio.checked = true;
       prefillAdvancedFields(elements, null);
       prefillWebSocketFields(elements, null);
+      prefillStaticFields(elements, null);
       updateModalVisibility(elements, 'body');
       openModal(elements);
     });

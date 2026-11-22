@@ -25,9 +25,10 @@ test('Background handles update messages by attaching and detaching the debugger
 
   assert.deepEqual(normalize(harness.attachedTabs), [{ target: { tabId: 7 }, version: '1.3' }]);
   assert.deepEqual(
-    normalize(harness.commandLog.slice(0, 3).map(({ method, params }) => ({ method, params }))),
+    normalize(harness.commandLog.slice(0, 4).map(({ method, params }) => ({ method, params }))),
     [
       { method: 'Network.enable', params: {} },
+      { method: 'Network.setCacheDisabled', params: { cacheDisabled: true } },
       {
         method: 'Network.emulateNetworkConditions',
         params: {

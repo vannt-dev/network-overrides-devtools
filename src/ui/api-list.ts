@@ -52,6 +52,7 @@ namespace NetworkOverridesUi {
     for (let i = 0; i < overrides.length; i++) {
       const rule = overrides[i];
       if ((rule.kind === 'websocket') !== (api.type.toLowerCase() === 'websocket')) continue;
+      if (rule.kind === 'inject' && api.type.toLowerCase() !== 'document') continue;
       if (!matchesMethod(rule.method, api.method)) continue;
       const request = { url: api.url, headers: api.headers, body: api.postData };
       if (!NetworkOverridesUtils.matchesRequestConditions(rule, request)) continue;

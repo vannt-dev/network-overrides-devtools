@@ -69,11 +69,12 @@ anything else is not published by vannt-dev.
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
-- **Four override types:**
-  - **Mock response**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response.
+- **Five override types:**
+  - **Mock response**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response. **Use a local file…** answers a script, stylesheet, image or font with a file from your computer (Content-Type set from the file).
   - **Redirect**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
   - **Network error**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
   - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
+  - **Inject JS/CSS**: add your own script and stylesheet to the pages a rule matches, while the real page still loads. An opt-in **Relax the page's Content-Security-Policy** lets the code run on pages whose CSP blocks inline code.
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
@@ -361,10 +362,11 @@ The editor shows the everyday fields first:
 - **Presets**: **Empty list**, **Server error**, **Slow (3 s)** and **Offline** fill the fields below in one click.
 - **URL pattern** and **Method**.
 - The type of rule:
-  - **Mock response**: answer with a **Status code** (blank keeps the real one) and a **Response body**. The **Format JSON** action appears when the body contains valid JSON.
+  - **Mock response**: answer with a **Status code** (blank keeps the real one) and a **Response body**. The **Format JSON** action appears when the body contains valid JSON. **Use a local file…** fills the body from a file: text files stay editable, other files (images, fonts) are kept as is.
   - **Redirect**: Enter the target URL. Use `*` to substitute wildcards captured from the pattern match.
   - **Network error**: the request fails at the network layer instead of receiving a response. Pick the error under **Advanced → Timing & failure → Simulate a network error** (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`); the group opens when you choose this type.
   - **WebSocket**: Replace, substitute, block or delay the text frames sent or received on a socket whose URL matches. Clicking a **WS** entry opens this type directly. See [WebSocket frame rules](#websocket-frame-rules).
+  - **Inject JS/CSS**: a script (added at the end of `<body>`) and a stylesheet (added at the end of `<head>`) for the matched pages. Only successful UTF-8 HTML pages are changed; reload the page after saving. While a tab is intercepted its browser cache is bypassed, so rules also apply to files the page had cached.
 
 Everything else is under **Advanced**, in groups that stay closed until you need them:
 

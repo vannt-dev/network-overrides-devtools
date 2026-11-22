@@ -323,6 +323,25 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 - Script chạy trong trang đang inspect, nên dùng được `fetch`, `localStorage` và biến toàn cục của trang. Script có 5 giây. Script ném lỗi, không trả về gì, trả status ngoài 100–599 hoặc hết giờ thì request nhận status `500`, nội dung là lỗi, kèm header `x-network-overrides-error: script`.
 - Rule import từ file có thể chứa script, và script đó chạy trong các trang mà rule khớp: chỉ import file bạn tin tưởng.
 
+### 6.9. Thay một file tĩnh (Dùng file trên máy)
+
+Rule **Mock response** cũng trả lời được script, stylesheet, ảnh, font và trang. Đặt URL pattern trỏ tới file (ví dụ `/static/app.js`) rồi bấm **Dùng file trên máy…** (Use a local file…) dưới ô body.
+
+- File chữ (JS, CSS, HTML, JSON, SVG, XML) được đưa vào ô body và vẫn sửa được. File khác (ảnh, font) được giữ nguyên và hiện là _Từ file tên (dung lượng)_, kèm nút **Bỏ file**.
+- `Content-Type` được đặt theo file; đổi ở **Nâng cao → Response header**. Rule trả về status `200` nếu bạn không đặt status khác, nên file server không có (404) vẫn tải được.
+- Rule được lưu trong bộ nhớ trình duyệt, tổng cộng khoảng 10 MB. Editor cảnh báo khi file trên 2 MB.
+- Khi tab đang được chặn request, cache của trình duyệt bị bỏ qua, nên rule vẫn áp dụng cho file trang đã cache. Tải lại trang sau khi thêm rule.
+- Script hay stylesheet có thuộc tính `integrity` (SRI) sẽ từ chối file đã thay. Request do service worker tự trả lời thì không bị chặn.
+
+### 6.10. Chèn JS/CSS vào trang
+
+Chọn kiểu **Chèn JS/CSS** (Inject JS/CSS) để thêm script và stylesheet của bạn vào các trang khớp rule, ví dụ `https://example.com/*`. Trang thật vẫn tải; rule chỉ thêm vào.
+
+- Stylesheet được đặt ở cuối `<head>`; script ở cuối `<body>`, nên khi chạy thì các phần tử của trang đã có.
+- Chỉ trang (document) bị thay đổi, và chỉ response HTML UTF-8 thành công (2xx). Rule khác, như mock API, vẫn chạy trên cùng trang.
+- Khi Content-Security-Policy của trang chặn code inline, panel sẽ cảnh báo. Tick **Nới Content-Security-Policy của trang** để bỏ policy đó khỏi các trang khớp. Mặc định tắt, và nó làm trang kém an toàn hơn khi rule đang bật.
+- Tải lại trang sau khi thêm hoặc sửa rule.
+
 ---
 
 ## 7. Redirect URL

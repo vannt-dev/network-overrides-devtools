@@ -86,7 +86,14 @@ namespace NetworkOverridesUi {
         (typeof rule.failReason === 'string' &&
           FAIL_REASONS.includes(rule.failReason) &&
           rule.redirectUrl === undefined)) &&
-      (rule.kind === undefined || rule.kind === 'http' || rule.kind === 'websocket') &&
+      (rule.kind === undefined ||
+        rule.kind === 'http' ||
+        rule.kind === 'websocket' ||
+        rule.kind === 'inject') &&
+      (rule.fileName === undefined || typeof rule.fileName === 'string') &&
+      (rule.injectScript === undefined || typeof rule.injectScript === 'string') &&
+      (rule.injectStyle === undefined || typeof rule.injectStyle === 'string') &&
+      (rule.relaxCsp === undefined || typeof rule.relaxCsp === 'boolean') &&
       (rule.wsDirection === undefined || isValidWsDirection(rule.wsDirection)) &&
       (rule.wsMatch === undefined || typeof rule.wsMatch === 'string') &&
       (rule.wsMatchRegex === undefined || typeof rule.wsMatchRegex === 'boolean') &&
@@ -143,6 +150,10 @@ namespace NetworkOverridesUi {
     if (source.wsMatch !== undefined) clean.wsMatch = source.wsMatch;
     if (source.wsMatchRegex !== undefined) clean.wsMatchRegex = source.wsMatchRegex;
     if (source.wsAction !== undefined) clean.wsAction = source.wsAction;
+    if (source.fileName !== undefined) clean.fileName = source.fileName;
+    if (source.injectScript !== undefined) clean.injectScript = source.injectScript;
+    if (source.injectStyle !== undefined) clean.injectStyle = source.injectStyle;
+    if (source.relaxCsp !== undefined) clean.relaxCsp = source.relaxCsp;
     return clean;
   }
 

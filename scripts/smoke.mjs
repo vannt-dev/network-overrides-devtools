@@ -56,6 +56,41 @@ const server = http.createServer((req, res) => {
     res.end('plain text, not JSON');
     return;
   }
+  if (req.url.startsWith('/static/')) {
+    const cache = { 'Cache-Control': 'max-age=3600' };
+    if (req.url.startsWith('/static/page.html')) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(
+        '<!doctype html><html><head><title>static</title>' +
+          '<link rel="stylesheet" href="/static/style.css"></head><body><h1 id="h">static page</h1>' +
+          '<img id="logo" src="/static/logo.png">' +
+          '<script src="/static/app.js"></script><script src="/static/missing.js"></script>' +
+          '</body></html>'
+      );
+      return;
+    }
+    if (req.url.startsWith('/static/csp.html')) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': "script-src 'self'; style-src 'self'",
+      });
+      res.end('<!doctype html><html><head><title>csp</title></head><body><p>csp</p></body></html>');
+      return;
+    }
+    if (req.url.startsWith('/static/app.js')) {
+      res.writeHead(200, { 'Content-Type': 'text/javascript', ...cache });
+      res.end('window.APP = "original";');
+      return;
+    }
+    if (req.url.startsWith('/static/style.css')) {
+      res.writeHead(200, { 'Content-Type': 'text/css', ...cache });
+      res.end('#h { color: rgb(0, 0, 255); }');
+      return;
+    }
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('not found');
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end('<!doctype html><title>smoke</title><h1>smoke page</h1>');
 });
@@ -490,6 +525,165 @@ return {
     );
   }
 
+  // ---- 3h. static files: rules answer a page's script, stylesheet, image and a
+  // missing file with local files; an inject rule adds JS/CSS to the page itself.
+  const staticDir = path.join(WORK_DIR, 'static-files');
+  fs.mkdirSync(staticDir, { recursive: true });
+  const localFile = (name, content) => {
+    const file = path.join(staticDir, name);
+    fs.writeFileSync(file, content);
+    return file;
+  };
+  const staticPage = name => `http://127.0.0.1:${PORT}/static/${name}`;
+  const pageState = () =>
+    site.evaluate(() => ({
+      app: window.APP ?? null,
+      missing: window.MISSING ?? null,
+      injected: window.INJECTED ?? null,
+      color: getComputedStyle(document.getElementById('h')).color,
+      background: getComputedStyle(document.body).backgroundColor,
+      logo: document.getElementById('logo').naturalWidth,
+    }));
+  const lastToast = async kind =>
+    (await popup.locator(`.notification-toast--${kind}`).last().textContent())?.trim() || '';
+  async function openNewRule(pattern, type) {
+    if (await popup.locator('#override-modal').isVisible()) {
+      await popup.click('#override-modal .modal-close');
+      await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    }
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', pattern);
+    await popup.check(`input[name="modal-override-type"][value="${type}"]`);
+  }
+  async function saveRule() {
+    await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    await popup.waitForTimeout(1000);
+  }
+  async function addFileRule(pattern, file) {
+    await openNewRule(pattern, 'body');
+    await popup.setInputFiles('#modal-body-file', file);
+    await popup.waitForFunction(
+      () =>
+        !document.getElementById('modal-body-file').dataset.loading &&
+        Boolean(document.getElementById('modal-body-file-info').dataset.fileName)
+    );
+    const feedback = ((await popup.textContent('#modal-feedback')) ?? '').trim();
+    await saveRule();
+    return feedback;
+  }
+  async function addInjectRule(pattern, script, style, relaxCsp = false) {
+    await openNewRule(pattern, 'inject');
+    await popup.fill('#modal-inject-script', script);
+    await popup.fill('#modal-inject-style', style);
+    if (relaxCsp) await popup.check('#modal-inject-relax-csp');
+    await saveRule();
+  }
+  async function setRuleEnabled(patternText, enabled) {
+    const toggle = popup
+      .locator('#list li', { has: popup.locator('.rule-pattern', { hasText: patternText }) })
+      .locator('.rule-toggle')
+      .first();
+    if ((await toggle.isChecked()) !== enabled) {
+      // The checkbox sits under a styled switch; flip it as a click would.
+      await toggle.evaluate(box => {
+        box.checked = !box.checked;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+    await popup.waitForTimeout(1000);
+  }
+
+  // Prime the HTTP cache first: app.js and style.css are sent with max-age=3600.
+  await site.goto(staticPage('page.html'));
+  const original = await pageState();
+  report(
+    'static page loads its real script and stylesheet (cache primed)',
+    original.app === 'original' && original.color === 'rgb(0, 0, 255)' && original.logo === 0,
+    JSON.stringify(original)
+  );
+
+  await addFileRule('static/app.js', localFile('app.js', 'window.APP = "local file";'));
+  await addFileRule('static/style.css', localFile('style.css', '#h { color: rgb(255, 0, 0); }'));
+  await addFileRule('static/missing.js', localFile('missing.js', 'window.MISSING = "served";'));
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await addFileRule('static/logo.png', localFile('logo.png', png));
+  const ruleListText = (await popup.locator('#list').textContent()) ?? '';
+  await site.goto(staticPage('page.html'));
+  const replaced = await pageState();
+  report(
+    'local files replace a cached script and stylesheet, a 404 script and an image',
+    replaced.app === 'local file' &&
+      replaced.color === 'rgb(255, 0, 0)' &&
+      replaced.missing === 'served' &&
+      replaced.logo === 1,
+    JSON.stringify(replaced)
+  );
+  report('the rule list names the local file', /local file/i.test(ruleListText));
+
+  await setRuleEnabled('static/app.js', false);
+  await site.goto(staticPage('page.html'));
+  const restored = await pageState();
+  report(
+    'turning a file rule off brings the original script back',
+    restored.app === 'original' && restored.color === 'rgb(255, 0, 0)',
+    JSON.stringify(restored)
+  );
+  await setRuleEnabled('static/app.js', true);
+
+  await addInjectRule(
+    'static/page.html',
+    'window.INJECTED = document.getElementById("h") ? "dom ready" : "no dom";',
+    'body { background-color: rgb(1, 2, 3); }'
+  );
+  await site.goto(staticPage('page.html'));
+  const injected = await pageState();
+  report(
+    'inject rule adds JS (after the DOM) and CSS to the page; file rules still apply',
+    injected.injected === 'dom ready' &&
+      injected.background === 'rgb(1, 2, 3)' &&
+      injected.app === 'local file',
+    JSON.stringify(injected)
+  );
+  await popup.screenshot({ path: path.join(WORK_DIR, '3h-static-rules.png') });
+
+  await addInjectRule('static/csp.html', 'window.INJECTED = "csp";', '');
+  await site.goto(staticPage('csp.html'));
+  await popup.waitForTimeout(500);
+  const blocked = await site.evaluate(() => window.INJECTED ?? null);
+  const cspNotice = await lastToast('warning');
+  report(
+    'a page CSP blocks the injected script and the panel warns about it',
+    blocked === null && /Content-Security-Policy|CSP/.test(cspNotice),
+    JSON.stringify({ blocked, cspNotice })
+  );
+  await setRuleEnabled('static/csp.html', false);
+  await addInjectRule('static/csp.html', 'window.INJECTED = "csp relaxed";', '', true);
+  await site.goto(staticPage('csp.html'));
+  const relaxed = await site.evaluate(() => window.INJECTED ?? null);
+  report('with "Relax CSP" ticked the injected script runs', relaxed === 'csp relaxed', relaxed);
+
+  // A rule of about 3 MB is saved here and checked again after the worker restart.
+  const bigBody = `window.BIG = "yes"; /* ${'x'.repeat(3 * 1024 * 1024)} */`;
+  const bigWarning = await addFileRule('static/big.js', localFile('big.js', bigBody));
+  const fetchBig = () =>
+    site.evaluate(
+      u => fetch(u).then(async r => ({ status: r.status, length: (await r.text()).length })),
+      staticPage('big.js')
+    );
+  const big = await fetchBig();
+  report(
+    'a 3 MB local file saves with a size warning and is served',
+    big.status === 200 && big.length === bigBody.length && /MB/.test(bigWarning),
+    JSON.stringify({ ...big, bigWarning })
+  );
+  await site.goto(`http://127.0.0.1:${PORT}/`);
+  await site.waitForTimeout(1000);
+
   // ---- 4. force-stop the service worker, wake it, confirm re-attach + rules survive
   const swInternals = await context.newPage();
   await swInternals.goto('chrome://serviceworker-internals/');
@@ -531,6 +725,12 @@ return {
       'after worker restart the override still applies (rehydrate + re-attach)',
       afterRestart === '{"mocked":true}',
       afterRestart
+    );
+    const bigAfter = await fetchBig();
+    report(
+      'after worker restart the 3 MB file rule still applies',
+      bigAfter.status === 200 && bigAfter.length === bigBody.length,
+      JSON.stringify(bigAfter)
     );
   }
 

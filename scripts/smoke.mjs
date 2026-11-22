@@ -69,12 +69,19 @@ const server = http.createServer((req, res) => {
       );
       return;
     }
-    if (req.url.startsWith('/static/csp.html')) {
+    if (req.url.startsWith('/static/csp.html') || req.url.startsWith('/static/sandbox.html')) {
+      const sandbox = req.url.startsWith('/static/sandbox.html');
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "script-src 'self'; style-src 'self'",
+        'Content-Security-Policy': sandbox
+          ? 'sandbox allow-same-origin'
+          : "script-src 'self'; style-src 'self'",
       });
-      res.end('<!doctype html><html><head><title>csp</title></head><body><p>csp</p></body></html>');
+      // The page's own inline script must stay blocked by its CSP.
+      res.end(
+        '<!doctype html><html><head><title>csp</title></head><body><p id="p">csp</p>' +
+          '<script>window.PAGE_INLINE = true;</script></body></html>'
+      );
       return;
     }
     if (req.url.startsWith('/static/app.js')) {
@@ -651,21 +658,48 @@ return {
   );
   await popup.screenshot({ path: path.join(WORK_DIR, '3h-static-rules.png') });
 
-  await addInjectRule('static/csp.html', 'window.INJECTED = "csp";', '');
+  const cspState = () =>
+    site.evaluate(() => ({
+      injected: window.INJECTED ?? null,
+      pageInline: window.PAGE_INLINE ?? null,
+      color: getComputedStyle(document.getElementById('p')).color,
+    }));
+  await addInjectRule(
+    'static/csp.html',
+    'window.INJECTED = "through csp";',
+    '#p { color: rgb(0, 128, 0); }'
+  );
   await site.goto(staticPage('csp.html'));
   await popup.waitForTimeout(500);
-  const blocked = await site.evaluate(() => window.INJECTED ?? null);
-  const cspNotice = await lastToast('warning');
+  const throughCsp = await cspState();
   report(
-    'a page CSP blocks the injected script and the panel warns about it',
-    blocked === null && /Content-Security-Policy|CSP/.test(cspNotice),
-    JSON.stringify({ blocked, cspNotice })
+    'injected JS and CSS run through the page CSP by hash; its own inline script stays blocked',
+    throughCsp.injected === 'through csp' &&
+      throughCsp.color === 'rgb(0, 128, 0)' &&
+      throughCsp.pageInline === null,
+    JSON.stringify(throughCsp)
   );
+
+  await addInjectRule('static/sandbox.html', 'window.INJECTED = "sandbox";', '');
+  await site.goto(staticPage('sandbox.html'));
+  await popup.waitForTimeout(500);
+  const sandboxed = await site.evaluate(() => window.INJECTED ?? null);
+  const sandboxNotice = await lastToast('warning');
+  report(
+    'a CSP sandbox without allow-scripts stops the script and the panel warns about it',
+    sandboxed === null && /sandbox/.test(sandboxNotice),
+    JSON.stringify({ sandboxed, sandboxNotice })
+  );
+
   await setRuleEnabled('static/csp.html', false);
-  await addInjectRule('static/csp.html', 'window.INJECTED = "csp relaxed";', '', true);
+  await addInjectRule('static/csp.html', 'window.INJECTED = "csp removed";', '', true);
   await site.goto(staticPage('csp.html'));
-  const relaxed = await site.evaluate(() => window.INJECTED ?? null);
-  report('with "Relax CSP" ticked the injected script runs', relaxed === 'csp relaxed', relaxed);
+  const removed = await cspState();
+  report(
+    'with "Remove the page CSP" ticked the page loads without its CSP',
+    removed.injected === 'csp removed' && removed.pageInline === true,
+    JSON.stringify(removed)
+  );
 
   // A rule of about 3 MB is saved here and checked again after the worker restart.
   const bigBody = `window.BIG = "yes"; /* ${'x'.repeat(3 * 1024 * 1024)} */`;

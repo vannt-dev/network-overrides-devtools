@@ -38,6 +38,10 @@ export function createUiContext() {
   const context = {
     console,
     URL,
+    crypto: globalThis.crypto,
+    TextEncoder,
+    TextDecoder,
+    btoa,
   };
   vm.createContext(context);
   runDistFile('ui.bundle.js', context);
@@ -51,6 +55,9 @@ export function createBackgroundContext() {
     URL,
     atob: value => Buffer.from(value, 'base64').toString('binary'),
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
+    crypto: globalThis.crypto,
+    TextEncoder,
+    TextDecoder,
     escape,
     unescape,
     importScripts: noop,

@@ -246,10 +246,10 @@
     "message": "vd. https://new-api.example.com/api/*"
   },
   "field_relax_csp": {
-    "message": "Nới Content-Security-Policy của trang"
+    "message": "Bỏ Content-Security-Policy của trang"
   },
   "field_relax_csp_hint": {
-    "message": "Mặc định tắt. Chỉ bật khi CSP của trang chặn code được chèn: khi rule đang bật, trang sẽ tải mà không có CSP."
+    "message": "Hiếm khi cần: code được chèn đã được cho qua CSP của trang bằng hash của nó, phần còn lại của policy giữ nguyên. Chỉ bật khi code của bạn tải thêm script khác, dùng eval hoặc event handler inline: khi rule đang bật, trang sẽ tải mà không có CSP."
   },
   "field_request_body": {
     "message": "Thay request body gửi tới server"
@@ -615,7 +615,7 @@
     "message": "+ body có $1"
   },
   "summary_csp_relaxed": {
-    "message": "đã nới CSP"
+    "message": "đã bỏ CSP"
   },
   "summary_graphql_op": {
     "message": "(op: $1)"
@@ -777,7 +777,7 @@
     "message": "Đã nhập $1 rule"
   },
   "toast_inject_csp": {
-    "message": "Rule chèn \"$1\": Content-Security-Policy của trang chặn code inline nên code được chèn có thể không chạy. Nếu không chạy, hãy tick \"Nới Content-Security-Policy của trang\" trong rule."
+    "message": "Rule chèn \"$1\": sandbox trong Content-Security-Policy của trang chặn mọi script nên script được chèn sẽ không chạy. Nếu cần nó chạy, hãy tick \"Bỏ Content-Security-Policy của trang\" trong rule."
   },
   "toast_inject_not_utf8": {
     "message": "Rule chèn \"$1\": trang không dùng UTF-8 nên không chèn gì."

@@ -339,7 +339,8 @@ Choose the type **Inject JS/CSS** to add your own script and stylesheet to the p
 
 - The stylesheet goes at the end of `<head>`; the script goes at the end of `<body>`, so the page's elements exist when it runs.
 - Only pages (documents) are changed, and only successful (2xx) UTF-8 HTML responses. Other rules, such as API mocks, keep working on the same page.
-- When the page's Content-Security-Policy blocks inline code, the panel warns you. Tick **Relax the page's Content-Security-Policy** to remove that policy from the matched pages. It is off by default and lowers the page's protection while the rule is on.
+- A page with a Content-Security-Policy keeps it: the SHA-256 hash of the injected script and stylesheet is added to the policy, so exactly that code runs, while the page's own inline code and the rest of the policy stay as they were. A CSP `sandbox` without `allow-scripts` still stops the script, and the panel warns you.
+- If your code loads other scripts, uses `eval` or inline event handlers, the policy may still block that part. As a last resort tick **Remove the page's Content-Security-Policy**: the matched pages then load without their CSP while the rule is on, which lowers their protection.
 - Reload the page after adding or changing the rule.
 
 ---

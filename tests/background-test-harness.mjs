@@ -241,6 +241,9 @@ export function createBackgroundHarness({
       return Buffer.from(value, 'base64').toString('binary');
     },
     btoa: value => Buffer.from(value, 'binary').toString('base64'),
+    crypto: globalThis.crypto,
+    TextEncoder,
+    TextDecoder,
     escape,
     unescape,
     // utils.js is already loaded into this context below; real service workers

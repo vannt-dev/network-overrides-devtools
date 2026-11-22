@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createUiContext } from './test-harness.mjs';
 
 const { NetworkOverridesUtils: u } = createUiContext();
@@ -113,4 +114,71 @@ test('injectIntoHtml keeps the doctype first, so the page keeps its rendering mo
     u.injectIntoHtml('﻿<!DOCTYPE html><p>hi</p>', { style: 'a{}' }),
     '﻿<!DOCTYPE html><style data-network-overrides>a{}</style><p>hi</p>'
   );
+});
+
+test('injectedCode is the exact element text: tags escaped, line breaks LF', () => {
+  assert.deepEqual(plain(u.injectedCode({ script: 'a()\r\nb("</script>")', style: ' ' })), {
+    script: 'a()\nb("<\\/script>")',
+    style: '',
+  });
+  const html = u.injectIntoHtml('<head></head><body></body>', { script: 'a()\r\nb()' });
+  assert.match(html, /<script data-network-overrides>a\(\)\nb\(\)<\/script>/);
+});
+
+test('sha256Base64 matches the hash a CSP expects', async () => {
+  const text = 'window.injected = "é";';
+  assert.equal(await u.sha256Base64(text), createHash('sha256').update(text).digest('base64'));
+});
+
+test('allowHashesInCsp adds the hash only where inline code is blocked', () => {
+  const hashes = { script: 'S', style: 'T' };
+  assert.equal(
+    u.allowHashesInCsp("default-src 'self'; img-src *", hashes),
+    "default-src 'self' 'sha256-S' 'sha256-T'; img-src *"
+  );
+  assert.equal(
+    u.allowHashesInCsp("script-src 'self' 'nonce-abc'; style-src 'unsafe-inline'", hashes),
+    "script-src 'self' 'nonce-abc' 'sha256-S'; style-src 'unsafe-inline'"
+  );
+  // script-src-elem decides for <script> elements; 'none' cannot stand beside a source.
+  assert.equal(
+    u.allowHashesInCsp("script-src 'self'; script-src-elem 'none'; frame-ancestors 'none'", {
+      script: 'S',
+    }),
+    "script-src 'self'; script-src-elem 'sha256-S'; frame-ancestors 'none'"
+  );
+  // A policy that already allows inline code, or one that does not cover it, is left alone.
+  assert.equal(
+    u.allowHashesInCsp("script-src * 'unsafe-inline'", hashes),
+    "script-src * 'unsafe-inline'"
+  );
+  assert.equal(u.allowHashesInCsp('img-src *', hashes), 'img-src *');
+  // Every policy of a header with several is handled.
+  assert.equal(
+    u.allowHashesInCsp("script-src 'self', default-src 'none'", { script: 'S' }),
+    "script-src 'self' 'sha256-S', default-src 'sha256-S'"
+  );
+  // No hash, no change.
+  assert.equal(u.allowHashesInCsp("script-src 'self'", {}), "script-src 'self'");
+});
+
+test('allowHashesInCspMeta rewrites CSP meta tags only', () => {
+  const out = u.allowHashesInCspMeta(
+    '<head><meta name="viewport" content="width=device-width">' +
+      `<meta http-equiv="Content-Security-Policy" content="script-src &#39;self&#39;"></head>`,
+    { script: 'S' }
+  );
+  assert.equal(
+    out,
+    '<head><meta name="viewport" content="width=device-width">' +
+      `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-S'"></head>`
+  );
+  assert.deepEqual(plain(u.cspMetaPolicies(out)), ["script-src 'self' 'sha256-S'"]);
+});
+
+test('cspSandboxBlocksScripts needs a sandbox without allow-scripts', () => {
+  assert.equal(u.cspSandboxBlocksScripts(['sandbox']), true);
+  assert.equal(u.cspSandboxBlocksScripts(['sandbox allow-forms']), true);
+  assert.equal(u.cspSandboxBlocksScripts(['sandbox allow-scripts allow-forms']), false);
+  assert.equal(u.cspSandboxBlocksScripts(["script-src 'self'"]), false);
 });

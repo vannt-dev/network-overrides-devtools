@@ -104,7 +104,7 @@ test('a rule built from a local file and an inject rule each read as one line', 
     ui.summarizeRule(
       inject({ injectScript: 'go()', injectStyle: 'a{}', relaxCsp: true, method: 'GET' })
     ),
-    'https://example.com/* → inject JS + CSS · CSP relaxed'
+    'https://example.com/* → inject JS + CSS · CSP removed'
   );
 });
 

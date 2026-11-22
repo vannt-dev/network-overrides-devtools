@@ -325,7 +325,7 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 
 ### 6.9. Thay một file tĩnh (Dùng file trên máy)
 
-Rule **Mock response** cũng trả lời được script, stylesheet, ảnh, font và trang. Đặt URL pattern trỏ tới file (ví dụ `https://example.com/static/app.js`) rồi bấm **Dùng file trên máy…** (Use a local file…) dưới ô body.
+Rule **Mock response** cũng trả lời được script, stylesheet, ảnh, font và trang. Đặt URL pattern trỏ tới file (ví dụ `/static/app.js`) rồi bấm **Dùng file trên máy…** (Use a local file…) dưới ô body.
 
 - File chữ (JS, CSS, HTML, JSON, SVG, XML) được đưa vào ô body và vẫn sửa được. File khác (ảnh, font) được giữ nguyên và hiện là _Từ file tên (dung lượng)_, kèm nút **Bỏ file**.
 - `Content-Type` được đặt theo file; đổi ở **Nâng cao → Response header**. Rule trả về status `200` nếu bạn không đặt status khác, nên file server không có (404) vẫn tải được.

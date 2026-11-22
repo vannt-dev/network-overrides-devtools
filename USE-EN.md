@@ -325,7 +325,7 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 
 ### 6.9. Replace a static file
 
-A **Mock response** rule also answers scripts, stylesheets, images, fonts and pages. Point the URL pattern at the file (for example `https://example.com/static/app.js`) and click **Use a local file…** under the response body.
+A **Mock response** rule also answers scripts, stylesheets, images, fonts and pages. Point the URL pattern at the file (for example `/static/app.js`) and click **Use a local file…** under the response body.
 
 - A text file (JS, CSS, HTML, JSON, SVG, XML) goes into the body box and stays editable. Any other file (an image, a font) is kept as is and shown as _From file name (size)_, with a **Remove file** button.
 - The `Content-Type` is set from the file; change it under **Advanced → Response headers**. The rule answers with status `200` unless you set another, so a file the server does not have (404) still loads.

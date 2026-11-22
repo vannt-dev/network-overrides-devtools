@@ -259,8 +259,25 @@
   margin-top: 8px;
   gap: 8px;
 }
-.body-format-btn {
+.body-format-btn,
+.body-file-btn {
   margin-top: 0;
+}
+.modal-body-file-info:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px dashed #b9cce0;
+  border-radius: 6px;
+  color: #35506b;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.modal-body-file-info .modal-action-btn {
+  flex-shrink: 0;
 }
 #save-override {
   display: block;

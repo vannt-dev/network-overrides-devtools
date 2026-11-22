@@ -124,6 +124,15 @@ namespace NetworkOverridesUi {
       importMenuBtn: document.getElementById('import-menu-btn') as HTMLButtonElement,
       importMenu: document.getElementById('import-menu') as HTMLElement,
       modalPresets: document.getElementById('modal-presets') as HTMLElement,
+      modalInjectFields: document.getElementById('modal-inject-fields') as HTMLDivElement,
+      modalInjectScript: document.getElementById('modal-inject-script') as HTMLTextAreaElement,
+      modalInjectStyle: document.getElementById('modal-inject-style') as HTMLTextAreaElement,
+      modalInjectRelaxCsp: document.getElementById('modal-inject-relax-csp') as HTMLInputElement,
+      modalBodyFile: document.getElementById('modal-body-file') as HTMLInputElement,
+      modalBodyFileBtn: document.getElementById('modal-body-file-btn') as HTMLButtonElement,
+      modalBodyFileInfo: document.getElementById('modal-body-file-info') as HTMLElement,
+      modalBodyFileName: document.getElementById('modal-body-file-name') as HTMLElement,
+      modalBodyFileClear: document.getElementById('modal-body-file-clear') as HTMLButtonElement,
       modalRequestHeadersTable: document.getElementById(
         'modal-request-headers-table'
       ) as HTMLDivElement,
@@ -348,6 +357,7 @@ namespace NetworkOverridesUi {
 
       let type: ModalType = 'body';
       if (rule.kind === 'websocket') type = 'websocket';
+      else if (rule.kind === 'inject') type = 'inject';
       else if (rule.failReason) type = 'fail';
       else if (rule.redirectUrl) type = 'redirect';
 
@@ -367,6 +377,7 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = rule.redirectUrl || '';
 
       prefillAdvancedFields(elements, rule);
+      prefillStaticFields(elements, rule);
       updateBodyFormatAction(elements);
       updateImagePreview(elements, elements.modalBody.value);
       openModal(elements);
@@ -377,6 +388,14 @@ namespace NetworkOverridesUi {
       // A script or a patch is not a response body: keep what the rule holds.
       const mode = elements.modalMode.value;
       if (mode === 'script' || mode === 'patch') return;
+      // Nor is a file loaded from disk or an inject rule's code.
+      if (mode === 'file' || heldFileName(elements)) return;
+      if (
+        state.currentEditIndex !== null &&
+        state.overrides[state.currentEditIndex]?.kind === 'inject'
+      ) {
+        return;
+      }
       const response = await new Promise<any>(resolve => {
         chrome.runtime.sendMessage({ type: 'getApiData', tabId: activeTabId, url }, resolve);
       });
@@ -408,6 +427,7 @@ namespace NetworkOverridesUi {
         elements.modalRedirectUrl.value = '';
         prefillAdvancedFields(elements, null);
         prefillWebSocketFields(elements, null);
+        prefillStaticFields(elements, null);
         updateModalVisibility(elements, 'websocket');
         updateBodyFormatAction(elements);
         openModal(elements);
@@ -438,6 +458,7 @@ namespace NetworkOverridesUi {
       elements.modalRedirectUrl.value = '';
 
       prefillAdvancedFields(elements, null);
+      prefillStaticFields(elements, null);
       // Start from the real status, unless it cannot carry the mocked body.
       const status = api.statusCode;
       if (typeof status === 'number' && status >= 200 && status <= 599) {
@@ -640,6 +661,13 @@ namespace NetworkOverridesUi {
             showNotification(t('toast_ws_rule_skipped', msg.pattern, msg.message), 'error');
           } else if (msg.type === 'patchRuleSkipped') {
             showNotification(t('toast_patch_rule_skipped', msg.pattern, msg.message), 'warning');
+          } else if (msg.type === 'injectRuleNotice') {
+            showNotification(
+              msg.code === 'csp'
+                ? t('toast_inject_csp', msg.pattern)
+                : t('toast_inject_not_utf8', msg.pattern),
+              'warning'
+            );
           } else if (msg.type === 'throttle') {
             updateRuntimeState(msg);
           } else if (msg.type === 'status') {

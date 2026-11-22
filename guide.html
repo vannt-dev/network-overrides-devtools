@@ -490,6 +490,62 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
       </ul>
 
+      <h3 id="static-files">6.8. Replace a static file</h3>
+      <p>
+        A Mock response rule also answers scripts, stylesheets, images, fonts and pages. Point the
+        URL pattern at the file, for example <code>https://example.com/static/app.js</code>, and
+        click <strong>Use a local file…</strong> under the response body:
+      </p>
+      <ul>
+        <li>
+          A text file (JS, CSS, HTML, JSON, SVG, XML) goes into the body box, where you can still
+          edit it. Any other file (an image, a font) is kept as it is and shown as
+          <em>From file name (size)</em>, with a <strong>Remove file</strong> button.
+        </li>
+        <li>
+          The <code>Content-Type</code> is set from the file and can be changed under
+          <strong>Advanced → Response headers</strong>. The rule answers with status
+          <code>200</code> unless you set another, so a file the server does not have (404) still
+          loads.
+        </li>
+        <li>
+          Rules are kept in browser storage, which holds about 10&nbsp;MB in all. Above 2&nbsp;MB
+          the editor warns you; keep large files small, or replace only the file you are working on.
+        </li>
+        <li>
+          While a tab is intercepted its browser cache is bypassed, so a rule also applies to a file
+          the page had cached. Reload the page after adding the rule.
+        </li>
+        <li>
+          A page script or stylesheet with an <code>integrity</code> attribute (SRI) refuses a
+          replaced file. Requests a service worker answers itself are not intercepted.
+        </li>
+      </ul>
+
+      <h3 id="inject-code">6.9. Inject JS/CSS into a page</h3>
+      <p>
+        Choose the type <strong>Inject JS/CSS</strong> to add your own code to the pages a rule
+        matches, such as <code>https://example.com/*</code>. The real page still loads; the rule
+        only adds to it.
+      </p>
+      <ul>
+        <li>
+          The stylesheet goes at the end of <code>&lt;head&gt;</code>; the script goes at the end of
+          <code>&lt;body&gt;</code>, so the page's elements already exist when it runs.
+        </li>
+        <li>
+          Only pages (documents) are changed, not API calls, and only successful (2xx) UTF-8 HTML
+          responses. Other rules, such as API mocks, keep working on the same page.
+        </li>
+        <li>
+          Some pages forbid inline code with a Content-Security-Policy. The panel then warns you.
+          Tick <strong>Relax the page's Content-Security-Policy</strong> in the rule to remove that
+          policy from the matched pages; it is off by default, and it lowers the page's protection
+          while the rule is on.
+        </li>
+        <li>Reload the page after adding or changing the rule.</li>
+      </ul>
+
       <!-- ============ 7 ============ -->
       <h2 id="redirect">7. Redirect URL</h2>
 

@@ -43,6 +43,9 @@ namespace NetworkOverridesUi {
 
   export function updateModalVisibility(elements: Elements, type: ModalType): void {
     const isWs = type === 'websocket';
+    const isInject = type === 'inject';
+    // Neither a WebSocket rule nor an inject rule answers an HTTP request.
+    const notHttp = isWs || isInject;
     const wsAction = elements.modalWsAction?.value || 'replace';
     const wsUsesBody = wsAction === 'replace' || wsAction === 'substitute';
     const show = (el: HTMLElement | null | undefined, visible: boolean) => {
@@ -53,22 +56,27 @@ namespace NetworkOverridesUi {
     show(elements.modalRedirectFields, type === 'redirect');
     show(elements.modalFailFields, type === 'fail');
     show(elements.modalWsFields, isWs);
-    show(elements.modalPresets, !isWs);
+    show(elements.modalInjectFields, isInject);
+    show(elements.modalPresets, !notHttp);
     show(elements.modalStatusField, type === 'body');
     show(fieldOf(elements.modalRespondAtRequest), type === 'body');
     show(elements.modalHeadersField, type === 'body');
-    show(elements.modalRequestHeadersField, type !== 'fail' && type !== 'redirect' && !isWs);
-    show(elements.modalRequestBodyField, type !== 'fail' && type !== 'redirect' && !isWs);
-    show(fieldOf(elements.modalDelay), isWs ? wsAction === 'delay' : type !== 'redirect');
-    show(fieldOf(elements.modalMethod), !isWs);
-    show(fieldOf(elements.modalGraphqlOp), !isWs);
+    show(elements.modalRequestHeadersField, type !== 'fail' && type !== 'redirect' && !notHttp);
+    show(elements.modalRequestBodyField, type !== 'fail' && type !== 'redirect' && !notHttp);
+    show(
+      fieldOf(elements.modalDelay),
+      isWs ? wsAction === 'delay' : type !== 'redirect' && !isInject
+    );
+    show(fieldOf(elements.modalMethod), !notHttp);
+    show(fieldOf(elements.modalGraphqlOp), !notHttp);
     elements.modalMatchFields
       ?.querySelectorAll<HTMLElement>('.modal-field-help, .modal-field')
       .forEach(field => {
-        if (!field.contains(elements.modalGlobalRule || null)) show(field, !isWs);
+        if (!field.contains(elements.modalGlobalRule || null)) show(field, !notHttp);
       });
     show(fieldOf(elements.modalMode), type === 'body');
     updateScriptHelp(elements);
+    updateFileVisibility(elements);
   }
 
   // A script body is code and a patch body is a list of changes, not a
@@ -222,7 +230,7 @@ namespace NetworkOverridesUi {
    */
   export function countAdvancedValues(elements: Elements): Record<string, number> {
     const type = selectedModalType(elements);
-    const isWs = type === 'websocket';
+    const isWs = type === 'websocket' || type === 'inject';
     const mode = elements.modalMode?.value || 'text';
     const filled = (el: HTMLInputElement | HTMLTextAreaElement | null | undefined) =>
       el && el.value.trim() ? 1 : 0;

@@ -9,6 +9,7 @@ declare function importScripts(...urls: string[]): void;
 // background responsibility and contributes to the shared namespace.
 importScripts(
   'utils.js',
+  'static-files.js',
   'tab-state.js',
   'background/encoding.js',
   'background/api-capture.js',

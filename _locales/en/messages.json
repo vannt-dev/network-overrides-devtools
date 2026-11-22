@@ -1,4 +1,7 @@
 {
+  "error_inject_empty": {
+    "message": "Add a script or a stylesheet to inject."
+  },
   "ext_name": {
     "message": "Network Overrides API (DevTools)"
   },
@@ -188,6 +191,21 @@
   "field_graphql_placeholder": {
     "message": "e.g. GetUserProfile"
   },
+  "field_inject_help": {
+    "message": "Adds your code to every page whose address matches the URL pattern, e.g. <code>https://example.com/*</code>. The CSS goes at the end of <code>&lt;head&gt;</code>, the script at the end of <code>&lt;body&gt;</code>. Reload the page after saving."
+  },
+  "field_inject_script": {
+    "message": "Script to add (JavaScript)"
+  },
+  "field_inject_script_placeholder": {
+    "message": "e.g. console.log('injected');"
+  },
+  "field_inject_style": {
+    "message": "Stylesheet to add (CSS)"
+  },
+  "field_inject_style_placeholder": {
+    "message": "e.g. .banner { display: none; }"
+  },
   "field_match_body": {
     "message": "Request body contains"
   },
@@ -226,6 +244,12 @@
   },
   "field_redirect_placeholder": {
     "message": "e.g. https://new-api.example.com/api/*"
+  },
+  "field_relax_csp": {
+    "message": "Relax the page's Content-Security-Policy"
+  },
+  "field_relax_csp_hint": {
+    "message": "Off by default. Turn it on only when the page's CSP blocks the injected code: the page then loads without its CSP while the rule is on."
   },
   "field_request_body": {
     "message": "Replace the request body sent to the server"
@@ -268,6 +292,24 @@
   },
   "field_templates_title": {
     "message": "Resolve dynamic {{...}} placeholders at request time"
+  },
+  "file_large_warning": {
+    "message": "$1 takes $2 in the rule. Rules are kept in browser storage, which holds about 10 MB in all, so saving may fail."
+  },
+  "file_loaded": {
+    "message": "From file $1 ($2)"
+  },
+  "file_pick": {
+    "message": "Use a local file…"
+  },
+  "file_pick_title": {
+    "message": "Answer with a file from your computer: a script, stylesheet, page, image or font"
+  },
+  "file_read_failed": {
+    "message": "Could not read the file: $1"
+  },
+  "file_remove": {
+    "message": "Remove file"
   },
   "format_json": {
     "message": "Format JSON"
@@ -572,11 +614,26 @@
   "summary_body_has": {
     "message": "+ body has $1"
   },
+  "summary_csp_relaxed": {
+    "message": "CSP relaxed"
+  },
   "summary_graphql_op": {
     "message": "(op: $1)"
   },
   "summary_header": {
     "message": "+ header $1"
+  },
+  "summary_inject_both": {
+    "message": "inject JS + CSS"
+  },
+  "summary_inject_css": {
+    "message": "inject CSS"
+  },
+  "summary_inject_js": {
+    "message": "inject JS"
+  },
+  "summary_local_file": {
+    "message": "local file $1"
   },
   "summary_mock_body": {
     "message": "mock body"
@@ -719,6 +776,12 @@
   "toast_imported_other": {
     "message": "$1 rules imported"
   },
+  "toast_inject_csp": {
+    "message": "Inject rule \"$1\": the page's Content-Security-Policy blocks inline code, so the injected code may not run. Tick \"Relax the page's Content-Security-Policy\" in the rule if it does not."
+  },
+  "toast_inject_not_utf8": {
+    "message": "Inject rule \"$1\": the page is not UTF-8, so nothing was injected."
+  },
   "toast_interception_off": {
     "message": "Interception disabled."
   },
@@ -832,6 +895,12 @@
   },
   "type_group_label": {
     "message": "What the rule does"
+  },
+  "type_inject": {
+    "message": "Inject JS/CSS"
+  },
+  "type_inject_title": {
+    "message": "Add your own script or stylesheet to matching pages"
   },
   "type_redirect": {
     "message": "Redirect"

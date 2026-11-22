@@ -1,4 +1,7 @@
 {
+  "error_inject_empty": {
+    "message": "Hãy thêm một script hoặc một stylesheet để chèn."
+  },
   "ext_name": {
     "message": "Network Overrides API (DevTools)"
   },
@@ -188,6 +191,21 @@
   "field_graphql_placeholder": {
     "message": "vd. GetUserProfile"
   },
+  "field_inject_help": {
+    "message": "Thêm code của bạn vào mọi trang có địa chỉ khớp URL pattern, ví dụ <code>https://example.com/*</code>. CSS được đặt cuối <code>&lt;head&gt;</code>, script được đặt cuối <code>&lt;body&gt;</code>. Tải lại trang sau khi lưu."
+  },
+  "field_inject_script": {
+    "message": "Script cần thêm (JavaScript)"
+  },
+  "field_inject_script_placeholder": {
+    "message": "vd. console.log('injected');"
+  },
+  "field_inject_style": {
+    "message": "Stylesheet cần thêm (CSS)"
+  },
+  "field_inject_style_placeholder": {
+    "message": "vd. .banner { display: none; }"
+  },
   "field_match_body": {
     "message": "Request body chứa"
   },
@@ -226,6 +244,12 @@
   },
   "field_redirect_placeholder": {
     "message": "vd. https://new-api.example.com/api/*"
+  },
+  "field_relax_csp": {
+    "message": "Nới Content-Security-Policy của trang"
+  },
+  "field_relax_csp_hint": {
+    "message": "Mặc định tắt. Chỉ bật khi CSP của trang chặn code được chèn: khi rule đang bật, trang sẽ tải mà không có CSP."
   },
   "field_request_body": {
     "message": "Thay request body gửi tới server"
@@ -268,6 +292,24 @@
   },
   "field_templates_title": {
     "message": "Thay placeholder {{...}} động khi request chạy"
+  },
+  "file_large_warning": {
+    "message": "$1 chiếm $2 trong rule. Rule được lưu trong bộ nhớ của trình duyệt, tổng cộng chỉ khoảng 10 MB, nên có thể lưu không được."
+  },
+  "file_loaded": {
+    "message": "Từ file $1 ($2)"
+  },
+  "file_pick": {
+    "message": "Dùng file trên máy…"
+  },
+  "file_pick_title": {
+    "message": "Trả về một file trên máy bạn: script, stylesheet, trang, ảnh hoặc font"
+  },
+  "file_read_failed": {
+    "message": "Không đọc được file: $1"
+  },
+  "file_remove": {
+    "message": "Bỏ file"
   },
   "format_json": {
     "message": "Định dạng JSON"
@@ -572,11 +614,26 @@
   "summary_body_has": {
     "message": "+ body có $1"
   },
+  "summary_csp_relaxed": {
+    "message": "đã nới CSP"
+  },
   "summary_graphql_op": {
     "message": "(op: $1)"
   },
   "summary_header": {
     "message": "+ header $1"
+  },
+  "summary_inject_both": {
+    "message": "chèn JS + CSS"
+  },
+  "summary_inject_css": {
+    "message": "chèn CSS"
+  },
+  "summary_inject_js": {
+    "message": "chèn JS"
+  },
+  "summary_local_file": {
+    "message": "file trên máy $1"
   },
   "summary_mock_body": {
     "message": "mock body"
@@ -719,6 +776,12 @@
   "toast_imported_other": {
     "message": "Đã nhập $1 rule"
   },
+  "toast_inject_csp": {
+    "message": "Rule chèn \"$1\": Content-Security-Policy của trang chặn code inline nên code được chèn có thể không chạy. Nếu không chạy, hãy tick \"Nới Content-Security-Policy của trang\" trong rule."
+  },
+  "toast_inject_not_utf8": {
+    "message": "Rule chèn \"$1\": trang không dùng UTF-8 nên không chèn gì."
+  },
   "toast_interception_off": {
     "message": "Đã tắt chặn request."
   },
@@ -832,6 +895,12 @@
   },
   "type_group_label": {
     "message": "Rule làm gì"
+  },
+  "type_inject": {
+    "message": "Chèn JS/CSS"
+  },
+  "type_inject_title": {
+    "message": "Thêm script hoặc stylesheet của bạn vào các trang khớp"
   },
   "type_redirect": {
     "message": "Chuyển hướng"

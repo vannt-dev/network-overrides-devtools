@@ -323,6 +323,25 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 - The script runs in the inspected page, so it can use `fetch`, `localStorage` and the page's own globals. It has 5 seconds. A script that throws, returns nothing, returns a status outside 100–599 or runs out of time is answered with status `500`, the error as its text and the header `x-network-overrides-error: script`.
 - Rules imported from a file may contain scripts, which run in the pages they match: import only files you trust.
 
+### 6.9. Replace a static file
+
+A **Mock response** rule also answers scripts, stylesheets, images, fonts and pages. Point the URL pattern at the file (for example `https://example.com/static/app.js`) and click **Use a local file…** under the response body.
+
+- A text file (JS, CSS, HTML, JSON, SVG, XML) goes into the body box and stays editable. Any other file (an image, a font) is kept as is and shown as _From file name (size)_, with a **Remove file** button.
+- The `Content-Type` is set from the file; change it under **Advanced → Response headers**. The rule answers with status `200` unless you set another, so a file the server does not have (404) still loads.
+- Rules live in browser storage, about 10 MB in all. The editor warns above 2 MB.
+- While a tab is intercepted its browser cache is bypassed, so the rule also applies to a file the page had cached. Reload the page after adding the rule.
+- A script or stylesheet with an `integrity` attribute (SRI) refuses a replaced file. Requests a service worker answers itself are not intercepted.
+
+### 6.10. Inject JS/CSS into a page
+
+Choose the type **Inject JS/CSS** to add your own script and stylesheet to the pages a rule matches, such as `https://example.com/*`. The real page still loads; the rule only adds to it.
+
+- The stylesheet goes at the end of `<head>`; the script goes at the end of `<body>`, so the page's elements exist when it runs.
+- Only pages (documents) are changed, and only successful (2xx) UTF-8 HTML responses. Other rules, such as API mocks, keep working on the same page.
+- When the page's Content-Security-Policy blocks inline code, the panel warns you. Tick **Relax the page's Content-Security-Policy** to remove that policy from the matched pages. It is off by default and lowers the page's protection while the rule is on.
+- Reload the page after adding or changing the rule.
+
 ---
 
 ## 7. Redirect URL

@@ -23,6 +23,10 @@ namespace NetworkOverridesBackground {
 
   async function enableInterception(tabId: number): Promise<void> {
     await sendDebugCommand(tabId, 'Network.enable', {});
+    // A response the HTTP cache serves never reaches Fetch interception, so a
+    // rule on a cached script, stylesheet or GET would silently not apply.
+    // Bypass the cache while the tab is intercepted; detach restores it.
+    await sendDebugCommand(tabId, 'Network.setCacheDisabled', { cacheDisabled: true });
     await applyThrottle(tabId, TabState.ensure(tabId).throttlePreset);
     await sendDebugCommand(tabId, 'Fetch.enable', {
       patterns: [{ requestStage: 'Request' }, { requestStage: 'Response' }],

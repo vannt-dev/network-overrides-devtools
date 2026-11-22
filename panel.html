@@ -218,6 +218,14 @@
               <input type="radio" name="modal-override-type" value="websocket" />
               <span data-i18n="type_ws">WebSocket</span>
             </label>
+            <label
+              class="type-radio"
+              title="Add your own script or stylesheet to matching pages"
+              data-i18n-title="type_inject_title"
+            >
+              <input type="radio" name="modal-override-type" value="inject" />
+              <span data-i18n="type_inject">Inject JS/CSS</span>
+            </label>
           </div>
           <div class="modal-field" id="modal-status-field">
             <label for="modal-status"><span data-i18n="field_status">Status code</span></label>
@@ -278,6 +286,27 @@
                 >
                   <span data-i18n="format_json">Format JSON</span>
                 </button>
+                <button
+                  id="modal-body-file-btn"
+                  type="button"
+                  class="modal-action-btn body-file-btn"
+                  title="Answer with a file from your computer: a script, stylesheet, page, image or font"
+                  data-i18n-title="file_pick_title"
+                >
+                  <span data-i18n="file_pick">Use a local file…</span>
+                </button>
+                <input id="modal-body-file" type="file" hidden />
+              </div>
+              <div id="modal-body-file-info" class="modal-body-file-info" hidden>
+                <span id="modal-body-file-name"></span>
+                <button
+                  id="modal-body-file-clear"
+                  type="button"
+                  class="modal-action-btn"
+                  data-i18n="file_remove"
+                >
+                  Remove file
+                </button>
               </div>
               <div
                 id="modal-preview-container"
@@ -328,6 +357,50 @@
                 <option value="delay" data-i18n="ws_delay">Delay frame</option>
               </select>
             </label>
+          </div>
+          <div id="modal-inject-fields" style="display: none">
+            <p class="modal-field-help" data-i18n-html="field_inject_help">
+              Adds your code to every page whose address matches the URL pattern, e.g.
+              <code>https://example.com/*</code>. The CSS goes at the end of
+              <code>&lt;head&gt;</code>, the script at the end of <code>&lt;body&gt;</code>. Reload
+              the page after saving.
+            </p>
+            <label class="modal-field">
+              <span data-i18n="field_inject_script">Script to add (JavaScript)</span>
+              <textarea
+                id="modal-inject-script"
+                rows="5"
+                placeholder="e.g. console.log('injected');"
+                data-i18n-placeholder="field_inject_script_placeholder"
+              ></textarea>
+            </label>
+            <label class="modal-field">
+              <span data-i18n="field_inject_style">Stylesheet to add (CSS)</span>
+              <textarea
+                id="modal-inject-style"
+                rows="4"
+                placeholder="e.g. .banner { display: none; }"
+                data-i18n-placeholder="field_inject_style_placeholder"
+              ></textarea>
+            </label>
+            <div class="modal-field modal-check-field">
+              <label class="type-radio">
+                <input
+                  id="modal-inject-relax-csp"
+                  type="checkbox"
+                  aria-describedby="modal-inject-relax-csp-hint"
+                />
+                <span data-i18n="field_relax_csp">Relax the page's Content-Security-Policy</span>
+              </label>
+              <p
+                id="modal-inject-relax-csp-hint"
+                class="modal-field-hint"
+                data-i18n-html="field_relax_csp_hint"
+              >
+                Off by default. Turn it on only when the page's CSP blocks the injected code: the
+                page then loads without its CSP while the rule is on.
+              </p>
+            </div>
           </div>
           <details id="modal-advanced-fields" class="modal-advanced">
             <summary>

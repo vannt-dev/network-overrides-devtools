@@ -418,7 +418,7 @@ namespace NetworkOverridesBackground {
     fulfill(bodyToValidBase64());
   }
 
-  /** The CSP headers an inject rule removes when it is set to relax the policy. */
+  /** The CSP headers an inject rule adds its hashes to, or removes when it relaxes the policy. */
   const CSP_HEADERS = new Set(['content-security-policy', 'content-security-policy-report-only']);
 
   /** Headers that describe the bytes of the server's body, which a rewrite changes. */
@@ -463,9 +463,10 @@ namespace NetworkOverridesBackground {
    * Adds an inject rule's script and stylesheet to an HTML page: the real
    * response is read, rewritten and handed to the page with the server's
    * status and headers. Anything that is not a successful HTML page in UTF-8
-   * passes through untouched. The page's Content-Security-Policy is kept
-   * unless the rule says to relax it; the panel is told when it would block
-   * the injected code.
+   * passes through untouched. The page's Content-Security-Policy is kept,
+   * with the hashes of the injected code added where it would stop inline
+   * code, so only that code is let through. A rule set to relax the policy
+   * removes it instead. The panel is told when a sandbox still stops scripts.
    */
   function answerWithInjection(
     tabId: number,
@@ -494,6 +495,10 @@ namespace NetworkOverridesBackground {
     }
     const hitKey = TabState.ruleHitKey(tabId, rule);
     readUtf8Body(tabId, params.requestId, text => {
+      void fulfillInjected(text);
+    });
+
+    async function fulfillInjected(text: string | null): Promise<void> {
       try {
         if (text === null) {
           notifyRule(tabId, rule.pattern, url, notUtf8, 'injectRuleNotice', 'charset');
@@ -501,38 +506,59 @@ namespace NetworkOverridesBackground {
           return;
         }
         const relax = rule.relaxCsp === true;
-        const html = NetworkOverridesUtils.injectIntoHtml(
-          relax ? NetworkOverridesUtils.removeCspMeta(text) : text,
-          { script: rule.injectScript, style: rule.injectStyle }
-        );
+        const code = NetworkOverridesUtils.injectedCode({
+          script: rule.injectScript,
+          style: rule.injectStyle,
+        });
+        const policies = serverHeaders
+          .filter(header => String(header.name).toLowerCase().trim() === 'content-security-policy')
+          .map(header => String(header.value))
+          .concat(NetworkOverridesUtils.cspMetaPolicies(text));
+        const hasCsp =
+          policies.length > 0 ||
+          serverHeaders.some(header => CSP_HEADERS.has(String(header.name).toLowerCase().trim()));
+        const hashes =
+          !relax && hasCsp
+            ? {
+                script: code.script ? await NetworkOverridesUtils.sha256Base64(code.script) : '',
+                style: code.style ? await NetworkOverridesUtils.sha256Base64(code.style) : '',
+              }
+            : {};
+        const page = relax
+          ? NetworkOverridesUtils.removeCspMeta(text)
+          : hasCsp
+            ? NetworkOverridesUtils.allowHashesInCspMeta(text, hashes)
+            : text;
+        const html = NetworkOverridesUtils.injectIntoHtml(page, {
+          script: rule.injectScript,
+          style: rule.injectStyle,
+        });
         const headers = serverHeaders
           .filter(header => {
             const name = String(header.name).toLowerCase().trim();
             return !REWRITE_DROPPED_HEADERS.has(name) && !(relax && CSP_HEADERS.has(name));
           })
-          .map(header => ({ name: header.name, value: String(header.value) }));
+          .map(header => {
+            const name = String(header.name).toLowerCase().trim();
+            const value = String(header.value);
+            return {
+              name: header.name,
+              value: CSP_HEADERS.has(name)
+                ? NetworkOverridesUtils.allowHashesInCsp(value, hashes)
+                : value,
+            };
+          });
         headers.push({ name: 'x-network-overrides', value: 'true' });
         headers.push({ name: 'x-network-overrides-pattern', value: rule.pattern });
-        if (!relax) {
-          const policies = serverHeaders
-            .filter(header => String(header.name).toLowerCase() === 'content-security-policy')
-            .map(header => String(header.value))
-            .concat(NetworkOverridesUtils.cspMetaPolicies(text));
-          const blocked =
-            (!!rule.injectScript?.trim() &&
-              NetworkOverridesUtils.cspBlocksInline(policies, 'script')) ||
-            (!!rule.injectStyle?.trim() &&
-              NetworkOverridesUtils.cspBlocksInline(policies, 'style'));
-          if (blocked) {
-            notifyRule(
-              tabId,
-              rule.pattern,
-              url,
-              "the page's Content-Security-Policy blocks inline code, so the injected code may not run",
-              'injectRuleNotice',
-              'csp'
-            );
-          }
+        if (!relax && code.script && NetworkOverridesUtils.cspSandboxBlocksScripts(policies)) {
+          notifyRule(
+            tabId,
+            rule.pattern,
+            url,
+            "the page's Content-Security-Policy sandbox stops all scripts, so the injected script will not run",
+            'injectRuleNotice',
+            'csp'
+          );
         }
         TabState.recordOverrideStat(tabId, false);
         TabState.recordRuleHit(tabId, hitKey, url);
@@ -556,7 +582,7 @@ namespace NetworkOverridesBackground {
         console.error(error);
         proceed();
       }
-    });
+    }
   }
 
   export function handleRequestPaused(tabId: number, params: any): void {

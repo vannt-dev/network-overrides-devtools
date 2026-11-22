@@ -246,10 +246,10 @@
     "message": "e.g. https://new-api.example.com/api/*"
   },
   "field_relax_csp": {
-    "message": "Relax the page's Content-Security-Policy"
+    "message": "Remove the page's Content-Security-Policy"
   },
   "field_relax_csp_hint": {
-    "message": "Off by default. Turn it on only when the page's CSP blocks the injected code: the page then loads without its CSP while the rule is on."
+    "message": "Rarely needed: the injected code is let through the page's CSP by its hash, and the rest of the policy stays. Turn this on only if your code loads other scripts, uses eval or inline event handlers: the page then loads without its CSP while the rule is on."
   },
   "field_request_body": {
     "message": "Replace the request body sent to the server"
@@ -615,7 +615,7 @@
     "message": "+ body has $1"
   },
   "summary_csp_relaxed": {
-    "message": "CSP relaxed"
+    "message": "CSP removed"
   },
   "summary_graphql_op": {
     "message": "(op: $1)"
@@ -777,7 +777,7 @@
     "message": "$1 rules imported"
   },
   "toast_inject_csp": {
-    "message": "Inject rule \"$1\": the page's Content-Security-Policy blocks inline code, so the injected code may not run. Tick \"Relax the page's Content-Security-Policy\" in the rule if it does not."
+    "message": "Inject rule \"$1\": the page's Content-Security-Policy sandbox stops all scripts, so the injected script will not run. Tick \"Remove the page's Content-Security-Policy\" in the rule if you need it to run."
   },
   "toast_inject_not_utf8": {
     "message": "Inject rule \"$1\": the page is not UTF-8, so nothing was injected."

@@ -339,7 +339,8 @@ Chọn kiểu **Chèn JS/CSS** (Inject JS/CSS) để thêm script và stylesheet
 
 - Stylesheet được đặt ở cuối `<head>`; script ở cuối `<body>`, nên khi chạy thì các phần tử của trang đã có.
 - Chỉ trang (document) bị thay đổi, và chỉ response HTML UTF-8 thành công (2xx). Rule khác, như mock API, vẫn chạy trên cùng trang.
-- Khi Content-Security-Policy của trang chặn code inline, panel sẽ cảnh báo. Tick **Nới Content-Security-Policy của trang** để bỏ policy đó khỏi các trang khớp. Mặc định tắt, và nó làm trang kém an toàn hơn khi rule đang bật.
+- Trang có Content-Security-Policy vẫn giữ nó: hash SHA-256 của script và stylesheet được chèn được thêm vào policy, nên đúng code đó được chạy, còn code inline của chính trang và phần còn lại của policy vẫn như cũ. CSP `sandbox` không có `allow-scripts` vẫn chặn script, và panel sẽ cảnh báo.
+- Nếu code của bạn tải thêm script khác, dùng `eval` hoặc event handler inline, policy vẫn có thể chặn phần đó. Khi đó mới tick **Bỏ Content-Security-Policy của trang**: các trang khớp sẽ tải mà không có CSP khi rule đang bật, nên kém an toàn hơn.
 - Tải lại trang sau khi thêm hoặc sửa rule.
 
 ---

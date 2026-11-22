@@ -390,15 +390,17 @@
                   type="checkbox"
                   aria-describedby="modal-inject-relax-csp-hint"
                 />
-                <span data-i18n="field_relax_csp">Relax the page's Content-Security-Policy</span>
+                <span data-i18n="field_relax_csp">Remove the page's Content-Security-Policy</span>
               </label>
               <p
                 id="modal-inject-relax-csp-hint"
                 class="modal-field-hint"
                 data-i18n-html="field_relax_csp_hint"
               >
-                Off by default. Turn it on only when the page's CSP blocks the injected code: the
-                page then loads without its CSP while the rule is on.
+                Rarely needed: the injected code is let through the page's CSP by its hash, and the
+                rest of the policy stays. Turn this on only if your code loads other scripts, uses
+                eval or inline event handlers: the page then loads without its CSP while the rule is
+                on.
               </p>
             </div>
           </div>

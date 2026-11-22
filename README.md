@@ -74,7 +74,7 @@ anything else is not published by vannt-dev.
   - **Redirect**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
   - **Network error**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
   - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
-  - **Inject JS/CSS**: add your own script and stylesheet to the pages a rule matches, while the real page still loads. An opt-in **Relax the page's Content-Security-Policy** lets the code run on pages whose CSP blocks inline code.
+  - **Inject JS/CSS**: add your own script and stylesheet to the pages a rule matches, while the real page still loads. On pages with a Content-Security-Policy, the hash of the injected code is added to the policy, so only that code is let through and the rest of the policy stays; **Remove the page's Content-Security-Policy** is an opt-in last resort.
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.

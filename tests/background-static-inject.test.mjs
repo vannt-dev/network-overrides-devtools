@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createBackgroundHarness } from './background-test-harness.mjs';
 import { TEST_DOMAIN } from './config.mjs';
 
@@ -202,24 +203,82 @@ test('an inject rule leaves a page that is not UTF-8 alone and says why', async 
   assert.match(notice.message, /UTF-8/);
 });
 
-test('an inject rule keeps the page CSP by default and warns when it blocks inline code', async () => {
-  const harness = await backgroundWithRules([injectRule()]);
+const hashOf = text => `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
+
+test('an inject rule lets its own code through the page CSP by hash and keeps the rest', async () => {
+  const rule = injectRule();
+  const harness = await backgroundWithRules([rule]);
   const messages = subscribe(harness);
-  harness.responseBodies.set('csp', { body: PAGE, base64Encoded: false });
+  harness.responseBodies.set('csp', {
+    body: PAGE.replace(
+      '<title>',
+      `<meta http-equiv="Content-Security-Policy" content="style-src 'self'"><title>`
+    ),
+    base64Encoded: false,
+  });
   pauseResponse(harness, 'csp', {
     responseHeaders: [
       { name: 'Content-Type', value: 'text/html' },
-      { name: 'Content-Security-Policy', value: "script-src 'self'" },
+      {
+        name: 'Content-Security-Policy',
+        value: "script-src 'self' 'nonce-r4nd'; frame-ancestors 'none'",
+      },
+      { name: 'Content-Security-Policy-Report-Only', value: "default-src 'self'" },
     ],
   });
-  await tick(5);
+  await tick(20);
   const command = commandFor(harness, 'csp');
   assert.equal(command.method, 'Fetch.fulfillRequest');
-  assert.equal(headerOf(command, 'content-security-policy'), "script-src 'self'");
-  assert.match(bodyOf(command), /window\.injected/);
+  const script = hashOf(rule.injectScript);
+  const style = hashOf(rule.injectStyle);
+  assert.equal(
+    headerOf(command, 'content-security-policy'),
+    `script-src 'self' 'nonce-r4nd' ${script}; frame-ancestors 'none'`
+  );
+  assert.equal(
+    headerOf(command, 'content-security-policy-report-only'),
+    `default-src 'self' ${script} ${style}`
+  );
+  const body = bodyOf(command);
+  assert.match(body, new RegExp(`content="style-src 'self' ${style.replace(/[+/]/g, '\\$&')}"`));
+  assert.match(body, /window\.injected/);
+  assert.equal(
+    messages.some(message => message.type === 'injectRuleNotice'),
+    false
+  );
+});
+
+test('an inject rule leaves a page without a CSP as it was, apart from the code', async () => {
+  const harness = await backgroundWithRules([injectRule()]);
+  harness.responseBodies.set('plain', { body: PAGE, base64Encoded: false });
+  pauseResponse(harness, 'plain', {
+    responseHeaders: [{ name: 'Content-Type', value: 'text/html' }],
+  });
+  await tick(20);
+  const command = commandFor(harness, 'plain');
+  assert.equal(headerOf(command, 'content-security-policy'), undefined);
+  assert.match(
+    bodyOf(command),
+    /<style data-network-overrides>body\{outline:1px solid red\}<\/style><\/head>/
+  );
+});
+
+test('an inject rule warns when a CSP sandbox stops every script', async () => {
+  const harness = await backgroundWithRules([injectRule()]);
+  const messages = subscribe(harness);
+  harness.responseBodies.set('sandbox', { body: PAGE, base64Encoded: false });
+  pauseResponse(harness, 'sandbox', {
+    responseHeaders: [
+      { name: 'Content-Type', value: 'text/html' },
+      { name: 'Content-Security-Policy', value: 'sandbox allow-forms' },
+    ],
+  });
+  await tick(20);
+  assert.equal(commandFor(harness, 'sandbox').method, 'Fetch.fulfillRequest');
   const notice = messages.find(message => message.type === 'injectRuleNotice');
-  assert.ok(notice);
-  assert.match(notice.message, /Content-Security-Policy/);
+  assert.ok(notice, 'the panel is told');
+  assert.equal(notice.code, 'csp');
+  assert.match(notice.message, /sandbox/);
 });
 
 test('with relaxCsp an inject rule removes the CSP headers and meta tags', async () => {

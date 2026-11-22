@@ -538,10 +538,18 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           responses. Other rules, such as API mocks, keep working on the same page.
         </li>
         <li>
-          Some pages forbid inline code with a Content-Security-Policy. The panel then warns you.
-          Tick <strong>Relax the page's Content-Security-Policy</strong> in the rule to remove that
-          policy from the matched pages; it is off by default, and it lowers the page's protection
-          while the rule is on.
+          A page with a Content-Security-Policy keeps it. The SHA-256 hash of the injected script
+          and stylesheet is added to the policy, so exactly that code runs while the page's own
+          inline code and every other rule of the policy stay as they were. A CSP
+          <code>sandbox</code> without <code>allow-scripts</code> still stops the script; the panel
+          then warns you.
+        </li>
+        <li>
+          If your code loads other scripts, uses <code>eval</code> or inline event handlers, the
+          policy may still block that part. Tick
+          <strong>Remove the page's Content-Security-Policy</strong> in the rule as a last resort:
+          the matched pages then load without their CSP while the rule is on, which lowers their
+          protection.
         </li>
         <li>Reload the page after adding or changing the rule.</li>
       </ul>

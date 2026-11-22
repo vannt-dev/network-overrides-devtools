@@ -451,7 +451,8 @@ namespace NetworkOverridesBackground {
         }
         try {
           const bytes = Uint8Array.from(atob(response.body), char => char.charCodeAt(0));
-          done(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+          // ignoreBOM keeps a byte order mark, which may be how the page says it is UTF-8.
+          done(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes));
         } catch {
           done(null);
         }
@@ -550,7 +551,14 @@ namespace NetworkOverridesBackground {
           });
         headers.push({ name: 'x-network-overrides', value: 'true' });
         headers.push({ name: 'x-network-overrides-pattern', value: rule.pattern });
-        if (!relax && code.script && NetworkOverridesUtils.cspSandboxBlocksScripts(policies)) {
+        const headerPolicies = serverHeaders
+          .filter(header => String(header.name).toLowerCase().trim() === 'content-security-policy')
+          .map(header => String(header.value));
+        if (
+          !relax &&
+          code.script &&
+          NetworkOverridesUtils.cspSandboxBlocksScripts(headerPolicies)
+        ) {
           notifyRule(
             tabId,
             rule.pattern,

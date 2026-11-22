@@ -280,3 +280,16 @@ test('Import keeps the fields of inject rules and file rules', async () => {
   await flushUi(harness.window);
   assert.deepEqual(harness.localState[`overrides_${TEST_DOMAIN}`], rules);
 });
+
+test('a file picked after Mock this on a 404 drops the error status, so the file is used', async () => {
+  const harness = await panelHarness();
+  await openNewRule(harness);
+  input(harness, $(harness, '#modal-pattern'), '*/static/app.js');
+  input(harness, $(harness, '#modal-status'), '404');
+  await pickFile(harness, ['ok();'], 'app.js', '');
+  assert.equal($(harness, '#modal-status').value, '');
+
+  input(harness, $(harness, '#modal-status'), '201');
+  await pickFile(harness, ['ok();'], 'app.js', '');
+  assert.equal($(harness, '#modal-status').value, '201', 'a 2xx status the user set stays');
+});

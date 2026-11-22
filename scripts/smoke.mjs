@@ -14,7 +14,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const EXT_PATH = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+// SMOKE_EXT_PATH runs the checks against another build, e.g. the unzipped Store package.
+const EXT_PATH = process.env.SMOKE_EXT_PATH
+  ? path.resolve(process.env.SMOKE_EXT_PATH)
+  : path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'network-overrides-smoke-'));
 const PROFILE = path.join(WORK_DIR, 'profile');
 console.log('screenshots + profile in', WORK_DIR);

@@ -163,6 +163,12 @@ namespace NetworkOverridesUi {
           elements.modalBody.value = comma >= 0 ? content.slice(comma + 1) : '';
         }
         setContentTypeHeader(elements, contentType);
+        // A status copied from a failed request (Mock this on a 404) would stop
+        // the browser from using the file; a file is served as 200 instead.
+        const status = Number(elements.modalStatus.value.trim());
+        if (elements.modalStatus.value.trim() && !(status >= 200 && status <= 299)) {
+          elements.modalStatus.value = '';
+        }
         updateScriptHelp(elements);
         setHeldFile(elements, file.name);
         updateBodyFormatAction(elements);

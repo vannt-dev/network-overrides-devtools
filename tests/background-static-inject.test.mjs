@@ -338,3 +338,39 @@ test('a file replaced from disk is served with 200 even when the server has none
   assert.equal(commandFor(harness, 'missing').params.responseCode, 200);
   assert.equal(commandFor(harness, 'set').params.responseCode, 203);
 });
+
+test('an inject rule keeps the UTF-8 byte order mark of the page', async () => {
+  const harness = await backgroundWithRules([injectRule()]);
+  harness.responseBodies.set('bom', {
+    body: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(PAGE)]).toString('base64'),
+    base64Encoded: true,
+  });
+  pauseResponse(harness, 'bom', {
+    responseHeaders: [{ name: 'Content-Type', value: 'text/html' }],
+  });
+  await tick(20);
+  const bytes = Buffer.from(commandFor(harness, 'bom').params.body, 'base64');
+  assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+  assert.match(bytes.toString('utf8'), /window\.injected/);
+});
+
+test('a sandbox in a <meta> CSP, which browsers ignore, raises no notice', async () => {
+  const harness = await backgroundWithRules([injectRule()]);
+  const messages = subscribe(harness);
+  harness.responseBodies.set('meta-sandbox', {
+    body: PAGE.replace(
+      '<title>',
+      '<meta http-equiv="Content-Security-Policy" content="sandbox"><title>'
+    ),
+    base64Encoded: false,
+  });
+  pauseResponse(harness, 'meta-sandbox', {
+    responseHeaders: [{ name: 'Content-Type', value: 'text/html' }],
+  });
+  await tick(20);
+  assert.equal(commandFor(harness, 'meta-sandbox').method, 'Fetch.fulfillRequest');
+  assert.equal(
+    messages.some(message => message.type === 'injectRuleNotice'),
+    false
+  );
+});

@@ -182,3 +182,14 @@ test('cspSandboxBlocksScripts needs a sandbox without allow-scripts', () => {
   assert.equal(u.cspSandboxBlocksScripts(['sandbox allow-scripts allow-forms']), false);
   assert.equal(u.cspSandboxBlocksScripts(["script-src 'self'"]), false);
 });
+
+test('injectIntoHtml puts the style before the first </head>, not one inside a script', () => {
+  const html =
+    '<html><head><title>t</title></head><body>' +
+    '<script>frame.srcdoc = "<head></head><body></body>";</script></body></html>';
+  const out = u.injectIntoHtml(html, { style: 'p{}' });
+  assert.ok(
+    out.startsWith('<html><head><title>t</title><style data-network-overrides>p{}</style></head>')
+  );
+  assert.match(out, /srcdoc = "<head><\/head>/);
+});

@@ -119,7 +119,8 @@ namespace NetworkOverridesUtils {
     const { script, style } = injectedCode(code);
     if (style) {
       const tag = `<style data-network-overrides>${style}</style>`;
-      let index = lastMatchIndex(out, /<\/head\s*>/gi);
+      // The first </head> is the real one; a later one sits in a script or template.
+      let index = /<\/head\s*>/i.exec(out)?.index ?? -1;
       if (index < 0) {
         const body = /<body[\s>]/i.exec(out);
         if (body) index = body.index;

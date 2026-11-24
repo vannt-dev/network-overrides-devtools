@@ -8,8 +8,10 @@ Highlights:
 - Mock JSON, text, and base64 response bodies, or patch a few fields of the real JSON response.
 - Replace a script, stylesheet, image, or font with a file from your computer.
 - Add your own JavaScript and CSS to the pages you test; their Content-Security-Policy is kept.
-- One-click presets: empty list, server error, slow response, offline.
-- Override request and response headers.
+- One-click presets: empty list, server error, slow response, offline, no CSP, no cache.
+- Override request and response headers, or remove response headers (such as CSP or cache headers) while keeping the real response body.
+- Use {{name}} variables, set per site or for every site, in URL patterns, headers, and bodies.
+- Return weighted random responses from one rule, with an optional seed for repeatable tests.
 - Simulate HTTP statuses, latency, redirects, and network failures.
 - Enable, disable, duplicate, import, export, and organize reusable rules.
 - Keep rules separated by domain and restore interception after service-worker restarts.

@@ -1011,7 +1011,7 @@
     "message": "e.g. 42"
   },
   "field_random_seed_hint": {
-    "message": "Blank picks at random. With a seed the picks follow the same order every time the rules are applied, which suits automated tests."
+    "message": "Blank picks at random. With a seed the picks follow the same order, which suits automated tests; Reset counts or an edit of the rule starts it over."
   },
   "variant_add": {
     "message": "+ Add a response"

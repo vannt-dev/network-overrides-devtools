@@ -618,8 +618,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
         <li>
           <strong>Seed (repeatable order)</strong>: blank picks at random. With a number the picks
-          follow the same order every time, which suits automated tests; the order starts again when
-          you save the rules or the extension restarts.
+          follow the same order every time, which suits automated tests. The order follows how many
+          times the rule was applied, so it goes on across a worker restart;
+          <strong>Reset counts</strong>, or an edit of the rule, starts it over.
         </li>
       </ul>
 
@@ -994,8 +995,13 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
         <li>
           A <code>{{name}}</code> no variable defines is left as written, and a value is put in
-          once: <code>{{...}}</code> inside a value is not filled again.
+          once: a <code>{{name}}</code> inside a value is not filled again (in a body, a built-in
+          placeholder inside a value, such as <code>{{$uuid}}</code>, still is).
           <code>\{{name}}</code> keeps <code>{{name}}</code> as written.
+        </li>
+        <li>
+          Variables are not filled in WebSocket rules, request conditions, patch values or injected
+          JS/CSS.
         </li>
         <li>
           With <strong>Fill in {{...}} placeholders</strong> off, a body is sent exactly as written,

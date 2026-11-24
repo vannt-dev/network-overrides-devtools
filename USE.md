@@ -366,7 +366,7 @@ Rule **Mock response** (body Text hoặc Raw base64) có thể trả về một 
 
 Mỗi request nhận một response, chọn theo trọng số: trọng số `80` và `20` cho response đầu khoảng 8 lần trên 10. Trọng số `0` không bao giờ được chọn. Template và biến dùng được trong mọi body. Response kèm header `x-network-overrides-response`, là số thứ tự của response đã trả (`1` là response của chính rule).
 
-**Seed (thứ tự lặp lại được)**: để trống thì chọn ngẫu nhiên. Có một số thì các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động: thứ tự bắt đầu lại khi bạn lưu rule hoặc extension khởi động lại.
+**Seed (thứ tự lặp lại được)**: để trống thì chọn ngẫu nhiên. Có một số thì các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động. Thứ tự đi theo số lần rule đã được áp dụng, nên vẫn tiếp tục khi worker của trình duyệt khởi động lại; **Đặt lại số đếm** (Reset counts) trong tab Rules, hoặc sửa rule, sẽ bắt đầu lại từ đầu.
 
 ---
 
@@ -596,7 +596,8 @@ Biến giữ ở một chỗ một giá trị bạn dùng trong nhiều rule, nh
 - **Site này**: chỉ cho site đang mở trong panel. **Mọi site**: cho tất cả site. Giá trị của site thắng giá trị cùng tên dùng cho mọi site.
 - Viết `{{name}}` trong URL pattern, URL redirect, giá trị header của response hoặc request, body response (chế độ Text và response ngẫu nhiên) hoặc body request gửi lên server. Rule script đọc chúng qua `request.vars.name`.
 - Tên bắt đầu bằng chữ cái hoặc `_`, sau đó là chữ, số, `_`, `.` hoặc `-`. Tên của các placeholder có sẵn (`now`, `timestamp`, `epoch`, `uuid`) không dùng được.
-- `{{name}}` mà không biến nào định nghĩa thì giữ nguyên như đã viết. Giá trị được thay vào một lần: `{{...}}` bên trong giá trị không được thay tiếp.
+- `{{name}}` mà không biến nào định nghĩa thì giữ nguyên như đã viết. Giá trị được thay vào một lần: `{{name}}` bên trong giá trị không được thay tiếp (trong body, placeholder có sẵn bên trong giá trị, như `{{$uuid}}`, vẫn được điền).
+- Biến không được thay trong rule WebSocket, điều kiện của request, giá trị patch hay JS/CSS được chèn.
 - `\{{name}}` giữ nguyên `{{name}}` như đã viết. Khi tắt **Fill in {{...}} placeholders**, body được gửi đúng như đã viết, kể cả biến; pattern và header vẫn được thay.
 - Lưu biến là áp dụng ngay. Biến được lưu trong trình duyệt cùng với rule, không nằm trong file rule export hay profile.
 

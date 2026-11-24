@@ -366,7 +366,7 @@ A **Mock response** rule (Text or Raw base64 body) can answer with one of severa
 
 Each request gets one response, picked by weight: weights `80` and `20` give the first one about 8 times in 10. A weight of `0` is never picked. Templates and variables work in every body. The answer carries the header `x-network-overrides-response`, the number of the response it gave (`1` is the rule's own).
 
-**Seed (repeatable order)**: blank picks at random. With a number, the picks follow the same order every time, which suits automated tests: the order starts again when you save the rules or the extension restarts.
+**Seed (repeatable order)**: blank picks at random. With a number, the picks follow the same order every time, which suits automated tests. The order follows how many times the rule was applied, so it goes on across a browser worker restart; **Reset counts** in the Rules tab, or an edit of the rule, starts it over.
 
 ---
 
@@ -591,7 +591,8 @@ Variables keep a value you use in many rules, such as a host or a token, in one 
 - **This site**: only for the site open in the panel. **Every site**: for all sites. A site value wins over one of the same name for every site.
 - Write `{{name}}` in a URL pattern, a redirect URL, a response or request header value, a response body (Text mode and random responses) or the request body sent to the server. Script rules read them as `request.vars.name`.
 - A name starts with a letter or `_`, then letters, digits, `_`, `.` or `-`. The names of the built-in placeholders (`now`, `timestamp`, `epoch`, `uuid`) are taken.
-- A `{{name}}` no variable defines is left as written. A value is put in once: `{{...}}` inside a value is not filled again.
+- A `{{name}}` no variable defines is left as written. A value is put in once: a `{{name}}` inside a value is not filled again (in a body, a built-in placeholder inside a value, such as `{{$uuid}}`, still is).
+- Variables are not filled in WebSocket rules, request conditions, patch values or injected JS/CSS.
 - `\{{name}}` keeps `{{name}}` as written. With **Fill in {{...}} placeholders** off, the body is sent exactly as written, variables included; patterns and headers are still filled.
 - Saving the variables applies them at once. They are stored in the browser with the rules, not in exported rule files or profiles.
 

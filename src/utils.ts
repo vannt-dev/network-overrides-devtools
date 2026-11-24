@@ -122,12 +122,25 @@ namespace NetworkOverridesUtils {
    */
   export function ruleHitKeys(rules: readonly object[]): string[] {
     const seen = new Map<string, number>();
+    // chrome.storage hands objects back with their keys sorted, nested ones
+    // included, so every level is sorted: a rule read back keeps its key.
+    const sorted = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(sorted);
+      if (!value || typeof value !== 'object') return value;
+      const record = value as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.keys(record)
+          .sort()
+          .filter(name => record[name] !== undefined)
+          .map(name => [name, sorted(record[name])])
+      );
+    };
     return rules.map(rule => {
       const fields: Record<string, unknown> = {};
       for (const name of Object.keys(rule || {}).sort()) {
         if (name === 'enabled') continue;
         const value = (rule as Record<string, unknown>)[name];
-        if (value !== undefined) fields[name] = value;
+        if (value !== undefined) fields[name] = sorted(value);
       }
       const hash = hashText(JSON.stringify(fields));
       const earlier = seen.get(hash) || 0;

@@ -813,10 +813,15 @@ return {
   await saveRule();
   const expectedPicks = await popup.evaluate(() => {
     const next = NetworkOverridesUtils.seededRandom(42);
-    return Array.from({ length: 12 }, () => NetworkOverridesUtils.pickWeighted([1, 1], next()));
+    return Array.from({ length: 16 }, () => NetworkOverridesUtils.pickWeighted([1, 1], next()));
   });
   const picks = [];
   for (let i = 0; i < expectedPicks.length; i++) {
+    // Midway the panel is focused, which sends the same rules again: the order goes on.
+    if (i === 12) {
+      await popup.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await popup.waitForTimeout(1000);
+    }
     picks.push(
       await site.evaluate(
         u =>
@@ -835,7 +840,7 @@ return {
       : pick.status === 200 && pick.body === '{"ok":true}' && pick.response === '1'
   );
   report(
-    'weighted responses with a seed answer in the seeded order, with both answers seen',
+    'weighted responses with a seed answer in the seeded order, also after the panel re-sends the rules',
     followsSeed && expectedPicks.includes(0) && expectedPicks.includes(1),
     JSON.stringify({ expected: expectedPicks, statuses: picks.map(pick => pick.status) })
   );

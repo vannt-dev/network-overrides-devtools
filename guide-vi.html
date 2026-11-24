@@ -600,8 +600,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
         <li>
           <strong>Seed (thứ tự lặp lại được)</strong>: để trống thì chọn ngẫu nhiên. Có một số thì
-          các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động; thứ tự bắt đầu lại khi
-          bạn lưu rule hoặc extension khởi động lại.
+          các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động. Thứ tự đi theo số lần
+          rule đã được áp dụng, nên vẫn tiếp tục khi worker khởi động lại;
+          <strong>Đặt lại số đếm</strong>, hoặc sửa rule, sẽ bắt đầu lại từ đầu.
         </li>
       </ul>
 
@@ -958,8 +959,13 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         </li>
         <li>
           <code>{{name}}</code> mà không biến nào định nghĩa thì giữ nguyên, và giá trị được thay
-          vào một lần: <code>{{...}}</code> bên trong giá trị không được thay tiếp.
+          vào một lần: <code>{{name}}</code> bên trong giá trị không được thay tiếp (trong body,
+          placeholder có sẵn bên trong giá trị, như <code>{{$uuid}}</code>, vẫn được điền).
           <code>\{{name}}</code> giữ nguyên <code>{{name}}</code> như đã viết.
+        </li>
+        <li>
+          Biến không được thay trong rule WebSocket, điều kiện của request, giá trị patch hay JS/CSS
+          được chèn.
         </li>
         <li>
           Khi tắt điền placeholder <code>{{...}}</code>, body được gửi đúng như đã viết, kể cả biến;

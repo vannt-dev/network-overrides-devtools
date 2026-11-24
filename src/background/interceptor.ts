@@ -24,23 +24,21 @@ namespace NetworkOverridesBackground {
     return TabState.get(tabId)?.variables || {};
   }
 
-  // Generators of the rules with a seed, by rule: the order starts over when
-  // the rules change (new objects) or the worker restarts.
-  const seededPicks = new WeakMap<OverrideRule, () => number>();
-
-  /** Which answer a rule with several responses gives now: 0 is the rule's own. */
-  function chooseResponse(rule: OverrideRule): number {
+  /**
+   * Which answer a rule with several responses gives now: 0 is the rule's own.
+   * With a seed, the pick is the seed's number at the rule's hit count, so
+   * the order goes on when the panel sends the same rules again or the
+   * worker restarts, and starts over when the rule is edited or the counts
+   * are reset.
+   */
+  function chooseResponse(tabId: number, rule: OverrideRule, hitKey: string | undefined): number {
     if (!Values.hasResponseVariants(rule)) return 0;
-    let random = Math.random;
+    let random = Math.random();
     if (typeof rule.randomSeed === 'number' && Number.isInteger(rule.randomSeed)) {
-      let next = seededPicks.get(rule);
-      if (!next) {
-        next = Values.seededRandom(rule.randomSeed);
-        seededPicks.set(rule, next);
-      }
-      random = next;
+      const hits = hitKey === undefined ? 0 : TabState.get(tabId)?.ruleHits.get(hitKey)?.count;
+      random = Values.seededNumber(rule.randomSeed, hits || 0);
     }
-    return Values.pickWeighted(Values.responseWeights(rule), random());
+    return Values.pickWeighted(Values.responseWeights(rule), random);
   }
 
   /**
@@ -282,7 +280,7 @@ namespace NetworkOverridesBackground {
     const variables = variablesOf(tabId);
     const templates = ov.processTemplates !== false;
     // A rule with several responses gives one of them, picked by weight.
-    const choice = chooseResponse(ov);
+    const choice = chooseResponse(tabId, ov, hitKey);
     const variant = choice > 0 ? ov.responses?.[choice - 1] || null : null;
 
     function bodyToValidBase64(): string {

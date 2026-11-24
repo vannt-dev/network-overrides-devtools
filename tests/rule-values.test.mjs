@@ -467,6 +467,12 @@ test('a rule with weighted responses follows its seed and says which answer it g
   const expected = Array.from({ length: 30 }, () =>
     u.pickWeighted([80, 20], random()) ? 500 : 200
   );
+  const statusAt = index => (u.pickWeighted([80, 20], u.seededNumber(42, index)) ? 500 : 200);
+  assert.deepEqual(
+    expected,
+    expected.map((_, index) => statusAt(index)),
+    'seededNumber gives the numbers of seededRandom'
+  );
   assert.ok(expected.includes(500) && expected.includes(200), 'the seed gives both answers');
 
   const seen = [];
@@ -487,18 +493,60 @@ test('a rule with weighted responses follows its seed and says which answer it g
   }
   assert.deepEqual(seen, expected);
 
-  // New rules start the order again.
-  harness.callMessage({
-    type: 'update',
-    tabId: 7,
-    tabUrl: `${TEST_DOMAIN}/`,
-    enabled: true,
-    overrides: [{ ...rule }],
-  });
+  // The panel sends the same rules again on every focus: the order goes on.
+  const sendRules = overrides =>
+    harness.callMessage({
+      type: 'update',
+      tabId: 7,
+      tabUrl: `${TEST_DOMAIN}/`,
+      enabled: true,
+      overrides,
+    });
+  const nextStatus = async requestId => {
+    pauseResponse(harness, requestId, { resourceType: 'Fetch' });
+    await tick(1);
+    return commandFor(harness, requestId).params.responseCode;
+  };
+  const sameRule = { ...rule };
+  sendRules([sameRule]);
   await tick();
-  pauseResponse(harness, 'req-again', { resourceType: 'Fetch' });
-  await tick(1);
-  assert.equal(commandFor(harness, 'req-again').params.responseCode, expected[0]);
+  assert.equal(await nextStatus('req-resent'), statusAt(expected.length));
+
+  // Reset counts starts it over.
+  harness.callMessage({ type: 'resetRuleHits', tabId: 7 });
+  await tick();
+  assert.equal(await nextStatus('req-reset'), expected[0]);
+  assert.equal(await nextStatus('req-reset-2'), expected[1]);
+
+  // So does an edit of the rule.
+  sendRules([{ ...rule, body: '{"ok":"edited"}' }]);
+  await tick();
+  assert.equal(await nextStatus('req-edited'), expected[0]);
+});
+
+test('a seeded rule goes on with its order after a worker restart', async () => {
+  const rule = {
+    pattern: `${TEST_DOMAIN}/api/*`,
+    body: 'a',
+    mode: 'text',
+    statusCode: 200,
+    randomSeed: 9,
+    responses: [{ weight: 1, statusCode: 500, body: 'b' }],
+  };
+  const u = utils();
+  const statusAt = index => (u.pickWeighted([1, 1], u.seededNumber(9, index)) ? 500 : 200);
+  const first = await backgroundWithRules([rule]);
+  for (let i = 0; i < 3; i++) {
+    pauseResponse(first, `req-r${i}`, { resourceType: 'Fetch' });
+    await tick(1);
+  }
+  await tick(600);
+  // A new worker reads the tab back from the session snapshot.
+  const second = createBackgroundHarness({ sessionState: first.sessionState });
+  await second.context.NetworkOverridesBackground.ready;
+  pauseResponse(second, 'req-after', { resourceType: 'Fetch' });
+  await tick(5);
+  assert.equal(commandFor(second, 'req-after').params.responseCode, statusAt(3));
 });
 
 test('a response with weight 0 is never given, and a variant without status keeps the rule status', async () => {
@@ -532,4 +580,22 @@ test('a rule without other responses sends no response marker', async () => {
   pauseResponse(harness, 'req-one', { resourceType: 'Fetch' });
   await tick(1);
   assert.equal(headerOf(commandFor(harness, 'req-one'), 'x-network-overrides-response'), undefined);
+});
+
+test('a rule read back from storage, nested keys sorted, keeps its hit key', () => {
+  const u = utils();
+  const saved = {
+    pattern: '/api',
+    body: 'a',
+    mode: 'text',
+    responses: [{ weight: 1, body: 'b', statusCode: 500 }],
+  };
+  // chrome.storage returns every object with its keys in alphabetical order.
+  const readBack = {
+    body: 'a',
+    mode: 'text',
+    pattern: '/api',
+    responses: [{ body: 'b', statusCode: 500, weight: 1 }],
+  };
+  assert.deepEqual(plain(u.ruleHitKeys([saved])), plain(u.ruleHitKeys([readBack])));
 });

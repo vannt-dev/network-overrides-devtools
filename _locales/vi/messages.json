@@ -1011,7 +1011,7 @@
     "message": "ví dụ 42"
   },
   "field_random_seed_hint": {
-    "message": "Để trống thì chọn ngẫu nhiên. Có seed thì các lần chọn theo cùng một thứ tự mỗi khi rule được áp dụng, hợp cho test tự động."
+    "message": "Để trống thì chọn ngẫu nhiên. Có seed thì các lần chọn theo cùng một thứ tự, hợp cho test tự động; Đặt lại số đếm hoặc sửa rule sẽ bắt đầu lại từ đầu."
   },
   "variant_add": {
     "message": "+ Thêm response"

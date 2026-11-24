@@ -206,15 +206,21 @@ namespace NetworkOverridesUtils {
     return weights.length - 1;
   }
 
-  /** A small seeded generator (mulberry32): the same seed gives the same numbers in [0, 1). */
+  /**
+   * The number in [0, 1) at position `index` (0, 1, 2, ...) of the order a
+   * seed gives (mulberry32). Its state only moves by a constant, so any
+   * position is worked out directly, without the ones before it.
+   */
+  export function seededNumber(seed: number, index: number): number {
+    let value = ((seed >>> 0) + Math.imul(index + 1, 0x6d2b79f5)) >>> 0;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  }
+
+  /** The numbers of a seed in order: the same seed gives the same numbers in [0, 1). */
   export function seededRandom(seed: number): () => number {
-    let state = seed >>> 0;
-    return () => {
-      state = (state + 0x6d2b79f5) >>> 0;
-      let value = state;
-      value = Math.imul(value ^ (value >>> 15), value | 1);
-      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-    };
+    let index = 0;
+    return () => seededNumber(seed, index++);
   }
 }

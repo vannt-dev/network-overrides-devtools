@@ -24,10 +24,25 @@ namespace NetworkOverridesUi {
     return headers.map(h => `${h.name}: ${h.value}`).join('\n');
   }
 
+  /** The words of a table that edits something other than headers, such as variables. */
+  export interface HeaderTableLabels {
+    name: string;
+    value: string;
+    add: string;
+    remove: string;
+  }
+
   export function renderHeaderTable(
     tableContainer: HTMLDivElement,
-    textarea: HTMLTextAreaElement
+    textarea: HTMLTextAreaElement,
+    labels?: HeaderTableLabels
   ): void {
+    const words: HeaderTableLabels = labels || {
+      name: t('headers_name'),
+      value: t('headers_value'),
+      add: t('headers_add'),
+      remove: t('headers_delete'),
+    };
     const initialMode = tableContainer.dataset.editorMode === 'raw' ? 'raw' : 'table';
     tableContainer.innerHTML = '';
     const headers = parseHeadersText(textarea.value);
@@ -54,24 +69,24 @@ namespace NetworkOverridesUi {
 
       const keyInput = createUiInput({
         className: 'header-row-key',
-        placeholder: t('headers_name'),
+        placeholder: words.name,
         value: name,
-        ariaLabel: t('headers_name'),
+        ariaLabel: words.name,
       });
 
       const valInput = createUiInput({
         className: 'header-row-value',
-        placeholder: t('headers_value'),
+        placeholder: words.value,
         value,
-        ariaLabel: t('headers_value'),
+        ariaLabel: words.value,
       });
 
       const deleteBtn = createUiButton('×', {
         className: 'header-row-delete',
         variant: 'danger',
         size: 'small',
-        title: t('headers_delete'),
-        ariaLabel: t('headers_delete'),
+        title: words.remove,
+        ariaLabel: words.remove,
       });
 
       const syncToTextarea = () => {
@@ -100,7 +115,7 @@ namespace NetworkOverridesUi {
 
     headers.forEach(h => addRow(h.name, h.value));
 
-    const addBtn = createUiButton(t('headers_add'), {
+    const addBtn = createUiButton(words.add, {
       className: 'add-header-row-btn',
       variant: 'outline',
       size: 'small',

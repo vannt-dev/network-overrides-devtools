@@ -76,12 +76,15 @@ anything else is not published by vannt-dev.
   - **Network error**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
   - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
   - **Inject JS/CSS**: add your own script and stylesheet to the pages a rule matches, while the real page still loads. On pages with a Content-Security-Policy, the hash of the injected code is added to the policy, so only that code is let through and the rest of the policy stays; **Remove the page's Content-Security-Policy** is an opt-in last resort.
+- **Remove response headers, keep the real body**: list headers to drop from a response (`x-debug-*` drops every header with that start). The body mode **Keep the real response (headers only)** passes the server's body through untouched while the status and headers change; the **No CSP** and **No cache** presets set it up in one click.
+- **Variables**: `name: value` pairs for one site or every site (a site value wins), written as `{{name}}` in URL patterns, redirect URLs, header values and bodies, and read by scripts as `request.vars`. `\{{name}}` keeps the text as written.
+- **Weighted random responses**: a mock rule can hold more responses, each with a weight (`80` / `20` answers the first about 8 times in 10). A seed makes the order repeatable for automated tests, and the header `x-network-overrides-response` says which response was given.
 - **Status, headers, delay, and fail mocking**: a body rule can force the response status (100–599), add or overwrite response headers, and delay the response up to 120 s; a fail rule kills the request at the network layer (`Failed`, `TimedOut`, `ConnectionRefused`, `NameNotResolved`, `InternetDisconnected`).
 - **View captured APIs**, grouped by resource type (XHR, Fetch, JS, CSS, Img, Doc, WS, etc.), with real-time updates from the background service worker.
 - **Search APIs** by URL substring.
 - **One-click override creation**: Click **Mock this** (or the row) on any captured API to open the editor filled from the real request: URL pattern, method, status and response body. The pattern stays editable, so you can widen it (for example `/api/users/42` to `/api/users/*`). When a rule already covers the request, its rule opens instead, so nothing is duplicated.
-- **A short editor**: the editor shows only the URL pattern, method, type, status and response body. Everything else sits in a collapsed **Advanced** section, grouped as Conditions, Timing & failure, Response headers, Body type (patch & script) and Change the request. A group that holds a value opens by itself and shows how many settings it holds, so nothing is hidden silently.
-- **One-click presets**: **Empty list** (status 200 with `[]`, or the real JSON with its lists emptied), **Server error** (500), **Slow (3 s)** (a 3000 ms delay) and **Offline** (a network error), filled into the editor's own fields.
+- **A short editor**: the editor shows only the URL pattern, method, type, status and response body. Everything else sits in a collapsed **Advanced** section, grouped as Conditions, Timing & failure, Response headers, Body type (patch & script), Random responses and Change the request. A group that holds a value opens by itself and shows how many settings it holds, so nothing is hidden silently.
+- **One-click presets**: **Empty list** (status 200 with `[]`, or the real JSON with its lists emptied), **Server error** (500), **Slow (3 s)** (a 3000 ms delay), **Offline** (a network error), **No CSP** and **No cache** (keep the real response without its Content-Security-Policy or caching headers), filled into the editor's own fields.
 - **One line per rule**: the Rules tab shows each rule as what it matches and what it does, for example `GET /api/orders + query page=2 → 500 · slow 3 s` or `ws wss://example.com/socket → replace frames`. Click it for the full editor.
 - **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
 - **Per-rule hit counter**: every rule in the Rules tab shows how many times it was applied in this session (`0` greyed, a number highlighted), with the time and URL of the last one in its tooltip, so you can tell at a glance whether a rule is being applied at all. **Reset counts** starts over. The counts live in the session only and are never saved, exported or imported with the rules.
@@ -188,6 +191,8 @@ Rule and UI state is stored in `chrome.storage.local` (permanent); per-tab runti
 | `enabled`            | `boolean`                                                                 | Permanent — survives browser restart                                                                    |
 | `overrides_{origin}` | `OverrideRule[]` (rules for one domain, e.g. `overrides_https://a.test`)  | Permanent — survives browser restart                                                                    |
 | `overrides_global`   | `OverrideRule[]` shared across every domain                               | Permanent — survives browser restart                                                                    |
+| `variables_{origin}` | `{name, value}[]`: the `{{name}}` variables of one domain                 | Permanent — survives browser restart                                                                    |
+| `variables_global`   | `{name, value}[]`: variables of every domain (a domain value wins)        | Permanent — survives browser restart                                                                    |
 | `apiSearchTerm`      | `string`                                                                  | Permanent — survives browser restart                                                                    |
 | `uiLanguage`         | `'auto'`, `'en'` or `'vi'`                                                | Permanent — survives browser restart                                                                    |
 | `capturedBodyTypes`  | resource types whose response bodies are kept                             | Permanent — survives browser restart                                                                    |
@@ -290,23 +295,27 @@ In redirect URLs, `*` substitutes captured wildcards in order. For example:
 
 Optional fields on an override rule:
 
-| Field              | Type                                           | Description                                                                                           |
-| ------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `statusCode`       | optional integer 100–599                       | Forces the mocked response status (body rules only).                                                  |
-| `responseHeaders`  | optional `{name, value}[]`                     | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
-| `delayMs`          | optional number 0–120000                       | Delays the response/failure by N ms (body and fail rules).                                            |
-| `failReason`       | optional enum                                  | Makes the rule fail the request at the network layer instead of answering.                            |
-| `respondAtRequest` | optional boolean                               | Body rules: answer before the request is sent, so the server is never called (see below).             |
-| `patch`            | `{op, path, value?}[]`                         | With `"mode": "patch"`: changes applied to the real JSON response (see above).                        |
-| `graphqlOperation` | optional string                                | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
-| `matchQuery`       | optional `{name, value?}[]`                    | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
-| `matchHeaders`     | optional `{name, value?}[]`                    | Applies the rule only when every request header is present (and equal); names ignore case.            |
-| `matchBody`        | optional string                                | Applies the rule only when the request body contains this text.                                       |
-| `fileName`         | optional string                                | Body rules: the local file the body was loaded from; such a rule answers with 200 by default.         |
-| `kind`             | optional `'http'`, `'websocket'` or `'inject'` | `'inject'` adds `injectScript` / `injectStyle` to matched pages instead of answering requests.        |
-| `injectScript`     | optional string                                | Inject rules: JavaScript added at the end of `<body>`.                                                |
-| `injectStyle`      | optional string                                | Inject rules: CSS added at the end of `<head>`.                                                       |
-| `relaxCsp`         | optional boolean                               | Inject rules: remove the page's Content-Security-Policy instead of adding hashes (off by default).    |
+| Field                   | Type                                                       | Description                                                                                           |
+| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `statusCode`            | optional integer 100–599                                   | Forces the mocked response status (body rules only).                                                  |
+| `responseHeaders`       | optional `{name, value}[]`                                 | Added to the mocked response; same-name headers are overwritten case-insensitively (body rules only). |
+| `delayMs`               | optional number 0–120000                                   | Delays the response/failure by N ms (body and fail rules).                                            |
+| `failReason`            | optional enum                                              | Makes the rule fail the request at the network layer instead of answering.                            |
+| `respondAtRequest`      | optional boolean                                           | Body rules: answer before the request is sent, so the server is never called (see below).             |
+| `patch`                 | `{op, path, value?}[]`                                     | With `"mode": "patch"`: changes applied to the real JSON response (see above).                        |
+| `graphqlOperation`      | optional string                                            | Applies the rule only to the GraphQL operation with this `operationName` (see below).                 |
+| `matchQuery`            | optional `{name, value?}[]`                                | Applies the rule only when every query parameter is present (and equal, when `value` is given).       |
+| `matchHeaders`          | optional `{name, value?}[]`                                | Applies the rule only when every request header is present (and equal); names ignore case.            |
+| `matchBody`             | optional string                                            | Applies the rule only when the request body contains this text.                                       |
+| `fileName`              | optional string                                            | Body rules: the local file the body was loaded from; such a rule answers with 200 by default.         |
+| `kind`                  | optional `'http'`, `'websocket'` or `'inject'`             | `'inject'` adds `injectScript` / `injectStyle` to matched pages instead of answering requests.        |
+| `injectScript`          | optional string                                            | Inject rules: JavaScript added at the end of `<body>`.                                                |
+| `injectStyle`           | optional string                                            | Inject rules: CSS added at the end of `<head>`.                                                       |
+| `relaxCsp`              | optional boolean                                           | Inject rules: remove the page's Content-Security-Policy instead of adding hashes (off by default).    |
+| `removeResponseHeaders` | optional string[]                                          | Body rules: lower-case header names removed from the response; a trailing `*` matches by prefix.      |
+| `responses`             | optional `{weight, statusCode?, body, responseHeaders?}[]` | Text/file body rules: more answers, one picked per request by weight (0–1000).                        |
+| `weight`                | optional integer 0–1000                                    | With `responses`: the weight of the rule's own answer (default 1).                                    |
+| `randomSeed`            | optional integer 0–4294967295                              | With `responses`: picks follow a repeatable order from this seed.                                     |
 
 ### Answer without calling the server
 

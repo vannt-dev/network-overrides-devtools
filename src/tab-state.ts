@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 /// <reference path="./shared.ts" />
 /// <reference path="./utils.ts" />
+/// <reference path="./rule-values.ts" />
 
 // The pinned @types/chrome version predates the storage.session API;
 // augment it locally rather than upgrading the whole type package.
@@ -24,6 +25,8 @@ namespace NetworkOverridesTabState {
     enabled: boolean;
     origin: string;
     overrides: OverrideRule[];
+    // {{name}} values the rules are filled with: site variables over global ones.
+    variables: NetworkOverridesUtils.Variables;
     attached: boolean;
     attachError?: string;
     recentApis: Map<string, ApiEntry>;
@@ -75,6 +78,7 @@ namespace NetworkOverridesTabState {
         enabled: false,
         origin: '',
         overrides: [],
+        variables: {},
         attached: false,
         recentApis: new Map(),
         recentApiBodies: new Map(),
@@ -255,6 +259,7 @@ namespace NetworkOverridesTabState {
       enabled: state.enabled,
       origin: state.origin,
       overrides: state.overrides,
+      variables: state.variables,
       attached: state.attached,
       attachError: state.attachError,
       recentApis: Object.fromEntries(state.recentApis.entries()),
@@ -344,6 +349,7 @@ namespace NetworkOverridesTabState {
       state.enabled = !!raw.enabled;
       state.origin = typeof raw.origin === 'string' ? raw.origin : '';
       state.overrides = Array.isArray(raw.overrides) ? raw.overrides : [];
+      state.variables = NetworkOverridesUtils.variablesFrom(raw.variables);
       // Hit keys are worked out here, not while the first request waits.
       ruleHitKeyMap(state.overrides);
       // The debugger never survives a worker restart.

@@ -122,8 +122,10 @@
           <strong>Mẫu nhanh</strong>: một click điền sẵn các field bên dưới.
           <strong>Danh sách rỗng</strong> (status 200 và <code>[]</code>, hoặc chính object JSON đó
           với các mảng bị làm rỗng), <strong>Lỗi server</strong> (status 500),
-          <strong>Chậm (3 s)</strong> (delay 3000 ms) và <strong>Mất mạng</strong> (lỗi mạng,
-          <code>InternetDisconnected</code>).
+          <strong>Chậm (3 s)</strong> (delay 3000 ms), <strong>Mất mạng</strong> (lỗi mạng,
+          <code>InternetDisconnected</code>), và <strong>Bỏ CSP</strong>,
+          <strong>Không cache</strong>: giữ response thật và bỏ các header Content-Security-Policy
+          hoặc header cache của nó (xem <a href="#real-response">6.10</a>).
         </li>
         <li>
           <strong>URL pattern</strong>: pattern để khớp URL. Ban đầu là URL của request và sửa được:
@@ -169,12 +171,19 @@
         </li>
         <li>
           <strong>Response header</strong>: header thêm vào response (mỗi dòng một
-          <code>Header-Name: value</code>; trùng tên thì ghi đè header gốc).
+          <code>Header-Name: value</code>; trùng tên thì ghi đè header gốc), và
+          <strong>Header cần bỏ khỏi response</strong> (xem <a href="#real-response">6.10</a>).
         </li>
         <li>
           <strong>Kiểu body: patch &amp; script</strong>: response body là Text, Base64 thô, Script
-          (JavaScript) hoặc <strong>Patch JSON response thật</strong> (xem
-          <a href="#patch-response">6.6</a>), và có điền placeholder <code>{{...}}</code> hay không.
+          (JavaScript), <strong>Patch JSON response thật</strong> (xem
+          <a href="#patch-response">6.6</a>) hoặc
+          <strong>Giữ response thật (chỉ sửa header)</strong> (xem
+          <a href="#real-response">6.10</a>), và có điền placeholder <code>{{...}}</code> hay không.
+        </li>
+        <li>
+          <strong>Response ngẫu nhiên</strong>: thêm các response khác cho rule, mỗi cái có trọng
+          số, và seed để thứ tự lặp lại được (xem <a href="#random-responses">6.11</a>).
         </li>
         <li>
           <strong>Đổi request</strong>: thay request body gửi tới server, thêm hoặc thay request
@@ -457,8 +466,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <li>
           <code>request</code> có <code>url</code>, <code>method</code>, <code>headers</code> (tên
           viết thường), <code>query</code>, <code>params</code> (phần mà mỗi <code>*</code> khớp),
-          <code>body</code> và <code>response</code> (<code>status</code>, <code>headers</code> và
-          <code>body</code> gốc).
+          <code>body</code>, <code>response</code> (<code>status</code>, <code>headers</code> và
+          <code>body</code> gốc) và <code>vars</code> (các biến của bạn, xem
+          <a href="#variables">9.15</a>).
         </li>
         <li>
           Trả về một string làm body, <code>{ status, headers, body }</code>, hoặc giá trị khác để
@@ -535,6 +545,64 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           không có CSP khi rule đang bật, nên kém an toàn hơn.
         </li>
         <li>Tải lại trang sau khi thêm hoặc sửa rule.</li>
+      </ul>
+
+      <h3 id="real-response">6.10. Giữ response thật, bỏ header</h3>
+      <p>
+        Rule có thể bỏ header khỏi response, ví dụ Content-Security-Policy đang cản việc debug, hoặc
+        các header cache làm trình duyệt giữ file cũ.
+      </p>
+      <ul>
+        <li>
+          Chọn <strong>Giữ response thật (chỉ sửa header)</strong> trong
+          <strong>Nâng cao → Kiểu body</strong> để giữ nguyên body của server. Request vẫn đến
+          server; chỉ status (nếu bạn đặt) và header thay đổi. Mẫu nhanh <strong>Bỏ CSP</strong> và
+          <strong>Không cache</strong> thiết lập việc này bằng một click.
+        </li>
+        <li>
+          Liệt kê header trong
+          <strong>Nâng cao → Response header → Header cần bỏ khỏi response</strong>, mỗi dòng một
+          tên hoặc cách nhau bằng dấu phẩy. Không phân biệt hoa thường. Tên kết thúc bằng
+          <code>*</code> bỏ mọi header bắt đầu bằng phần trước nó: <code>x-debug-*</code>.
+        </li>
+        <li>
+          Việc bỏ header cũng dùng được với mọi mock response: header của server bị bỏ trước, rồi
+          response header của rule mới được thêm vào. Vì vậy bạn có thể bỏ
+          <code>Cache-Control</code> rồi thêm <code>Cache-Control: no-store</code>.
+        </li>
+        <li>Header đánh dấu của extension không bao giờ bị bỏ.</li>
+        <li>
+          Response không đọc được body, như redirect, được cho đi qua không đổi và panel sẽ cảnh
+          báo. Không có tùy chọn <strong>Trả lời mà không gọi server</strong>, vì rule cần response
+          thật.
+        </li>
+      </ul>
+
+      <h3 id="random-responses">6.11. Response ngẫu nhiên theo trọng số</h3>
+      <p>
+        Rule Mock response (body Text hoặc Base64 thô) có thể trả về một trong nhiều response, để
+        xem trang xử lý thế nào khi API chập chờn. Viết body và status như thường: đây là response
+        thứ nhất. Rồi mở <strong>Nâng cao → Response ngẫu nhiên</strong>, bấm
+        <strong>+ Thêm response</strong> và điền trọng số, status (để trống thì dùng status của
+        rule), body và header (<code>Name: value</code>, thêm đè lên header của rule).
+        <strong>Trọng số của response ở trên</strong> là trọng số của response thứ nhất (để trống là
+        1).
+      </p>
+      <ul>
+        <li>
+          Mỗi request nhận một response, chọn theo trọng số: trọng số <code>80</code> và
+          <code>20</code> cho response đầu khoảng 8 lần trên 10. Trọng số <code>0</code> không bao
+          giờ được chọn. Placeholder và biến dùng được trong mọi body.
+        </li>
+        <li>
+          Response kèm header <code>x-network-overrides-response</code>: số thứ tự của response đã
+          trả (<code>1</code> là response của chính rule).
+        </li>
+        <li>
+          <strong>Seed (thứ tự lặp lại được)</strong>: để trống thì chọn ngẫu nhiên. Có một số thì
+          các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động; thứ tự bắt đầu lại khi
+          bạn lưu rule hoặc extension khởi động lại.
+        </li>
       </ul>
 
       <!-- ============ 7 ============ -->
@@ -727,6 +795,11 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           <code>{ "op": "set" | "remove", "path": "...", "value": ... }</code>. File có thao tác
           patch sai định dạng bị từ chối như mọi file không hợp lệ khác.
         </li>
+        <li>
+          <code>removeResponseHeaders</code>, <code>"mode": "passthrough"</code> và response ngẫu
+          nhiên (<code>responses</code>, <code>weight</code>, <code>randomSeed</code>) cũng được
+          giữ. Biến không nằm trong file.
+        </li>
       </ul>
       <p>
         Giống Xuất, Nhập luôn làm việc trên domain đang mở trong panel, không bao giờ trên mọi
@@ -775,6 +848,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
       <ul>
         <li><code>x-network-overrides: true</code></li>
         <li><code>x-network-overrides-pattern: &lt;pattern&gt;</code></li>
+        <li>
+          <code>x-network-overrides-response: &lt;n&gt;</code>, chỉ với rule có response ngẫu nhiên:
+          response nào đã được trả
+        </li>
       </ul>
       <p>Nhờ đó bạn dễ nhận ra request bị ghi đè trong tab Network của DevTools.</p>
 
@@ -860,6 +937,39 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <strong>Tiếng Việt</strong>. Chữ đổi ngay, lựa chọn được lưu trong trình duyệt này, và hướng
         dẫn sử dụng mở theo cùng ngôn ngữ.
       </p>
+
+      <h3 id="variables">9.15. Biến</h3>
+      <p>
+        Biến giữ ở một chỗ một giá trị bạn dùng trong nhiều rule, như host hay token. Bấm
+        <strong>Biến</strong> trong tab <strong>Rules</strong> và thêm các cặp
+        <code>name: value</code>, cho <strong>Site này</strong> (site đang mở trong panel) hoặc
+        <strong>Mọi site</strong>. Giá trị của site thắng giá trị cùng tên dùng cho mọi site.
+      </p>
+      <ul>
+        <li>
+          Viết <code>{{name}}</code> trong URL pattern, URL chuyển hướng, giá trị header của
+          response hoặc request, response body (chế độ Text và response ngẫu nhiên) hoặc request
+          body gửi lên server. Rule script đọc chúng qua <code>request.vars.name</code>.
+        </li>
+        <li>
+          Tên bắt đầu bằng chữ cái hoặc <code>_</code>, sau đó là chữ, số, <code>_</code>,
+          <code>.</code> hoặc <code>-</code>. Tên của các placeholder có sẵn (<code>now</code>,
+          <code>timestamp</code>, <code>epoch</code>, <code>uuid</code>) không dùng được.
+        </li>
+        <li>
+          <code>{{name}}</code> mà không biến nào định nghĩa thì giữ nguyên, và giá trị được thay
+          vào một lần: <code>{{...}}</code> bên trong giá trị không được thay tiếp.
+          <code>\{{name}}</code> giữ nguyên <code>{{name}}</code> như đã viết.
+        </li>
+        <li>
+          Khi tắt điền placeholder <code>{{...}}</code>, body được gửi đúng như đã viết, kể cả biến;
+          pattern và header vẫn được thay.
+        </li>
+        <li>
+          Lưu biến là áp dụng ngay. Biến được lưu trong trình duyệt cùng với rule, không nằm trong
+          file rule xuất ra hay profile.
+        </li>
+      </ul>
 
       <!-- ============ 10 ============ -->
       <h2 id="notes">10. Lưu ý quan trọng</h2>

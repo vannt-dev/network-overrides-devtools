@@ -54,6 +54,27 @@ const server = http.createServer((req, res) => {
     );
     return;
   }
+  if (req.url.startsWith('/api/headers')) {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'max-age=3600',
+      ETag: '"v1"',
+      'X-Real': 'yes',
+    });
+    res.end('{"real":"headers"}');
+    return;
+  }
+  if (req.url.startsWith('/headers/csp.html')) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': "script-src 'self'",
+    });
+    res.end(
+      '<!doctype html><html><head><title>csp</title></head><body><p id="p">real page</p>' +
+        '<script>window.PAGE_INLINE = true;</script></body></html>'
+    );
+    return;
+  }
   if (req.url.startsWith('/api/notjson')) {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('plain text, not JSON');
@@ -703,6 +724,122 @@ return {
     removed.injected === 'csp removed' && removed.pageInline === true,
     JSON.stringify(removed)
   );
+
+  // ---- 3i. headers, variables and weighted random responses
+  // "No cache" keeps the real body and drops the caching headers; "No CSP"
+  // lets a page's inline script run while its HTML stays the server's.
+  async function addPresetRule(pattern, preset) {
+    await openNewRule(pattern, 'body');
+    await popup.click(`.preset-btn[data-preset="${preset}"]`);
+    await saveRule();
+  }
+  await addPresetRule('api/headers', 'no-cache');
+  const kept = await site.evaluate(
+    u =>
+      fetch(u).then(async r => ({
+        body: await r.text(),
+        cache: r.headers.get('cache-control'),
+        etag: r.headers.get('etag'),
+        real: r.headers.get('x-real'),
+      })),
+    `http://127.0.0.1:${PORT}/api/headers`
+  );
+  report(
+    '"No cache" keeps the real body and removes the caching headers',
+    kept.body === '{"real":"headers"}' &&
+      kept.cache === null &&
+      kept.etag === null &&
+      kept.real === 'yes',
+    JSON.stringify(kept)
+  );
+
+  await site.goto(`http://127.0.0.1:${PORT}/headers/csp.html`);
+  const blocked = await site.evaluate(() => window.PAGE_INLINE ?? null);
+  await addPresetRule('headers/csp.html', 'no-csp');
+  await site.goto(`http://127.0.0.1:${PORT}/headers/csp.html`);
+  const unblocked = await site.evaluate(() => ({
+    inline: window.PAGE_INLINE ?? null,
+    text: document.getElementById('p')?.textContent ?? null,
+  }));
+  report(
+    '"No CSP" removes the page CSP and keeps its real HTML',
+    blocked === null && unblocked.inline === true && unblocked.text === 'real page',
+    JSON.stringify({ blocked, ...unblocked })
+  );
+
+  // Variables: one for this site and one for every site, used in a pattern,
+  // a body and a header.
+  if (await popup.locator('#override-modal').isVisible()) {
+    await popup.click('#override-modal .modal-close');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+  }
+  await popup.click('button.tab-btn[data-tab="overrides"]');
+  await popup.click('#variables-btn');
+  await popup.waitForSelector('#variables-modal', { state: 'visible' });
+  await popup.click('#variables-site-table .headers-editor-mode button:last-child');
+  await popup.fill('#variables-site', 'res: vars');
+  await popup.click('#variables-global-table .headers-editor-mode button:last-child');
+  await popup.fill('#variables-global', 'env: qa\nres: global');
+  await popup.click('#variables-save');
+  await popup.waitForSelector('#variables-modal', { state: 'hidden' });
+  await popup.click('button.tab-btn[data-tab="other"]');
+  await openNewRule('api/{{res}}', 'body');
+  await popup.fill('#modal-body', '{"env":"{{env}}","raw":"\\{{env}}"}');
+  await openEditorGroup(popup, 'modal-group-response-headers');
+  await popup.click('#modal-response-headers-table .headers-editor-mode button:last-child');
+  await popup.fill('#modal-headers', 'X-Env: {{env}}');
+  await saveRule();
+  const withVars = await site.evaluate(
+    u => fetch(u).then(async r => ({ body: await r.text(), env: r.headers.get('x-env') })),
+    `http://127.0.0.1:${PORT}/api/vars`
+  );
+  report(
+    'variables fill a rule pattern, body and header; a site value wins over a global one',
+    withVars.body === '{"env":"qa","raw":"{{env}}"}' && withVars.env === 'qa',
+    JSON.stringify(withVars)
+  );
+
+  // Weighted responses with a seed answer in the order the seed gives.
+  await openNewRule('api/weighted', 'body');
+  await popup.fill('#modal-body', '{"ok":true}');
+  await popup.fill('#modal-status', '200');
+  await openEditorGroup(popup, 'modal-group-responses');
+  await popup.click('#modal-add-variant');
+  await popup.fill('#modal-variants .variant-weight', '1');
+  await popup.fill('#modal-variants .variant-status', '500');
+  await popup.fill('#modal-variants .variant-body', '{"error":true}');
+  await popup.fill('#modal-weight', '1');
+  await popup.fill('#modal-random-seed', '42');
+  await saveRule();
+  const expectedPicks = await popup.evaluate(() => {
+    const next = NetworkOverridesUtils.seededRandom(42);
+    return Array.from({ length: 12 }, () => NetworkOverridesUtils.pickWeighted([1, 1], next()));
+  });
+  const picks = [];
+  for (let i = 0; i < expectedPicks.length; i++) {
+    picks.push(
+      await site.evaluate(
+        u =>
+          fetch(u).then(async r => ({
+            status: r.status,
+            body: await r.text(),
+            response: r.headers.get('x-network-overrides-response'),
+          })),
+        `http://127.0.0.1:${PORT}/api/weighted`
+      )
+    );
+  }
+  const followsSeed = picks.every((pick, i) =>
+    expectedPicks[i] === 1
+      ? pick.status === 500 && pick.body === '{"error":true}' && pick.response === '2'
+      : pick.status === 200 && pick.body === '{"ok":true}' && pick.response === '1'
+  );
+  report(
+    'weighted responses with a seed answer in the seeded order, with both answers seen',
+    followsSeed && expectedPicks.includes(0) && expectedPicks.includes(1),
+    JSON.stringify({ expected: expectedPicks, statuses: picks.map(pick => pick.status) })
+  );
+  await popup.screenshot({ path: path.join(WORK_DIR, '3i-headers-vars-weighted.png') });
 
   // A rule of about 3 MB is saved here and checked again after the worker restart.
   const bigBody = `window.BIG = "yes"; /* ${'x'.repeat(3 * 1024 * 1024)} */`;

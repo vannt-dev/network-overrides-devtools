@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 /// <reference path="../shared.ts" />
 /// <reference path="../utils.ts" />
+/// <reference path="../tab-state.ts" />
 
 namespace NetworkOverridesBackground {
   type OverrideRule = NetworkOverridesShared.OverrideRule;
@@ -61,6 +62,7 @@ namespace NetworkOverridesBackground {
         responseStatus: params.responseStatusCode,
         responseHeaders: params.responseHeaders,
         responseBody,
+        variables: NetworkOverridesTabState.get(tabId)?.variables,
       });
       timer = setTimeout(() => {
         settle({

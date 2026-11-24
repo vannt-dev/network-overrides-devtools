@@ -627,6 +627,7 @@ namespace NetworkOverridesUtils {
     params: string[];
     body: string | null;
     response: { status: number | null; headers: Record<string, string>; body: string | null };
+    vars: Record<string, string>; // the {{name}} variables, site values over global ones
   }
 
   function headersToRecord(headers: unknown): Record<string, string> {
@@ -654,6 +655,7 @@ namespace NetworkOverridesUtils {
     responseStatus?: number;
     responseHeaders?: unknown;
     responseBody?: string | null;
+    variables?: Record<string, string>;
   }): ScriptRequest {
     const query: Record<string, string> = {};
     try {
@@ -673,6 +675,7 @@ namespace NetworkOverridesUtils {
         headers: headersToRecord(source.responseHeaders),
         body: typeof source.responseBody === 'string' ? source.responseBody : null,
       },
+      vars: { ...(source.variables || {}) },
     };
   }
 

@@ -949,5 +949,161 @@
   },
   "ws_substitute": {
     "message": "Substitute match"
+  },
+  "preset_no_csp": {
+    "message": "No CSP"
+  },
+  "preset_no_csp_title": {
+    "message": "Keep the real response and remove its Content-Security-Policy headers"
+  },
+  "preset_no_cache": {
+    "message": "No cache"
+  },
+  "preset_no_cache_title": {
+    "message": "Keep the real response and remove its caching headers"
+  },
+  "mode_passthrough": {
+    "message": "Keep the real response (headers only)"
+  },
+  "field_passthrough_help": {
+    "message": "The real response body is kept as the server sent it; only its status and headers change."
+  },
+  "field_remove_headers": {
+    "message": "Headers to remove from the response"
+  },
+  "field_remove_headers_hint": {
+    "message": "One name per line. A name ending in <code>*</code> removes every header that starts with it."
+  },
+  "error_remove_header": {
+    "message": "“$1” is not a header name. Write one name per line, such as Cache-Control."
+  },
+  "summary_real_response": {
+    "message": "real response"
+  },
+  "summary_removed_headers_one": {
+    "message": "−$1"
+  },
+  "summary_removed_headers_other": {
+    "message": "−$1 response headers"
+  },
+  "summary_random": {
+    "message": "random: $1 responses"
+  },
+  "toast_headers_rule_skipped": {
+    "message": "Rule \"$1\": $2"
+  },
+  "group_responses": {
+    "message": "Random responses"
+  },
+  "responses_help": {
+    "message": "Each request gets one of the responses, picked by weight: weights 80 and 20 give the first one 8 times in 10."
+  },
+  "field_weight": {
+    "message": "Weight of the response above"
+  },
+  "field_weight_hint": {
+    "message": "Blank is 1. A weight of 0 is never picked."
+  },
+  "field_random_seed": {
+    "message": "Seed (repeatable order)"
+  },
+  "field_random_seed_placeholder": {
+    "message": "e.g. 42"
+  },
+  "field_random_seed_hint": {
+    "message": "Blank picks at random. With a seed the picks follow the same order every time the rules are applied, which suits automated tests."
+  },
+  "variant_add": {
+    "message": "+ Add a response"
+  },
+  "variant_weight": {
+    "message": "Weight"
+  },
+  "variant_status": {
+    "message": "Status"
+  },
+  "variant_status_placeholder": {
+    "message": "same as above"
+  },
+  "variant_body": {
+    "message": "Body"
+  },
+  "variant_body_placeholder": {
+    "message": "{\"error\":\"Internal Server Error\"}"
+  },
+  "variant_headers": {
+    "message": "Headers (Name: value)"
+  },
+  "variant_delete": {
+    "message": "Remove this response"
+  },
+  "error_variant_weight": {
+    "message": "A weight must be a whole number from 0 to $1."
+  },
+  "error_variant_weights_zero": {
+    "message": "At least one response needs a weight above 0."
+  },
+  "error_random_seed": {
+    "message": "The seed must be a whole number from 0 to 4294967295."
+  },
+  "variables_btn": {
+    "message": "Variables"
+  },
+  "variables_btn_title": {
+    "message": "Values you can write as {{name}} in rules"
+  },
+  "variables_title": {
+    "message": "Variables"
+  },
+  "variables_close": {
+    "message": "Close variables"
+  },
+  "variables_help": {
+    "message": "Write <code>{{name}}</code> in a URL pattern, a redirect URL, a header value or a body, and the rule uses the value. A value for this site wins over one for every site. <code>\\{{name}}</code> keeps the text as written."
+  },
+  "variables_site": {
+    "message": "This site"
+  },
+  "variables_site_label": {
+    "message": "Variables of this site"
+  },
+  "variables_global": {
+    "message": "Every site"
+  },
+  "variables_global_label": {
+    "message": "Variables of every site"
+  },
+  "variables_name": {
+    "message": "Variable name"
+  },
+  "variables_value": {
+    "message": "Value"
+  },
+  "variables_add": {
+    "message": "+ Add a variable"
+  },
+  "variables_delete": {
+    "message": "Delete variable"
+  },
+  "variables_save": {
+    "message": "Save variables"
+  },
+  "toast_variables_saved": {
+    "message": "Variables saved"
+  },
+  "toast_variables_save_failed": {
+    "message": "Could not save the variables: $1"
+  },
+  "error_variable_line": {
+    "message": "“$1” needs a name and a value: name: value"
+  },
+  "error_variable_name": {
+    "message": "“$1” is not a variable name: start with a letter or _, then letters, digits, _, . or -."
+  },
+  "error_variable_reserved": {
+    "message": "“$1” is a built-in placeholder; pick another name."
+  },
+  "error_variable_twice": {
+    "message": "“$1” is listed twice in the same list."
   }
 }

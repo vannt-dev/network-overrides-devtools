@@ -89,6 +89,8 @@ Click **Mock this** on an API (or the API row) to open the modal. It shows the e
   - **Server error**: status 500 and `{"error":"Internal Server Error"}`.
   - **Slow (3 s)**: a 3000 ms delay; the body stays as it is.
   - **Offline**: a network error (`InternetDisconnected`).
+  - **No CSP**: keep the real response and remove its `Content-Security-Policy` headers (see [6.11](#611-keep-the-real-response-remove-headers)).
+  - **No cache**: keep the real response and remove its caching headers (`Cache-Control`, `Expires`, `ETag`, `Last-Modified`, `Pragma`, `Age`).
 - **URL pattern**: URL pattern for matching. You can edit it, also after **Mock this**: change `/api/users/42` to `/api/users/*` so one rule matches more URLs.
 - **Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method. Pre-filled from the captured request's method when opening the modal from a captured API.
 - **Mock response / Redirect / Network error / WebSocket**: Choose the rule type.
@@ -102,8 +104,9 @@ Everything else is in the collapsed **Advanced** section, in groups:
 
 - **Conditions**: **GraphQL operation** (see [5.7](#57-graphql-operation)), query parameters, request headers and a text the request body must contain (see [5.8](#58-query-header-and-body-conditions)), and **Apply on every site (global rule)** (see [9.6](#96-global-rules)).
 - **Timing & failure**: **Delay (ms)**, **Simulate a network error** (for the Network error type: the error the page sees), and **Answer without calling the server** (mock response; see [6.6](#66-answer-without-calling-the-server)).
-- **Response headers**: headers to add to the response.
-- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)` or `Patch the real JSON response` (see [6.7](#67-patch-the-real-json-response)), and **Fill in {{...}} placeholders**.
+- **Response headers**: headers to add to the response, and **Headers to remove from the response** (see [6.11](#611-keep-the-real-response-remove-headers)).
+- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)`, `Patch the real JSON response` (see [6.7](#67-patch-the-real-json-response)) or `Keep the real response (headers only)` (see [6.11](#611-keep-the-real-response-remove-headers)), and **Fill in {{...}} placeholders**.
+- **Random responses**: more answers for the rule, each with a weight, and a seed for a repeatable order (see [6.12](#612-random-responses-by-weight)).
 - **Change the request**: replace the request body sent to the server, and add or replace request headers.
 
 A group that holds a value shows a count on its header, and opens by itself when you edit the rule, so no setting is hidden. Choosing **Network error** opens **Timing & failure** to show the error to simulate.
@@ -318,7 +321,7 @@ const data = JSON.parse(request.response.body);
 return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 ```
 
-- `request` holds `url`, `method`, `headers` (names in lower case), `query` (the first value of each parameter), `params` (what each `*` of the pattern matched), `body` (the request payload, or `null`) and `response`: the original `status`, `headers` and `body`.
+- `request` holds `url`, `method`, `headers` (names in lower case), `query` (the first value of each parameter), `params` (what each `*` of the pattern matched), `body` (the request payload, or `null`), `response`: the original `status`, `headers` and `body`, and `vars`: your variables (see [9.14](#914-variables)).
 - Return a string for the body, `{ status, headers, body }` (any of them; `body` is sent as JSON when it is not a string), or any other value to send it as JSON. A status or header the script returns wins over the rule's own; the delay still applies. Templates such as `{{now}}` are not processed in a script.
 - The script runs in the inspected page, so it can use `fetch`, `localStorage` and the page's own globals. It has 5 seconds. A script that throws, returns nothing, returns a status outside 100–599 or runs out of time is answered with status `500`, the error as its text and the header `x-network-overrides-error: script`.
 - Rules imported from a file may contain scripts, which run in the pages they match: import only files you trust.
@@ -342,6 +345,28 @@ Choose the type **Inject JS/CSS** to add your own script and stylesheet to the p
 - A page with a Content-Security-Policy keeps it: the SHA-256 hash of the injected script and stylesheet is added to the policy, so exactly that code runs, while the page's own inline code and the rest of the policy stay as they were. A CSP `sandbox` without `allow-scripts` still stops the script, and the panel warns you.
 - If your code loads other scripts, uses `eval` or inline event handlers, the policy may still block that part. As a last resort tick **Remove the page's Content-Security-Policy**: the matched pages then load without their CSP while the rule is on, which lowers their protection.
 - Reload the page after adding or changing the rule.
+
+### 6.11. Keep the real response, remove headers
+
+A rule can drop headers from a response, for example a `Content-Security-Policy` that stops your debugging, or the caching headers that keep an old file around.
+
+- Pick **Keep the real response (headers only)** in **Advanced → Body type** to leave the server's body as it is. The request goes to the server; only the status (when you set one) and the headers change. The **No CSP** and **No cache** presets set this up in one click.
+- List the headers under **Advanced → Response headers → Headers to remove from the response**, one per line (or separated by commas). Case does not matter. A name ending in `*` removes every header that starts with it: `x-debug-*`.
+- Removal works with every mock response too: the server's headers that would be kept are removed, then the rule's own **Response headers** are added. So you can remove `Cache-Control` and add `Cache-Control: no-store`.
+- The extension's marker headers (see [9.12](#912-marker-headers)) are never removed.
+- A response whose body cannot be read, such as a redirect, passes through unchanged and the panel warns you. **Answer without calling the server** is not offered, since the rule needs the real response.
+
+### 6.12. Random responses by weight
+
+A **Mock response** rule (Text or Raw base64 body) can answer with one of several responses, to see how a page copes with a flaky API.
+
+1. Write the usual body and status: this is the first response.
+2. Open **Advanced → Random responses**, click **+ Add a response** and fill its **Weight**, **Status** (blank keeps the rule's status), **Body** and **Headers** (`Name: value`, added over the rule's headers).
+3. Set **Weight of the response above** for the first response (blank is 1).
+
+Each request gets one response, picked by weight: weights `80` and `20` give the first one about 8 times in 10. A weight of `0` is never picked. Templates and variables work in every body. The answer carries the header `x-network-overrides-response`, the number of the response it gave (`1` is the rule's own).
+
+**Seed (repeatable order)**: blank picks at random. With a number, the picks follow the same order every time, which suits automated tests: the order starts again when you save the rules or the extension restarts.
 
 ---
 
@@ -439,6 +464,7 @@ Click **Import → Rules file (.json)** in the **Rules** tab and pick a previous
 - Only known rule fields (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) are kept from each imported rule; any other properties in the file are dropped.
 - The match conditions `matchQuery`, `matchHeaders` and `matchBody` (see [5.8](#58-query-header-and-body-conditions)) are kept too. Files exported before they existed import unchanged.
 - A patch rule (`"mode": "patch"`, see [6.7](#67-patch-the-real-json-response)) keeps its `patch` list of `{ "op": "set" | "remove", "path": "...", "value": ... }` operations. A file whose patch operations are malformed is rejected like any other invalid file.
+- `removeResponseHeaders` (header names), `"mode": "passthrough"`, and the random responses `responses` (`{ "weight", "statusCode", "body", "responseHeaders" }`), `weight` and `randomSeed` are kept too. Variables are not part of the file: set them again in **Variables** (see [9.14](#914-variables)).
 
 Like Export, Import always operates on the domain currently active in the panel — never all domains at once.
 
@@ -550,12 +576,24 @@ When a request is overridden, the extension adds these response headers:
 
 - `x-network-overrides: true`
 - `x-network-overrides-pattern: <pattern>`
+- `x-network-overrides-response: <n>`, only for a rule with random responses: which response it gave (`1` is the rule's own)
 
 This lets you easily identify overridden requests in the DevTools Network tab.
 
 ### 9.13. Interface language
 
 The interface is in English and Vietnamese. By default it follows the browser's language. The language menu beside the **Enable Overrides** switch changes to **English** or **Tiếng Việt**; **Auto** goes back to the browser's language. The choice is saved locally, and both languages ship inside the extension, so switching needs no network.
+
+### 9.14. Variables
+
+Variables keep a value you use in many rules, such as a host or a token, in one place. Click **Variables** in the **Rules** tab and add `name: value` pairs:
+
+- **This site**: only for the site open in the panel. **Every site**: for all sites. A site value wins over one of the same name for every site.
+- Write `{{name}}` in a URL pattern, a redirect URL, a response or request header value, a response body (Text mode and random responses) or the request body sent to the server. Script rules read them as `request.vars.name`.
+- A name starts with a letter or `_`, then letters, digits, `_`, `.` or `-`. The names of the built-in placeholders (`now`, `timestamp`, `epoch`, `uuid`) are taken.
+- A `{{name}}` no variable defines is left as written. A value is put in once: `{{...}}` inside a value is not filled again.
+- `\{{name}}` keeps `{{name}}` as written. With **Fill in {{...}} placeholders** off, the body is sent exactly as written, variables included; patterns and headers are still filled.
+- Saving the variables applies them at once. They are stored in the browser with the rules, not in exported rule files or profiles.
 
 ---
 

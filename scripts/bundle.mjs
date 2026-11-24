@@ -7,6 +7,7 @@ const distDir = path.join(repoRoot, 'dist');
 const backgroundFiles = [
   'utils.js',
   'static-files.js',
+  'rule-values.js',
   'shared.js',
   'tab-state.js',
   'background/encoding.js',
@@ -22,6 +23,7 @@ const backgroundFiles = [
 const uiFiles = [
   'utils.js',
   'static-files.js',
+  'rule-values.js',
   'shared.js',
   'ui/i18n.js',
   'ui/types.js',
@@ -38,6 +40,8 @@ const uiFiles = [
   'ui/modal.js',
   'ui/websocket-rule.js',
   'ui/static-rule.js',
+  'ui/response-variants.js',
+  'ui/variables.js',
   'ui/rule-summary.js',
   'ui/rules-list.js',
   'ui/api-list.js',

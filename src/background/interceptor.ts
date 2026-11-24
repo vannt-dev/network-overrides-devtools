@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 /// <reference path="../shared.ts" />
 /// <reference path="../utils.ts" />
+/// <reference path="../rule-values.ts" />
 /// <reference path="../tab-state.ts" />
 /// <reference path="./response-script.ts" />
 
@@ -10,6 +11,35 @@ namespace NetworkOverridesBackground {
 
   type OverrideRule = NetworkOverridesShared.OverrideRule;
   type FetchHeader = NetworkOverridesShared.FetchHeader;
+  type Variables = NetworkOverridesUtils.Variables;
+  const Values = NetworkOverridesUtils;
+
+  /** A rule that edits the real response, so it waits for it and never answers early. */
+  function needsRealResponse(rule: OverrideRule): boolean {
+    return rule.mode === 'patch' || rule.mode === 'passthrough';
+  }
+
+  /** The {{name}} values of a tab's rules. */
+  function variablesOf(tabId: number): Variables {
+    return TabState.get(tabId)?.variables || {};
+  }
+
+  /**
+   * Which answer a rule with several responses gives now: 0 is the rule's own.
+   * With a seed, the pick is the seed's number at the rule's hit count, so
+   * the order goes on when the panel sends the same rules again or the
+   * worker restarts, and starts over when the rule is edited or the counts
+   * are reset.
+   */
+  function chooseResponse(tabId: number, rule: OverrideRule, hitKey: string | undefined): number {
+    if (!Values.hasResponseVariants(rule)) return 0;
+    let random = Math.random();
+    if (typeof rule.randomSeed === 'number' && Number.isInteger(rule.randomSeed)) {
+      const hits = hitKey === undefined ? 0 : TabState.get(tabId)?.ruleHits.get(hitKey)?.count;
+      random = Values.seededNumber(rule.randomSeed, hits || 0);
+    }
+    return Values.pickWeighted(Values.responseWeights(rule), random);
+  }
 
   /**
    * The request body as text: `postData`, failing that the bytes of
@@ -36,7 +66,8 @@ namespace NetworkOverridesBackground {
     request: any,
     overrides: OverrideRule[],
     postData?: string,
-    resourceType?: string
+    resourceType?: string,
+    variables: Variables = {}
   ): { override: OverrideRule; captures: string[] } | null {
     const url = request?.url || '';
     const method = request?.method;
@@ -53,7 +84,7 @@ namespace NetworkOverridesBackground {
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;
       if (!NetworkOverridesUtils.matchesRequestConditions(test, conditionRequest)) continue;
-      const captures = matchPattern(test.pattern, url);
+      const captures = matchPattern(Values.rulePattern(test, variables), url);
       if (captures !== null) {
         return { override: test, captures };
       }
@@ -86,13 +117,14 @@ namespace NetworkOverridesBackground {
   function findPreflightTarget(
     url: string,
     method: string,
-    overrides: OverrideRule[]
+    overrides: OverrideRule[],
+    variables: Variables
   ): OverrideRule | null {
     for (const rule of overrides) {
       if (rule.kind === 'websocket' || rule.kind === 'inject' || rule.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(rule.method, method)) continue;
       if (!NetworkOverridesUtils.matchesQuery(rule.matchQuery, url)) continue;
-      if (matchPattern(rule.pattern, url) !== null) return rule;
+      if (matchPattern(Values.rulePattern(rule, variables), url) !== null) return rule;
     }
     return null;
   }
@@ -144,7 +176,7 @@ namespace NetworkOverridesBackground {
     pattern: string,
     url: string,
     reason: string,
-    type: 'patchRuleSkipped' | 'injectRuleNotice',
+    type: 'patchRuleSkipped' | 'injectRuleNotice' | 'headersRuleSkipped',
     code?: 'csp' | 'charset'
   ): void {
     console.warn('[NetworkOverrides] Rule', pattern, 'on', url, '—', reason);
@@ -178,6 +210,30 @@ namespace NetworkOverridesBackground {
           return;
         }
         done(NetworkOverridesNormalizeBodyLocal(response.body, response.base64Encoded ?? false));
+      }
+    );
+  }
+
+  /** The real response body as base64, as Chrome has it, or null when there is none to give. */
+  function readResponseBase64(
+    tabId: number,
+    requestId: string,
+    done: (base64: string | null) => void
+  ): void {
+    chrome.debugger.sendCommand(
+      { tabId },
+      'Fetch.getResponseBody',
+      { requestId },
+      (response: { body?: string; base64Encoded?: boolean } | undefined) => {
+        if (chrome.runtime.lastError || !response || typeof response.body !== 'string') {
+          done(null);
+          return;
+        }
+        done(
+          response.base64Encoded
+            ? response.body
+            : NetworkOverridesStringToBase64Local(response.body)
+        );
       }
     );
   }
@@ -221,12 +277,23 @@ namespace NetworkOverridesBackground {
     // Looked up now: the rules may be replaced while a delay, a patch or a
     // script holds the answer back.
     const hitKey = TabState.ruleHitKey(tabId, ov);
+    const variables = variablesOf(tabId);
+    const templates = ov.processTemplates !== false;
+    // A rule with several responses gives one of them, picked by weight.
+    const choice = chooseResponse(tabId, ov, hitKey);
+    const variant = choice > 0 ? ov.responses?.[choice - 1] || null : null;
 
     function bodyToValidBase64(): string {
+      if (variant) {
+        const text = typeof variant.body === 'string' ? variant.body : '';
+        return NetworkOverridesStringToBase64Local(
+          Values.fillBodyText(text, variables, templates, captures, url)
+        );
+      }
       const rawBody = ov.body || '';
       const processedBody =
-        ov.mode !== 'file' && ov.processTemplates !== false
-          ? NetworkOverridesUtils.processResponseTemplate(rawBody, captures, url)
+        ov.mode !== 'file'
+          ? Values.fillBodyText(rawBody, variables, templates, captures, url)
           : rawBody;
       if (ov.mode !== 'file') return NetworkOverridesStringToBase64Local(processedBody);
       try {
@@ -261,9 +328,14 @@ namespace NetworkOverridesBackground {
         'trailer',
         'x-network-overrides',
         'x-network-overrides-pattern',
+        'x-network-overrides-response',
       ]);
-      const headers = ((params.responseHeaders as FetchHeader[]) || []).filter(
-        header => !bodyDependentHeaders.has(header.name.toLowerCase().trim())
+      // Headers the rule removes go first, so the rule can still set its own value.
+      const headers = Values.withoutHeaders(
+        ((params.responseHeaders as FetchHeader[]) || []).filter(
+          header => !bodyDependentHeaders.has(header.name.toLowerCase().trim())
+        ),
+        ov.removeResponseHeaders
       );
       const mergeHeaders = (extras: FetchHeader[] | undefined) => {
         if (!Array.isArray(extras)) return;
@@ -273,7 +345,8 @@ namespace NetworkOverridesBackground {
           const trimmedLowerName = extra.name.toLowerCase().trim();
           if (
             trimmedLowerName === 'x-network-overrides' ||
-            trimmedLowerName === 'x-network-overrides-pattern'
+            trimmedLowerName === 'x-network-overrides-pattern' ||
+            trimmedLowerName === 'x-network-overrides-response'
           ) {
             continue;
           }
@@ -290,7 +363,9 @@ namespace NetworkOverridesBackground {
           }
         }
       };
-      mergeHeaders(ov.responseHeaders);
+      mergeHeaders(Values.fillHeaderValues(ov.responseHeaders, variables));
+      // The picked response's own headers are more specific than the rule's.
+      if (variant) mergeHeaders(Values.fillHeaderValues(variant.responseHeaders, variables));
       // What a script returns is the most specific word on the response, so
       // it is applied over the rule's own headers and status.
       mergeHeaders(scripted?.headers);
@@ -317,6 +392,10 @@ namespace NetworkOverridesBackground {
       // The markers always win and cannot be removed by rule headers.
       headers.push({ name: 'x-network-overrides', value: 'true' });
       headers.push({ name: 'x-network-overrides-pattern', value: ov.pattern });
+      // Which answer a rule with several responses gave: 1 is the rule's own.
+      if (Values.hasResponseVariants(ov)) {
+        headers.push({ name: 'x-network-overrides-response', value: String(choice + 1) });
+      }
 
       // A file loaded from disk replaces the server's file, whatever the
       // server answered (a 404 would stop the browser from using it).
@@ -327,9 +406,11 @@ namespace NetworkOverridesBackground {
             params.responseStatusCode <= 599
           ? params.responseStatusCode
           : 200;
+      const wantedCode =
+        variant && typeof variant.statusCode === 'number' ? variant.statusCode : ov.statusCode;
       const ruleCode =
-        typeof ov.statusCode === 'number' && ov.statusCode >= 100 && ov.statusCode <= 599
-          ? ov.statusCode
+        typeof wantedCode === 'number' && wantedCode >= 100 && wantedCode <= 599
+          ? wantedCode
           : fallbackCode;
       const responseCode =
         typeof scripted?.statusCode === 'number' ? scripted.statusCode : ruleCode;
@@ -362,6 +443,30 @@ namespace NetworkOverridesBackground {
       }
     };
 
+    // A pass-through rule keeps the real body and changes only the status
+    // and headers, so it waits for the body to hand it back as it came.
+    if (ov.mode === 'passthrough') {
+      readResponseBase64(tabId, params.requestId, body => {
+        try {
+          if (body === null) {
+            notifyRule(
+              tabId,
+              ov.pattern,
+              url,
+              'the real response body could not be read, so the response was passed through unchanged',
+              'headersRuleSkipped'
+            );
+            proceed();
+            return;
+          }
+          fulfill(body);
+        } catch (error) {
+          console.error(error);
+          proceed();
+        }
+      });
+      return;
+    }
     // A patch rule edits the real response, so it waits for its body.
     if (ov.mode === 'patch') {
       readResponseText(tabId, params.requestId, text => {
@@ -432,6 +537,7 @@ namespace NetworkOverridesBackground {
     'trailer',
     'x-network-overrides',
     'x-network-overrides-pattern',
+    'x-network-overrides-response',
   ]);
 
   /** The real response body decoded as UTF-8, or null when it is missing or not UTF-8. */
@@ -631,16 +737,22 @@ namespace NetworkOverridesBackground {
 
       try {
         const postData = params.request?.postData || state.recentApis.get(url)?.postData;
-        const match = findOverride(params.request, state.overrides, postData);
+        const match = findOverride(
+          params.request,
+          state.overrides,
+          postData,
+          undefined,
+          state.variables
+        );
         // The preflight of a request that will be answered without the server
         // is answered too, unless a rule is written for OPTIONS itself.
         const askedMethod = preflightMethod(params.request);
         const optionsRule = match?.override.method?.toUpperCase() === 'OPTIONS';
         if (askedMethod && !optionsRule) {
-          const target = findPreflightTarget(url, askedMethod, state.overrides);
+          const target = findPreflightTarget(url, askedMethod, state.overrides, state.variables);
           if (
             target?.respondAtRequest &&
-            target.mode !== 'patch' &&
+            !needsRealResponse(target) &&
             !target.failReason &&
             !target.redirectUrl
           ) {
@@ -673,7 +785,10 @@ namespace NetworkOverridesBackground {
           return;
         }
         if (match && match.override.redirectUrl) {
-          const newUrl = substituteWildcards(match.override.redirectUrl, match.captures);
+          const newUrl = substituteWildcards(
+            Values.fillVariables(match.override.redirectUrl, state.variables),
+            match.captures
+          );
           if (newUrl.includes('*')) {
             console.error('[NetworkOverrides] Unsubstituted * in redirect URL:', newUrl);
             proceed();
@@ -695,12 +810,12 @@ namespace NetworkOverridesBackground {
           return;
         }
         // A body rule set to answer without calling the server is answered
-        // now, so the request never leaves the browser. A patch rule needs
-        // the real response, so it never answers here.
+        // now, so the request never leaves the browser. A patch or
+        // pass-through rule needs the real response, so it never answers here.
         if (
           match &&
           match.override.respondAtRequest &&
-          match.override.mode !== 'patch' &&
+          !needsRealResponse(match.override) &&
           (!askedMethod || optionsRule)
         ) {
           answerWithBody(tabId, params, match, proceed, true);
@@ -725,7 +840,10 @@ namespace NetworkOverridesBackground {
             }
             for (const h of match.override.requestHeaders) {
               if (h.name && h.name.trim()) {
-                reqHeaderMap.set(h.name.trim().toLowerCase(), h.value);
+                reqHeaderMap.set(
+                  h.name.trim().toLowerCase(),
+                  Values.fillVariables(h.value, state.variables)
+                );
               }
             }
             continueParams.headers = Array.from(reqHeaderMap.entries()).map(([name, value]) => ({
@@ -735,7 +853,7 @@ namespace NetworkOverridesBackground {
           }
           if (hasReqBody && match.override.requestBody) {
             continueParams.postData = NetworkOverridesStringToBase64Local(
-              match.override.requestBody
+              Values.fillVariables(match.override.requestBody, state.variables)
             );
           }
           const doContinueReq = () => {
@@ -776,7 +894,13 @@ namespace NetworkOverridesBackground {
       });
 
       const postData = params.request?.postData || state.recentApis.get(url)?.postData;
-      const match = findOverride(params.request, state.overrides, postData, params.resourceType);
+      const match = findOverride(
+        params.request,
+        state.overrides,
+        postData,
+        params.resourceType,
+        state.variables
+      );
       if (!match) {
         const resourceType = (params.resourceType || '').toLowerCase();
         if (shouldCaptureBody(resourceType)) {

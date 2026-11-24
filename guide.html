@@ -121,8 +121,10 @@
           <strong>Presets</strong>: one click fills the fields below.
           <strong>Empty list</strong> (status 200 and <code>[]</code>, or the JSON object with its
           lists emptied), <strong>Server error</strong> (status 500), <strong>Slow (3 s)</strong> (a
-          3000 ms delay) and <strong>Offline</strong> (a network error,
-          <code>InternetDisconnected</code>).
+          3000 ms delay), <strong>Offline</strong> (a network error,
+          <code>InternetDisconnected</code>), and <strong>No CSP</strong> and
+          <strong>No cache</strong>, which keep the real response and remove its
+          Content-Security-Policy or caching headers (see <a href="#real-response">6.10</a>).
         </li>
         <li>
           <strong>URL pattern</strong>: URL pattern for matching. It starts as the URL of the
@@ -168,13 +170,21 @@
         </li>
         <li>
           <strong>Response headers</strong>: headers to add (one <code>Header-Name: value</code> per
-          line; same names overwrite the original).
+          line; same names overwrite the original), and
+          <strong>Headers to remove from the response</strong> (see
+          <a href="#real-response">6.10</a>).
         </li>
         <li>
           <strong>Body type: patch &amp; script</strong>: the response body is Text, Raw base64,
-          Script (JavaScript) or <strong>Patch the real JSON response</strong> (see
-          <a href="#patch-response">6.6</a>), and whether <code>{{...}}</code> placeholders are
+          Script (JavaScript), <strong>Patch the real JSON response</strong> (see
+          <a href="#patch-response">6.6</a>) or
+          <strong>Keep the real response (headers only)</strong> (see
+          <a href="#real-response">6.10</a>), and whether <code>{{...}}</code> placeholders are
           filled in.
+        </li>
+        <li>
+          <strong>Random responses</strong>: more answers for the rule, each with a weight, and a
+          seed for a repeatable order (see <a href="#random-responses">6.11</a>).
         </li>
         <li>
           <strong>Change the request</strong>: replace the request body sent to the server, and add
@@ -470,8 +480,9 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <li>
           <code>request</code> holds <code>url</code>, <code>method</code>,
           <code>headers</code> (lower-case names), <code>query</code>, <code>params</code> (what
-          each <code>*</code> matched), <code>body</code> and <code>response</code> (the original
-          <code>status</code>, <code>headers</code> and <code>body</code>).
+          each <code>*</code> matched), <code>body</code>, <code>response</code> (the original
+          <code>status</code>, <code>headers</code> and <code>body</code>) and
+          <code>vars</code> (your variables, see <a href="#variables">9.15</a>).
         </li>
         <li>
           Return a string for the body, <code>{ status, headers, body }</code>, or any other value
@@ -552,6 +563,65 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           protection.
         </li>
         <li>Reload the page after adding or changing the rule.</li>
+      </ul>
+
+      <h3 id="real-response">6.10. Keep the real response, remove headers</h3>
+      <p>
+        A rule can drop headers from a response, for example a Content-Security-Policy that stops
+        your debugging, or the caching headers that keep an old file around.
+      </p>
+      <ul>
+        <li>
+          Pick <strong>Keep the real response (headers only)</strong> under
+          <strong>Advanced → Body type</strong> to leave the server's body as it is. The request
+          goes to the server; only the status (when you set one) and the headers change. The
+          <strong>No CSP</strong> and <strong>No cache</strong> presets set this up in one click.
+        </li>
+        <li>
+          List the headers under
+          <strong>Advanced → Response headers → Headers to remove from the response</strong>, one
+          per line or separated by commas. Case does not matter. A name ending in
+          <code>*</code> removes every header that starts with it: <code>x-debug-*</code>.
+        </li>
+        <li>
+          Removal works with every mock response too: the server's headers are removed first, then
+          the rule's own response headers are added. So you can remove
+          <code>Cache-Control</code> and add <code>Cache-Control: no-store</code>.
+        </li>
+        <li>The extension's marker headers are never removed.</li>
+        <li>
+          A response whose body cannot be read, such as a redirect, passes through unchanged and the
+          panel warns you. <strong>Answer without calling the server</strong> is not offered, since
+          the rule needs the real response.
+        </li>
+      </ul>
+
+      <h3 id="random-responses">6.11. Random responses by weight</h3>
+      <p>
+        A Mock response rule (Text or Raw base64 body) can answer with one of several responses, to
+        see how a page copes with a flaky API. Write the usual body and status: this is the first
+        response. Then open <strong>Advanced → Random responses</strong>, click
+        <strong>+ Add a response</strong> and fill its weight, status (blank keeps the rule's), body
+        and headers (<code>Name: value</code>, added over the rule's headers).
+        <strong>Weight of the response above</strong> is the weight of the first response (blank is
+        1).
+      </p>
+      <ul>
+        <li>
+          Each request gets one response, picked by weight: weights <code>80</code> and
+          <code>20</code> give the first one about 8 times in 10. A weight of <code>0</code> is
+          never picked. Templates and variables work in every body.
+        </li>
+        <li>
+          The answer carries the header <code>x-network-overrides-response</code>: the number of the
+          response it gave (<code>1</code> is the rule's own).
+        </li>
+        <li>
+          <strong>Seed (repeatable order)</strong>: blank picks at random. With a number the picks
+          follow the same order every time, which suits automated tests. The order follows how many
+          times the rule was applied, so it goes on across a worker restart;
+          <strong>Reset counts</strong>, or an edit of the rule, starts it over.
+        </li>
       </ul>
 
       <!-- ============ 7 ============ -->
@@ -754,6 +824,11 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           <code>{ "op": "set" | "remove", "path": "...", "value": ... }</code> operations. A file
           whose patch operations are malformed is rejected like any other invalid file.
         </li>
+        <li>
+          <code>removeResponseHeaders</code>, <code>"mode": "passthrough"</code> and the random
+          responses (<code>responses</code>, <code>weight</code>, <code>randomSeed</code>) are kept
+          too. Variables are not part of the file.
+        </li>
       </ul>
       <p>
         Like Export, Import always operates on the domain currently active in the panel — never all
@@ -808,6 +883,10 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
       <ul>
         <li><code>x-network-overrides: true</code></li>
         <li><code>x-network-overrides-pattern: &lt;pattern&gt;</code></li>
+        <li>
+          <code>x-network-overrides-response: &lt;n&gt;</code>, only for a rule with random
+          responses: which response it gave
+        </li>
       </ul>
       <p>This lets you easily identify overridden requests in the DevTools Network tab.</p>
 
@@ -894,6 +973,45 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <strong>Tiếng Việt</strong>. The text changes at once, the choice is saved in this browser,
         and the user guide opens in the same language.
       </p>
+
+      <h3 id="variables">9.15. Variables</h3>
+      <p>
+        Variables keep a value you use in many rules, such as a host or a token, in one place. Click
+        <strong>Variables</strong> in the <strong>Rules</strong> tab and add
+        <code>name: value</code> pairs, for <strong>This site</strong> (the site open in the panel)
+        or <strong>Every site</strong>. A site value wins over one of the same name for every site.
+      </p>
+      <ul>
+        <li>
+          Write <code>{{name}}</code> in a URL pattern, a redirect URL, a response or request header
+          value, a response body (Text mode and random responses) or the request body sent to the
+          server. Script rules read them as <code>request.vars.name</code>.
+        </li>
+        <li>
+          A name starts with a letter or <code>_</code>, then letters, digits, <code>_</code>,
+          <code>.</code> or <code>-</code>. The names of the built-in placeholders
+          (<code>now</code>, <code>timestamp</code>, <code>epoch</code>, <code>uuid</code>) are
+          taken.
+        </li>
+        <li>
+          A <code>{{name}}</code> no variable defines is left as written, and a value is put in
+          once: a <code>{{name}}</code> inside a value is not filled again (in a body, a built-in
+          placeholder inside a value, such as <code>{{$uuid}}</code>, still is).
+          <code>\{{name}}</code> keeps <code>{{name}}</code> as written.
+        </li>
+        <li>
+          Variables are not filled in WebSocket rules, request conditions, patch values or injected
+          JS/CSS.
+        </li>
+        <li>
+          With <strong>Fill in {{...}} placeholders</strong> off, a body is sent exactly as written,
+          variables included; patterns and headers are still filled.
+        </li>
+        <li>
+          Saving applies the variables at once. They are stored in the browser with the rules, not
+          in exported rule files or profiles.
+        </li>
+      </ul>
 
       <!-- ============ 10 ============ -->
       <h2 id="notes">10. Important Notes</h2>

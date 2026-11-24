@@ -160,6 +160,24 @@
             >
               <span data-i18n="preset_offline">Offline</span>
             </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="no-csp"
+              title="Keep the real response and remove its Content-Security-Policy headers"
+              data-i18n-title="preset_no_csp_title"
+            >
+              <span data-i18n="preset_no_csp">No CSP</span>
+            </button>
+            <button
+              type="button"
+              class="preset-btn"
+              data-preset="no-cache"
+              title="Keep the real response and remove its caching headers"
+              data-i18n-title="preset_no_cache_title"
+            >
+              <span data-i18n="preset_no_cache">No cache</span>
+            </button>
           </div>
           <div class="modal-field">
             <label for="modal-pattern"><span data-i18n="field_pattern">URL pattern</span></label>
@@ -243,6 +261,15 @@
             </p>
           </div>
           <div id="modal-body-fields">
+            <p
+              id="modal-passthrough-help"
+              class="modal-field-help"
+              style="display: none"
+              data-i18n="field_passthrough_help"
+            >
+              The real response body is kept as the server sent it; only its status and headers
+              change.
+            </p>
             <div class="modal-field">
               <label for="modal-body"><span data-i18n="field_body">Response body</span></label>
               <p
@@ -561,6 +588,23 @@
                 <textarea id="modal-headers" rows="3" placeholder="X-Custom: value"></textarea>
                 <div id="modal-response-headers-table" class="modal-headers-table"></div>
               </label>
+              <label class="modal-field" id="modal-remove-headers-field">
+                <span data-i18n="field_remove_headers">Headers to remove from the response</span>
+                <textarea
+                  id="modal-remove-headers"
+                  rows="2"
+                  placeholder="Content-Security-Policy"
+                  aria-describedby="modal-remove-headers-hint"
+                ></textarea>
+                <p
+                  id="modal-remove-headers-hint"
+                  class="modal-field-hint"
+                  data-i18n-html="field_remove_headers_hint"
+                >
+                  One name per line. A name ending in <code>*</code> removes every header that
+                  starts with it.
+                </p>
+              </label>
             </details>
             <details id="modal-group-body-type" class="modal-group">
               <summary>
@@ -578,6 +622,9 @@
                   <option value="file" data-i18n="mode_file">Raw base64</option>
                   <option value="script" data-i18n="mode_script">Script (JavaScript)</option>
                   <option value="patch" data-i18n="mode_patch">Patch the real JSON response</option>
+                  <option value="passthrough" data-i18n="mode_passthrough">
+                    Keep the real response (headers only)
+                  </option>
                 </select>
                 <p id="modal-mode-hint" class="modal-field-hint" data-i18n-html="field_mode_hint">
                   Text answers with the body as typed. Patch changes a few fields of the real
@@ -606,6 +653,64 @@
                 >
                   Placeholders such as <code>{{$uuid}}</code> get a fresh value on every request.
                 </p>
+              </div>
+            </details>
+            <details id="modal-group-responses" class="modal-group">
+              <summary>
+                <span class="modal-group-title" data-i18n="group_responses">Random responses</span>
+                <span class="modal-group-count" hidden></span>
+              </summary>
+              <div id="modal-responses-fields">
+                <p class="modal-field-help" data-i18n="responses_help">
+                  Each request gets one of the responses, picked by weight: weights 80 and 20 give
+                  the first one 8 times in 10.
+                </p>
+                <div class="modal-field">
+                  <label for="modal-weight"
+                    ><span data-i18n="field_weight">Weight of the response above</span></label
+                  >
+                  <input
+                    id="modal-weight"
+                    type="number"
+                    min="0"
+                    max="1000"
+                    placeholder="1"
+                    aria-describedby="modal-weight-hint"
+                  />
+                  <p id="modal-weight-hint" class="modal-field-hint" data-i18n="field_weight_hint">
+                    Blank is 1. A weight of 0 is never picked.
+                  </p>
+                </div>
+                <div id="modal-variants" class="modal-variants"></div>
+                <button
+                  id="modal-add-variant"
+                  type="button"
+                  class="add-header-row-btn"
+                  data-i18n="variant_add"
+                >
+                  + Add a response
+                </button>
+                <div class="modal-field">
+                  <label for="modal-random-seed"
+                    ><span data-i18n="field_random_seed">Seed (repeatable order)</span></label
+                  >
+                  <input
+                    id="modal-random-seed"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 42"
+                    data-i18n-placeholder="field_random_seed_placeholder"
+                    aria-describedby="modal-random-seed-hint"
+                  />
+                  <p
+                    id="modal-random-seed-hint"
+                    class="modal-field-hint"
+                    data-i18n="field_random_seed_hint"
+                  >
+                    Blank picks at random. With a seed the picks follow the same order, which suits
+                    automated tests; Reset counts or an edit of the rule starts it over.
+                  </p>
+                </div>
               </div>
             </details>
             <details id="modal-group-request" class="modal-group">
@@ -774,6 +879,15 @@
         >
           <span data-i18n="reset_counts">Reset counts</span>
         </button>
+        <button
+          id="variables-btn"
+          type="button"
+          class="rules-io-btn"
+          title="Values you can write as {{name}} in rules"
+          data-i18n-title="variables_btn_title"
+        >
+          <span data-i18n="variables_btn">Variables</span>
+        </button>
         <input
           id="import-rules-input"
           type="file"
@@ -805,6 +919,64 @@
         </button>
       </div>
       <ul id="list"></ul>
+    </div>
+
+    <div id="variables-modal" class="modal" style="display: none">
+      <div
+        class="modal-content variables-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="variables-title"
+      >
+        <button
+          id="variables-close"
+          type="button"
+          class="close modal-close"
+          aria-label="Close variables"
+          data-i18n-aria-label="variables_close"
+        >
+          &times;
+        </button>
+        <h3 id="variables-title" data-i18n="variables_title">Variables</h3>
+        <p class="modal-field-help" data-i18n-html="variables_help">
+          Write <code>{{name}}</code> in a URL pattern, a redirect URL, a header value or a body,
+          and the rule uses the value. A value for this site wins over one for every site.
+          <code>\{{name}}</code> keeps the text as written.
+        </p>
+        <div class="modal-field">
+          <span data-i18n="variables_site">This site</span>
+          <p class="modal-field-hint variables-site-name"><code id="variables-site-name"></code></p>
+          <textarea
+            id="variables-site"
+            rows="3"
+            placeholder="host: staging.example.com"
+            aria-label="Variables of this site"
+            data-i18n-aria-label="variables_site_label"
+          ></textarea>
+          <div id="variables-site-table" class="modal-headers-table"></div>
+        </div>
+        <div class="modal-field">
+          <span data-i18n="variables_global">Every site</span>
+          <textarea
+            id="variables-global"
+            rows="3"
+            placeholder="token: abc123"
+            aria-label="Variables of every site"
+            data-i18n-aria-label="variables_global_label"
+          ></textarea>
+          <div id="variables-global-table" class="modal-headers-table"></div>
+        </div>
+        <div id="variables-feedback" class="modal-feedback" role="status" aria-live="polite"></div>
+        <button
+          id="variables-save"
+          type="button"
+          class="btn btn-primary"
+          style="margin-top: 10px"
+          data-i18n="variables_save"
+        >
+          Save variables
+        </button>
+      </div>
     </div>
 
     <div id="curl-swagger-modal" class="modal" style="display: none">

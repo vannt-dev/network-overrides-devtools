@@ -89,6 +89,8 @@ Bấm **Mock this** trên một API (hoặc click vào dòng API) để mở mod
   - **Server error**: status 500 và `{"error":"Internal Server Error"}`.
   - **Slow (3 s)**: delay 3000 ms; body giữ nguyên.
   - **Offline**: lỗi mạng (`InternetDisconnected`).
+  - **Bỏ CSP** (No CSP): giữ response thật và bỏ các header `Content-Security-Policy` của nó (xem mục 6.11).
+  - **Không cache** (No cache): giữ response thật và bỏ các header cache (`Cache-Control`, `Expires`, `ETag`, `Last-Modified`, `Pragma`, `Age`).
 - **URL pattern**: URL pattern để matching. Field này sửa được, kể cả sau **Mock this**: đổi `/api/users/42` thành `/api/users/*` để một rule khớp nhiều URL hơn.
 - **Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method. Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
 - **Mock response / Redirect / Network error / WebSocket**: Chọn loại rule.
@@ -102,8 +104,9 @@ Các tùy chọn còn lại nằm trong mục **Advanced** (mặc định thu g�
 
 - **Conditions**: **GraphQL operation** (xem mục 5.7), query parameter, request header và đoạn text mà body của request phải chứa (xem mục 5.8), và **Apply on every site (global rule)** (xem mục 9.6).
 - **Timing & failure**: **Delay (ms)**, **Simulate a network error** (với loại Network error: lỗi mà trang nhận được), và **Answer without calling the server** (mock response; xem mục 6.6).
-- **Response headers**: header thêm vào response.
-- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)` hoặc `Patch the real JSON response` (xem mục 6.7), và **Fill in {{...}} placeholders**.
+- **Response headers**: header thêm vào response, và **Header cần bỏ khỏi response** (xem mục 6.11).
+- **Body type: patch & script**: **The response body is** `Text`, `Raw base64`, `Script (JavaScript)`, `Patch the real JSON response` (xem mục 6.7) hoặc `Keep the real response (headers only)` (xem mục 6.11), và **Fill in {{...}} placeholders**.
+- **Response ngẫu nhiên** (Random responses): thêm các response khác cho rule, mỗi cái có trọng số, và seed để thứ tự lặp lại được (xem mục 6.12).
 - **Change the request**: thay body của request gửi lên server, thêm hoặc thay request header.
 
 Nhóm nào đang có giá trị sẽ hiện số lượng trên tiêu đề và tự mở ra khi bạn sửa rule, nên không có thiết lập nào bị ẩn. Chọn **Network error** sẽ mở nhóm **Timing & failure** để hiện lỗi cần giả lập.
@@ -318,7 +321,7 @@ const data = JSON.parse(request.response.body);
 return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };
 ```
 
-- `request` có `url`, `method`, `headers` (tên viết thường), `query` (giá trị đầu tiên của mỗi tham số), `params` (phần mà mỗi `*` của pattern khớp), `body` (payload của request, hoặc `null`) và `response`: `status`, `headers` và `body` gốc.
+- `request` có `url`, `method`, `headers` (tên viết thường), `query` (giá trị đầu tiên của mỗi tham số), `params` (phần mà mỗi `*` của pattern khớp), `body` (payload của request, hoặc `null`), `response`: `status`, `headers` và `body` gốc, và `vars`: các biến của bạn (xem mục 9.14).
 - Trả về một chuỗi để làm body, `{ status, headers, body }` (có thể thiếu field; `body` không phải chuỗi thì được gửi dạng JSON), hoặc giá trị khác để gửi dạng JSON. Status hay header script trả về được ưu tiên hơn của rule; delay vẫn áp dụng. Template như `{{now}}` không được xử lý trong script.
 - Script chạy trong trang đang inspect, nên dùng được `fetch`, `localStorage` và biến toàn cục của trang. Script có 5 giây. Script ném lỗi, không trả về gì, trả status ngoài 100–599 hoặc hết giờ thì request nhận status `500`, nội dung là lỗi, kèm header `x-network-overrides-error: script`.
 - Rule import từ file có thể chứa script, và script đó chạy trong các trang mà rule khớp: chỉ import file bạn tin tưởng.
@@ -342,6 +345,28 @@ Chọn kiểu **Chèn JS/CSS** (Inject JS/CSS) để thêm script và stylesheet
 - Trang có Content-Security-Policy vẫn giữ nó: hash SHA-256 của script và stylesheet được chèn được thêm vào policy, nên đúng code đó được chạy, còn code inline của chính trang và phần còn lại của policy vẫn như cũ. CSP `sandbox` không có `allow-scripts` vẫn chặn script, và panel sẽ cảnh báo.
 - Nếu code của bạn tải thêm script khác, dùng `eval` hoặc event handler inline, policy vẫn có thể chặn phần đó. Khi đó mới tick **Bỏ Content-Security-Policy của trang**: các trang khớp sẽ tải mà không có CSP khi rule đang bật, nên kém an toàn hơn.
 - Tải lại trang sau khi thêm hoặc sửa rule.
+
+### 6.11. Giữ response thật, bỏ header
+
+Rule có thể bỏ header khỏi response, ví dụ `Content-Security-Policy` đang cản việc debug, hoặc các header cache làm trình duyệt giữ file cũ.
+
+- Chọn **Giữ response thật (chỉ sửa header)** trong **Advanced → Body type** để giữ nguyên body của server. Request vẫn đến server; chỉ status (nếu bạn đặt) và header thay đổi. Preset **Bỏ CSP** và **Không cache** thiết lập việc này bằng một click.
+- Liệt kê header trong **Advanced → Response headers → Header cần bỏ khỏi response**, mỗi dòng một tên (hoặc cách nhau bằng dấu phẩy). Không phân biệt hoa thường. Tên kết thúc bằng `*` bỏ mọi header bắt đầu bằng phần trước nó: `x-debug-*`.
+- Việc bỏ header cũng dùng được với mọi mock response: header của server được giữ lại sẽ bị bỏ trước, rồi **Response headers** của rule mới được thêm vào. Vì vậy bạn có thể bỏ `Cache-Control` rồi thêm `Cache-Control: no-store`.
+- Header đánh dấu của extension (xem mục 9.12) không bao giờ bị bỏ.
+- Response không đọc được body, như redirect, được cho đi qua không đổi và panel sẽ cảnh báo. Không có tùy chọn **Answer without calling the server**, vì rule cần response thật.
+
+### 6.12. Response ngẫu nhiên theo trọng số
+
+Rule **Mock response** (body Text hoặc Raw base64) có thể trả về một trong nhiều response, để xem trang xử lý thế nào khi API chập chờn.
+
+1. Viết body và status như thường: đây là response thứ nhất.
+2. Mở **Advanced → Response ngẫu nhiên**, bấm **+ Thêm response** và điền **Trọng số**, **Status** (để trống thì dùng status của rule), **Body** và **Header** (`Tên: giá trị`, thêm đè lên header của rule).
+3. Đặt **Trọng số của response ở trên** cho response thứ nhất (để trống là 1).
+
+Mỗi request nhận một response, chọn theo trọng số: trọng số `80` và `20` cho response đầu khoảng 8 lần trên 10. Trọng số `0` không bao giờ được chọn. Template và biến dùng được trong mọi body. Response kèm header `x-network-overrides-response`, là số thứ tự của response đã trả (`1` là response của chính rule).
+
+**Seed (thứ tự lặp lại được)**: để trống thì chọn ngẫu nhiên. Có một số thì các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động. Thứ tự đi theo số lần rule đã được áp dụng, nên vẫn tiếp tục khi worker của trình duyệt khởi động lại; **Đặt lại số đếm** (Reset counts) trong tab Rules, hoặc sửa rule, sẽ bắt đầu lại từ đầu.
 
 ---
 
@@ -439,6 +464,7 @@ Click **Import → Rules file (.json)** trong tab **Rules** và chọn một fil
 - Chỉ các field hợp lệ của rule (`pattern`, `mode`, `body`, `redirectUrl`, `method`, `enabled`) được giữ lại từ mỗi rule import; các property khác trong file sẽ bị bỏ qua.
 - Các điều kiện `matchQuery`, `matchHeaders` và `matchBody` (xem mục 5.8) cũng được giữ lại. File export từ trước khi có các field này vẫn import bình thường.
 - Rule patch (`"mode": "patch"`, xem mục 6.7) giữ danh sách `patch` gồm các thao tác `{ "op": "set" | "remove", "path": "...", "value": ... }`. File có thao tác patch sai định dạng bị từ chối như mọi file không hợp lệ khác.
+- `removeResponseHeaders` (tên header), `"mode": "passthrough"`, và response ngẫu nhiên `responses` (`{ "weight", "statusCode", "body", "responseHeaders" }`), `weight`, `randomSeed` cũng được giữ. Biến không nằm trong file: đặt lại trong **Biến** (xem mục 9.14).
 
 Giống Export, Import luôn thao tác trên domain đang active trong panel — không bao giờ áp dụng cho tất cả domain cùng lúc.
 
@@ -555,12 +581,25 @@ Khi một request bị ghi đè, extension thêm các header sau vào response:
 
 - `x-network-overrides: true`
 - `x-network-overrides-pattern: <pattern>`
+- `x-network-overrides-response: <n>`, chỉ với rule có response ngẫu nhiên: response nào đã được trả (`1` là response của chính rule)
 
 Điều này giúp bạn dễ dàng nhận biết request nào đã bị can thiệp ngay trong Network tab của DevTools.
 
 ### 9.13. Ngôn ngữ giao diện
 
 Giao diện có tiếng Anh và tiếng Việt. Mặc định extension dùng ngôn ngữ của trình duyệt. Menu ngôn ngữ cạnh công tắc **Bật ghi đè** chuyển sang **English** hoặc **Tiếng Việt**; chọn **Tự động** để quay lại theo trình duyệt. Lựa chọn được lưu trong máy, và cả hai ngôn ngữ nằm sẵn trong extension nên đổi ngôn ngữ không cần mạng.
+
+### 9.14. Biến (Variables)
+
+Biến giữ ở một chỗ một giá trị bạn dùng trong nhiều rule, như host hay token. Bấm **Biến** trong tab **Rules** và thêm các cặp `tên: giá trị`:
+
+- **Site này**: chỉ cho site đang mở trong panel. **Mọi site**: cho tất cả site. Giá trị của site thắng giá trị cùng tên dùng cho mọi site.
+- Viết `{{name}}` trong URL pattern, URL redirect, giá trị header của response hoặc request, body response (chế độ Text và response ngẫu nhiên) hoặc body request gửi lên server. Rule script đọc chúng qua `request.vars.name`.
+- Tên bắt đầu bằng chữ cái hoặc `_`, sau đó là chữ, số, `_`, `.` hoặc `-`. Tên của các placeholder có sẵn (`now`, `timestamp`, `epoch`, `uuid`) không dùng được.
+- `{{name}}` mà không biến nào định nghĩa thì giữ nguyên như đã viết. Giá trị được thay vào một lần: `{{name}}` bên trong giá trị không được thay tiếp (trong body, placeholder có sẵn bên trong giá trị, như `{{$uuid}}`, vẫn được điền).
+- Biến không được thay trong rule WebSocket, điều kiện của request, giá trị patch hay JS/CSS được chèn.
+- `\{{name}}` giữ nguyên `{{name}}` như đã viết. Khi tắt **Fill in {{...}} placeholders**, body được gửi đúng như đã viết, kể cả biến; pattern và header vẫn được thay.
+- Lưu biến là áp dụng ngay. Biến được lưu trong trình duyệt cùng với rule, không nằm trong file rule export hay profile.
 
 ---
 

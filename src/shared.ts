@@ -2,7 +2,8 @@
 /// <reference types="chrome" />
 
 declare namespace NetworkOverridesShared {
-  type OverrideMode = 'text' | 'file' | 'script' | 'patch';
+  // 'passthrough' keeps the real body (and status, unless the rule sets one): only headers change.
+  type OverrideMode = 'text' | 'file' | 'script' | 'patch' | 'passthrough';
   type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
   type WsDirection = 'send' | 'receive' | 'both';
   type WsAction = 'replace' | 'substitute' | 'block' | 'delay';
@@ -16,6 +17,10 @@ declare namespace NetworkOverridesShared {
     method?: string; // undefined/'ANY' = any method, or 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
     statusCode?: number; // integer 100–599; body rules only
     responseHeaders?: FetchHeader[]; // extra/override response headers; body rules only
+    removeResponseHeaders?: string[]; // body rules: server headers to drop; a trailing * is a prefix
+    responses?: ResponseVariant[]; // text/file body rules: other answers, one picked by weight
+    weight?: number; // with `responses`: the weight of the rule's own answer; undefined = 1
+    randomSeed?: number; // with `responses`: picks follow a repeatable order from this seed
     requestHeaders?: FetchHeader[]; // extra/override request headers; applied at request stage
     graphqlOperation?: string; // optional GraphQL operationName to match against request payload
     matchQuery?: MatchCondition[]; // every query parameter must be present (and equal, with a value)
@@ -36,6 +41,18 @@ declare namespace NetworkOverridesShared {
     wsMatch?: string; // websocket rules; empty/undefined = every text frame
     wsMatchRegex?: boolean; // wsMatch is a regular expression
     wsAction?: WsAction; // websocket rules
+  }
+  /** One more answer of a rule with weighted random responses; unset fields come from the rule. */
+  interface ResponseVariant {
+    weight: number; // integer 0–1000; 0 = never picked
+    statusCode?: number;
+    body: string; // text, with {{...}} filled in like the rule's own body
+    responseHeaders?: FetchHeader[]; // merged over the rule's own response headers
+  }
+  /** A user-defined value written as {{name}} in rules. */
+  interface RuleVariable {
+    name: string;
+    value: string;
   }
   interface RuleProfile {
     id: string;

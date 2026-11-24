@@ -98,6 +98,7 @@ test('Clicking an API opens the modal, auto-fills the body, and saving notifies 
         mode: 'text',
       },
     ],
+    variables: {},
   });
 });
 
@@ -126,6 +127,7 @@ test('Changing the enable checkbox persists state and sends an update message', 
     tabUrl: 'https://example.test/',
     enabled: true,
     overrides: [{ pattern: 'users', body: '{"ok":true}', mode: 'text' }],
+    variables: {},
   });
 });
 
@@ -193,6 +195,7 @@ test('Editing and deleting overrides from the saved list updates storage and not
     tabUrl: 'https://example.test/',
     enabled: true,
     overrides: [{ pattern: 'orders', body: '{"items":[]}', mode: 'text' }],
+    variables: {},
   });
 });
 

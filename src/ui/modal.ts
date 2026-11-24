@@ -1,6 +1,7 @@
 /*! SPDX-License-Identifier: MIT | Copyright (c) 2025 Van Nguyen | github.com/vannt-dev/network-overrides-devtools */
 /// <reference path="./types.ts" />
 /// <reference path="./headers-editor.ts" />
+/// <reference path="./response-variants.ts" />
 
 namespace NetworkOverridesUi {
   export const FAIL_REASONS = [
@@ -61,6 +62,7 @@ namespace NetworkOverridesUi {
     show(elements.modalStatusField, type === 'body');
     show(fieldOf(elements.modalRespondAtRequest), type === 'body');
     show(elements.modalHeadersField, type === 'body');
+    show(elements.modalRemoveHeadersField, type === 'body');
     show(elements.modalRequestHeadersField, type !== 'fail' && type !== 'redirect' && !notHttp);
     show(elements.modalRequestBodyField, type !== 'fail' && type !== 'redirect' && !notHttp);
     show(
@@ -90,6 +92,22 @@ namespace NetworkOverridesUi {
     const isBody = (checked?.value || 'body') === 'body';
     const isScript = isBody && elements.modalMode?.value === 'script';
     const isPatch = isBody && elements.modalMode?.value === 'patch';
+    // A pass-through rule keeps the real body: there is no body to type.
+    const isPassthrough = isBody && elements.modalMode?.value === 'passthrough';
+    const bodyField = fieldOf(elements.modalBody);
+    if (bodyField) bodyField.style.display = isPassthrough ? 'none' : '';
+    if (elements.modalPassthroughHelp) {
+      elements.modalPassthroughHelp.style.display = isPassthrough ? '' : 'none';
+    }
+    if (elements.modalPreviewContainer && isPassthrough) {
+      elements.modalPreviewContainer.style.display = 'none';
+    }
+    // Other responses go with a typed or loaded body only.
+    const responses = document.getElementById('modal-responses-fields');
+    const mode = elements.modalMode?.value || 'text';
+    if (responses) {
+      responses.style.display = isBody && (mode === 'text' || mode === 'file') ? '' : 'none';
+    }
     const help = elements.modal?.querySelector('#modal-script-help') as HTMLElement | null;
     if (help) help.style.display = isScript ? '' : 'none';
     const patchHelp = elements.modal?.querySelector('#modal-patch-help') as HTMLElement | null;
@@ -97,9 +115,13 @@ namespace NetworkOverridesUi {
     const templates = fieldOf(elements.modalProcessTemplates);
     // The option goes with the body: hidden for redirect and network-error rules.
     const bodyShown = elements.modalBodyFields?.style.display !== 'none';
-    if (templates) templates.style.display = isScript || isPatch || !bodyShown ? 'none' : '';
+    if (templates) {
+      templates.style.display = isScript || isPatch || isPassthrough || !bodyShown ? 'none' : '';
+    }
     const respondAtRequest = fieldOf(elements.modalRespondAtRequest);
-    if (respondAtRequest) respondAtRequest.style.display = isBody && !isPatch ? '' : 'none';
+    if (respondAtRequest) {
+      respondAtRequest.style.display = isBody && !isPatch && !isPassthrough ? '' : 'none';
+    }
     if (elements.modalBody) {
       elements.modalBody.placeholder = isScript
         ? 'return { status: 200, body: { ok: true } };'
@@ -187,6 +209,10 @@ namespace NetworkOverridesUi {
     if (elements.modalRespondAtRequest) {
       elements.modalRespondAtRequest.checked = existing?.respondAtRequest === true;
     }
+    if (elements.modalRemoveHeaders) {
+      elements.modalRemoveHeaders.value = (existing?.removeResponseHeaders || []).join('\n');
+    }
+    prefillResponseVariants(elements, existing);
     elements.modalFailReason.value =
       existing?.failReason && FAIL_REASONS.includes(existing.failReason)
         ? existing.failReason
@@ -242,11 +268,21 @@ namespace NetworkOverridesUi {
           filled(elements.modalMatchQuery) +
           filled(elements.modalMatchHeaders) +
           (elements.modalMatchBody?.value ? 1 : 0)) + (elements.modalGlobalRule?.checked ? 1 : 0);
+    const realResponse = mode === 'patch' || mode === 'passthrough';
     const timing =
       (isShown(fieldOf(elements.modalDelay)) ? filled(elements.modalDelay) : 0) +
       (type === 'fail' ? 1 : 0) +
-      (type === 'body' && mode !== 'patch' && elements.modalRespondAtRequest?.checked ? 1 : 0);
-    const responseHeaders = type === 'body' ? countHeaderLines(elements.modalHeaders?.value) : 0;
+      (type === 'body' && !realResponse && elements.modalRespondAtRequest?.checked ? 1 : 0);
+    const removed = NetworkOverridesUtils.parseHeaderNames(
+      elements.modalRemoveHeaders?.value || ''
+    );
+    const responseHeaders =
+      type === 'body'
+        ? countHeaderLines(elements.modalHeaders?.value) +
+          ('names' in removed ? removed.names.length : 1)
+        : 0;
+    const responses =
+      type === 'body' && (mode === 'text' || mode === 'file') ? countResponseVariants(elements) : 0;
     const templatesOff =
       isShown(elements.modalBodyFields) &&
       isShown(fieldOf(elements.modalProcessTemplates)) &&
@@ -262,6 +298,7 @@ namespace NetworkOverridesUi {
       'modal-group-response-headers': responseHeaders,
       'modal-group-body-type': bodyType,
       'modal-group-request': request,
+      'modal-group-responses': responses,
     };
   }
 
@@ -334,13 +371,45 @@ namespace NetworkOverridesUi {
     return JSON.stringify(record, null, 2);
   }
 
-  export type PresetName = 'empty-list' | 'server-error' | 'slow' | 'offline';
+  export type PresetName =
+    'empty-list' | 'server-error' | 'slow' | 'offline' | 'no-csp' | 'no-cache';
+
+  /** The headers the "No CSP" and "No cache" presets remove from the real response. */
+  export const CSP_HEADER_NAMES = [
+    'content-security-policy',
+    'content-security-policy-report-only',
+  ];
+  export const CACHE_HEADER_NAMES = [
+    'cache-control',
+    'expires',
+    'etag',
+    'last-modified',
+    'pragma',
+    'age',
+  ];
 
   function presetLabel(preset: PresetName): string {
     if (preset === 'empty-list') return t('preset_empty_list');
     if (preset === 'server-error') return t('preset_server_error');
     if (preset === 'slow') return t('preset_slow');
+    if (preset === 'no-csp') return t('preset_no_csp');
+    if (preset === 'no-cache') return t('preset_no_cache');
     return t('preset_offline');
+  }
+
+  /** Keeps the real response and adds `names` to the headers it removes. */
+  function keepRealResponseWithout(elements: Elements, names: string[]): void {
+    chooseModalType(elements, 'body');
+    elements.modalMode.value = 'passthrough';
+    if (elements.modalRemoveHeaders) {
+      const current = NetworkOverridesUtils.parseHeaderNames(elements.modalRemoveHeaders.value);
+      const listed = 'names' in current ? current.names : [];
+      elements.modalRemoveHeaders.value = [
+        ...listed,
+        ...names.filter(name => !listed.includes(name)),
+      ].join('\n');
+      revealField(elements.modalRemoveHeaders);
+    }
   }
 
   function chooseModalType(elements: Elements, type: ModalType): void {
@@ -373,6 +442,10 @@ namespace NetworkOverridesUi {
       chooseModalType(elements, 'fail');
       elements.modalFailReason.value = 'InternetDisconnected';
       revealField(elements.modalFailReason);
+    } else if (preset === 'no-csp') {
+      keepRealResponseWithout(elements, CSP_HEADER_NAMES);
+    } else if (preset === 'no-cache') {
+      keepRealResponseWithout(elements, CACHE_HEADER_NAMES);
     }
     updateScriptHelp(elements);
     updateBodyFormatAction(elements);

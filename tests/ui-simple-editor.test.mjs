@@ -110,6 +110,7 @@ test('the editor shows only the everyday fields; the rest sits in a collapsed Ad
       'Timing & failure',
       'Response headers',
       'Body type: patch & script',
+      'Random responses',
       'Change the request',
     ]
   );

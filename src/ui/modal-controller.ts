@@ -5,6 +5,7 @@
 /// <reference path="./notifications.ts" />
 /// <reference path="./websocket-rule.ts" />
 /// <reference path="./static-rule.ts" />
+/// <reference path="./response-variants.ts" />
 
 namespace NetworkOverridesUi {
   export interface ModalControllerOptions {
@@ -50,6 +51,7 @@ namespace NetworkOverridesUi {
 
     elements.closeModal?.addEventListener('click', () => closeModal(elements));
     bindLocalFilePicker(elements);
+    bindResponseVariants(elements);
     elements.modal?.addEventListener('click', event => {
       if (event.target === elements.modal) closeModal(elements);
     });
@@ -182,6 +184,9 @@ namespace NetworkOverridesUi {
           }
           patch = parsed.operations;
           body = '';
+        } else if (mode === 'passthrough') {
+          // The real body is kept: nothing typed in the body box is saved.
+          body = '';
         }
       } else if (overrideType === 'redirect') {
         redirectUrl = elements.modalRedirectUrl.value.trim();
@@ -252,6 +257,29 @@ namespace NetworkOverridesUi {
         return;
       }
 
+      let removeResponseHeaders: string[] = [];
+      if (overrideType === 'body' && elements.modalRemoveHeaders) {
+        const removed = NetworkOverridesUtils.parseHeaderNames(elements.modalRemoveHeaders.value);
+        if ('error' in removed) {
+          showModalFeedback(
+            elements,
+            t('error_remove_header', removed.error),
+            'error',
+            elements.modalRemoveHeaders
+          );
+          return;
+        }
+        removeResponseHeaders = removed.names;
+      }
+      let variants: ReturnType<typeof readResponseVariants> = { responses: [] };
+      if (overrideType === 'body' && (mode === 'text' || mode === 'file')) {
+        variants = readResponseVariants(elements);
+        if ('error' in variants) {
+          showModalFeedback(elements, variants.error, 'error', variants.field);
+          return;
+        }
+      }
+
       const responseHeaders = parseHeadersText(elements.modalHeaders.value);
       const requestHeaders = elements.modalRequestHeaders
         ? parseHeadersText(elements.modalRequestHeaders.value)
@@ -279,12 +307,24 @@ namespace NetworkOverridesUi {
       if (elements.modalRequestBody?.value.trim()) {
         rule.requestBody = elements.modalRequestBody.value;
       }
-      if (overrideType === 'body' && !patch && elements.modalProcessTemplates?.checked === false) {
+      const realResponse = mode === 'patch' || mode === 'passthrough';
+      if (
+        overrideType === 'body' &&
+        !realResponse &&
+        elements.modalProcessTemplates?.checked === false
+      ) {
         rule.processTemplates = false;
       }
-      // A patch needs the real response, so it never answers without the server.
-      if (overrideType === 'body' && !patch && elements.modalRespondAtRequest?.checked) {
+      // A patch or pass-through rule needs the real response, so it never
+      // answers without the server.
+      if (overrideType === 'body' && !realResponse && elements.modalRespondAtRequest?.checked) {
         rule.respondAtRequest = true;
+      }
+      if (removeResponseHeaders.length > 0) rule.removeResponseHeaders = removeResponseHeaders;
+      if ('responses' in variants && variants.responses.length > 0) {
+        rule.responses = variants.responses;
+        if (variants.weight !== undefined) rule.weight = variants.weight;
+        if (variants.randomSeed !== undefined) rule.randomSeed = variants.randomSeed;
       }
       if (elements.modalGlobalRule?.checked) {
         rule.isGlobal = true;

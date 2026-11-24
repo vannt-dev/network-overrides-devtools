@@ -91,10 +91,16 @@ namespace NetworkOverridesUi {
         const fields = rule.patch?.length || 0;
         parts.push(fields === 1 ? t('summary_patch_one') : t('summary_patch_other', fields));
       } else if (rule.mode === 'script') parts.push(t('summary_script'));
+      else if (rule.mode === 'passthrough') parts.push(t('summary_real_response'));
       else if (rule.fileName) parts.push(t('summary_local_file', rule.fileName));
       else if (rule.mode === 'file') parts.push(t('summary_base64'));
       else if (!status) parts.push(t('summary_mock_body'));
-      if (rule.respondAtRequest && rule.mode !== 'patch') parts.push(t('summary_no_server'));
+      if (NetworkOverridesUtils.hasResponseVariants(rule)) {
+        parts.push(t('summary_random', String((rule.responses?.length || 0) + 1)));
+      }
+      if (rule.respondAtRequest && rule.mode !== 'patch' && rule.mode !== 'passthrough') {
+        parts.push(t('summary_no_server'));
+      }
       if (rule.processTemplates === false && (rule.mode === 'text' || rule.mode === 'file')) {
         parts.push(t('summary_templates_off'));
       }
@@ -106,6 +112,14 @@ namespace NetworkOverridesUi {
       const count = rule.responseHeaders.length;
       parts.push(
         count === 1 ? t('summary_response_headers_one') : t('summary_response_headers_other', count)
+      );
+    }
+    if (!rule.failReason && !rule.redirectUrl && rule.removeResponseHeaders?.length) {
+      const count = rule.removeResponseHeaders.length;
+      parts.push(
+        count === 1
+          ? t('summary_removed_headers_one', rule.removeResponseHeaders[0])
+          : t('summary_removed_headers_other', count)
       );
     }
     if (rule.requestBody) parts.push(t('summary_request_body'));

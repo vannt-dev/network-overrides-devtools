@@ -21,6 +21,9 @@
 /// <reference path="./ui/modal-controller.ts" />
 /// <reference path="./ui/rules-io-controller.ts" />
 /// <reference path="./ui/toolbar-controller.ts" />
+/// <reference path="./ui/variables.ts" />
+/// <reference path="./ui/response-variants.ts" />
+/// <reference path="./rule-values.ts" />
 
 namespace NetworkOverridesUi {
   let currentDomain = '';
@@ -133,6 +136,24 @@ namespace NetworkOverridesUi {
       modalBodyFileInfo: document.getElementById('modal-body-file-info') as HTMLElement,
       modalBodyFileName: document.getElementById('modal-body-file-name') as HTMLElement,
       modalBodyFileClear: document.getElementById('modal-body-file-clear') as HTMLButtonElement,
+      modalPassthroughHelp: document.getElementById('modal-passthrough-help') as HTMLElement,
+      modalRemoveHeaders: document.getElementById('modal-remove-headers') as HTMLTextAreaElement,
+      modalRemoveHeadersField: document.getElementById('modal-remove-headers-field') as HTMLElement,
+      modalResponsesGroup: document.getElementById('modal-group-responses') as HTMLDetailsElement,
+      modalWeight: document.getElementById('modal-weight') as HTMLInputElement,
+      modalVariants: document.getElementById('modal-variants') as HTMLElement,
+      modalAddVariant: document.getElementById('modal-add-variant') as HTMLButtonElement,
+      modalRandomSeed: document.getElementById('modal-random-seed') as HTMLInputElement,
+      variablesBtn: document.getElementById('variables-btn') as HTMLButtonElement,
+      variablesModal: document.getElementById('variables-modal') as HTMLDivElement,
+      variablesClose: document.getElementById('variables-close') as HTMLElement,
+      variablesSite: document.getElementById('variables-site') as HTMLTextAreaElement,
+      variablesSiteTable: document.getElementById('variables-site-table') as HTMLDivElement,
+      variablesSiteName: document.getElementById('variables-site-name') as HTMLElement,
+      variablesGlobal: document.getElementById('variables-global') as HTMLTextAreaElement,
+      variablesGlobalTable: document.getElementById('variables-global-table') as HTMLDivElement,
+      variablesFeedback: document.getElementById('variables-feedback') as HTMLElement,
+      variablesSaveBtn: document.getElementById('variables-save') as HTMLButtonElement,
       modalRequestHeadersTable: document.getElementById(
         'modal-request-headers-table'
       ) as HTMLDivElement,
@@ -161,6 +182,7 @@ namespace NetworkOverridesUi {
       throttlePreset: 'none',
       ruleHits: {},
       trafficSeen: false,
+      variables: { global: [], site: [] },
     };
 
     let activeTabId: number | null = null;
@@ -275,6 +297,7 @@ namespace NetworkOverridesUi {
               tabUrl: activeTabUrl,
               enabled: state.enabled,
               overrides,
+              variables: uiVariables(state),
             },
             (response: { success?: boolean; error?: string } | undefined) => {
               if (chrome.runtime.lastError) {
@@ -385,9 +408,10 @@ namespace NetworkOverridesUi {
 
     async function fillModalBody(url: string): Promise<void> {
       if (!options.autoFillOnOpen || activeTabId === null) return;
-      // A script or a patch is not a response body: keep what the rule holds.
+      // A script or a patch is not a response body, and a pass-through rule
+      // has none: keep what the rule holds.
       const mode = elements.modalMode.value;
-      if (mode === 'script' || mode === 'patch') return;
+      if (mode === 'script' || mode === 'patch' || mode === 'passthrough') return;
       // Nor is a file loaded from disk or an inject rule's code.
       if (mode === 'file' || heldFileName(elements)) return;
       if (
@@ -407,7 +431,7 @@ namespace NetworkOverridesUi {
     }
 
     function handleApiClick(api: UiApi): void {
-      const match = getMatchingRuleStatus(api, state.overrides);
+      const match = getMatchingRuleStatus(api, state.overrides, uiVariables(state));
       if (match) {
         openEditModal(match.index);
         void fillModalBody(api.url);
@@ -473,6 +497,14 @@ namespace NetworkOverridesUi {
     }
 
     bindModalController({ elements, state, saveState, renderRules });
+    bindVariablesDialog({
+      elements,
+      state,
+      getSiteKey: () => getStorageKey('variables'),
+      getDomain: () => currentDomain,
+      apply: () => notifyBackground(),
+      renderRules,
+    });
     bindRulesIoController({
       elements,
       state,
@@ -589,13 +621,22 @@ namespace NetworkOverridesUi {
       const overridesKey = getStorageKey('overrides');
       const enabledKey = getStorageKey('enabled');
 
+      const variablesKey = getStorageKey('variables');
       const data = await chrome.storage.local.get([
         overridesKey,
         enabledKey,
         GLOBAL_OVERRIDES_KEY,
         'overrides',
         'enabled',
+        variablesKey,
+        NetworkOverridesUtils.GLOBAL_VARIABLES_KEY,
       ]);
+      state.variables = {
+        global: NetworkOverridesUtils.cleanVariables(
+          data[NetworkOverridesUtils.GLOBAL_VARIABLES_KEY]
+        ),
+        site: NetworkOverridesUtils.cleanVariables(data[variablesKey]),
+      };
       const domainRules = Array.isArray(data[overridesKey])
         ? data[overridesKey]
         : Array.isArray(data.overrides)
@@ -661,6 +702,8 @@ namespace NetworkOverridesUi {
             showNotification(t('toast_ws_rule_skipped', msg.pattern, msg.message), 'error');
           } else if (msg.type === 'patchRuleSkipped') {
             showNotification(t('toast_patch_rule_skipped', msg.pattern, msg.message), 'warning');
+          } else if (msg.type === 'headersRuleSkipped') {
+            showNotification(t('toast_headers_rule_skipped', msg.pattern, msg.message), 'warning');
           } else if (msg.type === 'injectRuleNotice') {
             showNotification(
               msg.code === 'csp'

@@ -420,3 +420,44 @@
 .import-menu-list [role='menuitem']:focus {
   background: #e8f3ff;
 }
+
+/* Rule editor: the other responses of a rule with random responses. */
+.modal-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0;
+}
+.variant-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+}
+.variant-row-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.variant-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: #486581;
+}
+.variant-row-head .variant-field {
+  flex: 1;
+}
+.variant-body,
+.variant-headers {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+.variables-site-name {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}

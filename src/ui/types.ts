@@ -110,6 +110,24 @@ namespace NetworkOverridesUi {
     modalBodyFileInfo?: HTMLElement;
     modalBodyFileName?: HTMLElement;
     modalBodyFileClear?: HTMLButtonElement;
+    modalPassthroughHelp?: HTMLElement;
+    modalRemoveHeaders?: HTMLTextAreaElement;
+    modalRemoveHeadersField?: HTMLElement;
+    modalResponsesGroup?: HTMLDetailsElement;
+    modalWeight?: HTMLInputElement;
+    modalVariants?: HTMLElement;
+    modalAddVariant?: HTMLButtonElement;
+    modalRandomSeed?: HTMLInputElement;
+    variablesBtn?: HTMLButtonElement;
+    variablesModal?: HTMLDivElement;
+    variablesClose?: HTMLElement;
+    variablesSite?: HTMLTextAreaElement;
+    variablesSiteTable?: HTMLDivElement;
+    variablesSiteName?: HTMLElement;
+    variablesGlobal?: HTMLTextAreaElement;
+    variablesGlobalTable?: HTMLDivElement;
+    variablesFeedback?: HTMLElement;
+    variablesSaveBtn?: HTMLButtonElement;
   }
 
   export interface AppOptions {
@@ -145,5 +163,10 @@ namespace NetworkOverridesUi {
     ruleHits: Record<string, RuleHit>;
     // Requests went through the interceptor since the rules last changed.
     trafficSeen: boolean;
+    // {{name}} values: for every site, and for the site of the inspected tab.
+    variables: {
+      global: NetworkOverridesShared.RuleVariable[];
+      site: NetworkOverridesShared.RuleVariable[];
+    };
   }
 }

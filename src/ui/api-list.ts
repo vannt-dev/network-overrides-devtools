@@ -46,7 +46,8 @@ namespace NetworkOverridesUi {
 
   export function getMatchingRuleStatus(
     api: UiApi,
-    overrides: OverrideRule[]
+    overrides: OverrideRule[],
+    variables: NetworkOverridesUtils.Variables = {}
   ): { rule: OverrideRule; index: number; isDisabledOnly: boolean } | null {
     let firstMatch: { rule: OverrideRule; index: number } | null = null;
     for (let i = 0; i < overrides.length; i++) {
@@ -56,7 +57,12 @@ namespace NetworkOverridesUi {
       if (!matchesMethod(rule.method, api.method)) continue;
       const request = { url: api.url, headers: api.headers, body: api.postData };
       if (!NetworkOverridesUtils.matchesRequestConditions(rule, request)) continue;
-      if (NetworkOverridesUtils.patternMatches(rule.pattern, api.url)) {
+      if (
+        NetworkOverridesUtils.patternMatches(
+          NetworkOverridesUtils.rulePattern(rule, variables),
+          api.url
+        )
+      ) {
         if (!firstMatch) firstMatch = { rule, index: i };
         if (rule.enabled !== false) {
           return { rule, index: i, isDisabledOnly: false };
@@ -86,7 +92,7 @@ namespace NetworkOverridesUi {
       if (filterText && !api.url.toLowerCase().includes(filterText)) {
         return false;
       }
-      const match = getMatchingRuleStatus(api, state.overrides);
+      const match = getMatchingRuleStatus(api, state.overrides, uiVariables(state));
       if (state.activeTab === 'overridden') {
         return match !== null;
       }
@@ -101,7 +107,7 @@ namespace NetworkOverridesUi {
       const t = api.type.toLowerCase();
       typeCounts[t] = (typeCounts[t] || 0) + 1;
 
-      const match = getMatchingRuleStatus(api, state.overrides);
+      const match = getMatchingRuleStatus(api, state.overrides, uiVariables(state));
       if (match !== null && !match.isDisabledOnly) {
         overriddenCount++;
       } else {
@@ -164,7 +170,7 @@ namespace NetworkOverridesUi {
       const item = document.createElement('li');
       item.className = 'api-item';
 
-      const match = getMatchingRuleStatus(api, state.overrides);
+      const match = getMatchingRuleStatus(api, state.overrides, uiVariables(state));
       const isOverridden = match !== null && !match.isDisabledOnly;
       const isDisabledOverridden = match !== null && match.isDisabledOnly;
 

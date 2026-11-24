@@ -193,9 +193,16 @@ namespace NetworkOverridesBackground {
     // from the previous origin while storage is being read.
     state.overrides = state.overrides.filter(rule => rule.isGlobal === true);
     const overridesKey = `overrides_${newOrigin}`;
-    chrome.storage.local.get([overridesKey, GLOBAL_OVERRIDES_KEY], (data: any) => {
+    const variablesKey = `variables_${newOrigin}`;
+    const globalVariablesKey = NetworkOverridesUtils.GLOBAL_VARIABLES_KEY;
+    const keys = [overridesKey, GLOBAL_OVERRIDES_KEY, variablesKey, globalVariablesKey];
+    chrome.storage.local.get(keys, (data: any) => {
       if (state.origin !== newOrigin) return;
       state.overrides = combineOverrides(data?.[overridesKey], data?.[GLOBAL_OVERRIDES_KEY]);
+      state.variables = NetworkOverridesUtils.mergeVariables(
+        data?.[globalVariablesKey],
+        data?.[variablesKey]
+      );
       TabState.rulesChanged(tabId);
       TabState.schedulePersist(tabId);
       void syncWebSocketRules(tabId);

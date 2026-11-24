@@ -10,6 +10,7 @@ declare function importScripts(...urls: string[]): void;
 importScripts(
   'utils.js',
   'static-files.js',
+  'rule-values.js',
   'tab-state.js',
   'background/encoding.js',
   'background/api-capture.js',

@@ -949,5 +949,161 @@
   },
   "ws_substitute": {
     "message": "Thay phần khớp"
+  },
+  "preset_no_csp": {
+    "message": "Bỏ CSP"
+  },
+  "preset_no_csp_title": {
+    "message": "Giữ response thật và bỏ các header Content-Security-Policy của nó"
+  },
+  "preset_no_cache": {
+    "message": "Không cache"
+  },
+  "preset_no_cache_title": {
+    "message": "Giữ response thật và bỏ các header cache của nó"
+  },
+  "mode_passthrough": {
+    "message": "Giữ response thật (chỉ sửa header)"
+  },
+  "field_passthrough_help": {
+    "message": "Body của response thật được giữ nguyên như server gửi; chỉ status và header thay đổi."
+  },
+  "field_remove_headers": {
+    "message": "Header cần bỏ khỏi response"
+  },
+  "field_remove_headers_hint": {
+    "message": "Mỗi dòng một tên. Tên kết thúc bằng <code>*</code> bỏ mọi header bắt đầu bằng phần trước nó."
+  },
+  "error_remove_header": {
+    "message": "“$1” không phải tên header. Viết mỗi dòng một tên, ví dụ Cache-Control."
+  },
+  "summary_real_response": {
+    "message": "response thật"
+  },
+  "summary_removed_headers_one": {
+    "message": "−$1"
+  },
+  "summary_removed_headers_other": {
+    "message": "−$1 response header"
+  },
+  "summary_random": {
+    "message": "ngẫu nhiên: $1 response"
+  },
+  "toast_headers_rule_skipped": {
+    "message": "Rule \"$1\": $2"
+  },
+  "group_responses": {
+    "message": "Response ngẫu nhiên"
+  },
+  "responses_help": {
+    "message": "Mỗi request nhận một trong các response, chọn theo trọng số: trọng số 80 và 20 cho response đầu 8 lần trên 10."
+  },
+  "field_weight": {
+    "message": "Trọng số của response ở trên"
+  },
+  "field_weight_hint": {
+    "message": "Để trống là 1. Trọng số 0 thì không bao giờ được chọn."
+  },
+  "field_random_seed": {
+    "message": "Seed (thứ tự lặp lại được)"
+  },
+  "field_random_seed_placeholder": {
+    "message": "ví dụ 42"
+  },
+  "field_random_seed_hint": {
+    "message": "Để trống thì chọn ngẫu nhiên. Có seed thì các lần chọn theo cùng một thứ tự, hợp cho test tự động; Đặt lại số đếm hoặc sửa rule sẽ bắt đầu lại từ đầu."
+  },
+  "variant_add": {
+    "message": "+ Thêm response"
+  },
+  "variant_weight": {
+    "message": "Trọng số"
+  },
+  "variant_status": {
+    "message": "Status"
+  },
+  "variant_status_placeholder": {
+    "message": "như ở trên"
+  },
+  "variant_body": {
+    "message": "Body"
+  },
+  "variant_body_placeholder": {
+    "message": "{\"error\":\"Internal Server Error\"}"
+  },
+  "variant_headers": {
+    "message": "Header (Tên: giá trị)"
+  },
+  "variant_delete": {
+    "message": "Bỏ response này"
+  },
+  "error_variant_weight": {
+    "message": "Trọng số phải là số nguyên từ 0 đến $1."
+  },
+  "error_variant_weights_zero": {
+    "message": "Cần ít nhất một response có trọng số lớn hơn 0."
+  },
+  "error_random_seed": {
+    "message": "Seed phải là số nguyên từ 0 đến 4294967295."
+  },
+  "variables_btn": {
+    "message": "Biến"
+  },
+  "variables_btn_title": {
+    "message": "Giá trị bạn có thể viết dạng {{name}} trong rule"
+  },
+  "variables_title": {
+    "message": "Biến"
+  },
+  "variables_close": {
+    "message": "Đóng hộp thoại biến"
+  },
+  "variables_help": {
+    "message": "Viết <code>{{name}}</code> trong URL pattern, URL redirect, giá trị header hoặc body, rule sẽ dùng giá trị của biến. Giá trị của site này thắng giá trị chung cho mọi site. <code>\\{{name}}</code> giữ nguyên chữ như đã viết."
+  },
+  "variables_site": {
+    "message": "Site này"
+  },
+  "variables_site_label": {
+    "message": "Biến của site này"
+  },
+  "variables_global": {
+    "message": "Mọi site"
+  },
+  "variables_global_label": {
+    "message": "Biến dùng cho mọi site"
+  },
+  "variables_name": {
+    "message": "Tên biến"
+  },
+  "variables_value": {
+    "message": "Giá trị"
+  },
+  "variables_add": {
+    "message": "+ Thêm biến"
+  },
+  "variables_delete": {
+    "message": "Xóa biến"
+  },
+  "variables_save": {
+    "message": "Lưu biến"
+  },
+  "toast_variables_saved": {
+    "message": "Đã lưu biến"
+  },
+  "toast_variables_save_failed": {
+    "message": "Không lưu được biến: $1"
+  },
+  "error_variable_line": {
+    "message": "“$1” cần tên và giá trị: tên: giá trị"
+  },
+  "error_variable_name": {
+    "message": "“$1” không phải tên biến: bắt đầu bằng chữ cái hoặc _, sau đó là chữ, số, _, . hoặc -."
+  },
+  "error_variable_reserved": {
+    "message": "“$1” là placeholder có sẵn; hãy chọn tên khác."
+  },
+  "error_variable_twice": {
+    "message": "“$1” xuất hiện hai lần trong cùng một danh sách."
   }
 }

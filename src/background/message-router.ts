@@ -17,6 +17,7 @@ namespace NetworkOverridesBackground {
         tabId: number;
         enabled: boolean;
         overrides?: OverrideRule[];
+        variables?: Record<string, string>;
         tabUrl?: string;
       }
     | { type: 'getApis'; tabId: number; includeBodies?: boolean }
@@ -43,6 +44,10 @@ namespace NetworkOverridesBackground {
         const state = TabState.ensure(tabId);
         state.enabled = enabled;
         state.overrides = overrides;
+        // A panel that predates variables sends none; the ones held are kept then.
+        if (msg.variables !== undefined) {
+          state.variables = NetworkOverridesUtils.variablesFrom(msg.variables);
+        }
         if (tabUrl) state.origin = NetworkOverridesUtils.getOrigin(tabUrl);
         TabState.rulesChanged(tabId);
         TabState.schedulePersist(tabId);

@@ -47,6 +47,43 @@ namespace NetworkOverridesUi {
     );
   }
 
+  function isWholeNumber(value: unknown, min: number, max: number): boolean {
+    return Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
+  }
+
+  function isValidRemovedHeaders(names: any): boolean {
+    if (names === undefined) return true;
+    if (!Array.isArray(names) || !names.every(name => typeof name === 'string')) return false;
+    const parsed = NetworkOverridesUtils.parseHeaderNames(names.join('\n'));
+    return 'names' in parsed && parsed.names.length === names.length;
+  }
+
+  function isValidResponseVariants(rule: any): boolean {
+    if (rule.responses === undefined) {
+      return rule.weight === undefined && rule.randomSeed === undefined;
+    }
+    const maxWeight = NetworkOverridesUtils.MAX_RESPONSE_WEIGHT;
+    return (
+      (rule.mode === 'text' || rule.mode === 'file') &&
+      Array.isArray(rule.responses) &&
+      rule.responses.every(
+        (variant: any) =>
+          !!variant &&
+          typeof variant === 'object' &&
+          isWholeNumber(variant.weight, 0, maxWeight) &&
+          (variant.statusCode === undefined || isWholeNumber(variant.statusCode, 100, 599)) &&
+          (typeof variant.body === 'string' ||
+            (typeof variant.body === 'object' && variant.body !== null)) &&
+          (variant.responseHeaders === undefined ||
+            (Array.isArray(variant.responseHeaders) &&
+              variant.responseHeaders.every(isValidImportHeader)))
+      ) &&
+      (rule.weight === undefined || isWholeNumber(rule.weight, 0, maxWeight)) &&
+      (rule.randomSeed === undefined ||
+        isWholeNumber(rule.randomSeed, 0, NetworkOverridesUtils.MAX_RANDOM_SEED))
+    );
+  }
+
   function isValidImportedRule(rule: any): boolean {
     return (
       !!rule &&
@@ -55,7 +92,8 @@ namespace NetworkOverridesUi {
       (rule.mode === 'text' ||
         rule.mode === 'file' ||
         rule.mode === 'script' ||
-        rule.mode === 'patch') &&
+        rule.mode === 'patch' ||
+        rule.mode === 'passthrough') &&
       // A patch rule carries its operations; no other rule may.
       (rule.mode === 'patch'
         ? NetworkOverridesUtils.validatePatchOperations(rule.patch) === null
@@ -98,6 +136,8 @@ namespace NetworkOverridesUi {
       (rule.wsMatch === undefined || typeof rule.wsMatch === 'string') &&
       (rule.wsMatchRegex === undefined || typeof rule.wsMatchRegex === 'boolean') &&
       (rule.wsAction === undefined || isValidWsAction(rule.wsAction)) &&
+      isValidRemovedHeaders(rule.removeResponseHeaders) &&
+      isValidResponseVariants(rule) &&
       (rule.enabled === undefined || typeof rule.enabled === 'boolean')
     );
   }
@@ -126,9 +166,36 @@ namespace NetworkOverridesUi {
           ? { op: 'set', path: operation.path, value: operation.value }
           : { op: 'remove', path: operation.path }
       );
+    } else if (source.mode === 'passthrough') {
+      // The real body is kept, so no body is carried.
+      clean.body = '';
     } else if (source.respondAtRequest !== undefined) {
-      // A patch needs the real response, so it never answers without the server.
+      // A patch or pass-through rule needs the real response, so it never
+      // answers without the server.
       clean.respondAtRequest = source.respondAtRequest;
+    }
+    if (source.removeResponseHeaders !== undefined) {
+      clean.removeResponseHeaders = source.removeResponseHeaders.map((name: string) =>
+        name.trim().toLowerCase()
+      );
+    }
+    if (source.responses !== undefined) {
+      clean.responses = source.responses.map((variant: any) => {
+        const copy: NetworkOverridesShared.ResponseVariant = {
+          weight: variant.weight,
+          body: typeof variant.body === 'string' ? variant.body : JSON.stringify(variant.body),
+        };
+        if (variant.statusCode !== undefined) copy.statusCode = variant.statusCode;
+        if (variant.responseHeaders !== undefined) {
+          copy.responseHeaders = variant.responseHeaders.map((header: any) => ({
+            name: header.name,
+            value: header.value,
+          }));
+        }
+        return copy;
+      });
+      if (source.weight !== undefined) clean.weight = source.weight;
+      if (source.randomSeed !== undefined) clean.randomSeed = source.randomSeed;
     }
     if (source.statusCode !== undefined) clean.statusCode = source.statusCode;
     if (source.delayMs !== undefined) clean.delayMs = source.delayMs;

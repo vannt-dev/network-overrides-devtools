@@ -93,7 +93,7 @@ Bấm **Mock this** trên một API (hoặc click vào dòng API) để mở mod
   - **Không cache** (No cache): giữ response thật và bỏ các header cache (`Cache-Control`, `Expires`, `ETag`, `Last-Modified`, `Pragma`, `Age`).
 - **URL pattern**: URL pattern để matching. Field này sửa được, kể cả sau **Mock this**: đổi `/api/users/42` thành `/api/users/*` để một rule khớp nhiều URL hơn.
 - **Method**: Dropdown chọn method (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) để giới hạn rule chỉ áp dụng cho một method cụ thể. Mặc định là `Any`, khớp với mọi method. Khi mở modal từ một API đã capture, method sẽ được điền sẵn theo method của request đó.
-- **Mock response / Redirect / Network error / WebSocket**: Chọn loại rule.
+- **Mock response / Redirect / Network error / WebSocket / Chèn JS/CSS / CRUD collection**: Chọn loại rule (CRUD collection xem [6.13](#613-crud-collection-rest-api-giả)).
 - **Status code** (mock response): để trống thì giữ status thật. Được điền sẵn từ request đã capture nếu status đó mang được body (không phải 204, 304 hay 3xx khác).
 - **Response body**: Nội dung response ghi đè (với mock response).
 - **Redirect URL**: URL chuyển hướng (với Redirect).
@@ -367,6 +367,32 @@ Rule **Mock response** (body Text hoặc Raw base64) có thể trả về một 
 Mỗi request nhận một response, chọn theo trọng số: trọng số `80` và `20` cho response đầu khoảng 8 lần trên 10. Trọng số `0` không bao giờ được chọn. Template và biến dùng được trong mọi body. Response kèm header `x-network-overrides-response`, là số thứ tự của response đã trả (`1` là response của chính rule).
 
 **Seed (thứ tự lặp lại được)**: để trống thì chọn ngẫu nhiên. Có một số thì các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động. Thứ tự đi theo số lần rule đã được áp dụng, nên vẫn tiếp tục khi worker của trình duyệt khởi động lại; **Đặt lại số đếm** (Reset counts) trong tab Rules, hoặc sửa rule, sẽ bắt đầu lại từ đầu.
+
+### 6.13. CRUD collection (REST API giả)
+
+Chọn loại **CRUD collection** để mock cả một REST resource có nhớ thay đổi, khi làm trang trước khi có API, hoặc để thử luồng thêm/sửa/xóa mà không đụng dữ liệu thật. Server không bao giờ được gọi, nên địa chỉ không cần tồn tại.
+
+1. **URL pattern**: địa chỉ của danh sách, ví dụ `/api/todos`. Pattern thường khớp địa chỉ kết thúc bằng nó; pattern `*` hoặc `/regex/` phải khớp địa chỉ danh sách (`*/api/todos`).
+2. **Response body** là **seed**: một mảng JSON gồm các object, ví dụ `[{"id": 1, "title": "Buy milk", "done": false}]`. Để trống là danh sách rỗng.
+3. **Trường ID**: trường chứa id của mỗi mục (để trống là `id`). **Mục mới nhận** số kế tiếp (lớn hơn id số lớn nhất một đơn vị; một id không bao giờ được cấp hai lần, kể cả sau khi xóa) hoặc một UUID ngẫu nhiên.
+
+Sau đó rule trả lời:
+
+| Request               | Trả lời                                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/todos`      | `200` và danh sách. `?done=true&user=2` giữ các mục có trường bằng các giá trị đó (so như chuỗi); `_limit=10&_page=2` trả một trang. Header `X-Total-Count` cho số mục khớp trước khi phân trang. |
+| `GET /api/todos/1`    | `200` và mục đó, hoặc `404` và `{"error":"Not found"}`. Id được so như chuỗi, nên `/1` tìm thấy `"id": 1`.                                                                                        |
+| `POST /api/todos`     | `201` và mục mới cùng id của nó. Id có trong body được giữ, hoặc `409` nếu đã có.                                                                                                                 |
+| `PUT /api/todos/1`    | `200` và mục được thay bằng body (giữ id), hoặc `404`.                                                                                                                                            |
+| `PATCH /api/todos/1`  | `200` và mục được gộp các trường cấp ngoài cùng của body (giữ id), hoặc `404`.                                                                                                                    |
+| `DELETE /api/todos/1` | `204` không có body, hoặc `404`.                                                                                                                                                                  |
+
+`POST`, `PUT` hoặc `PATCH` có body không phải object JSON nhận `400`; method mà địa chỉ không nhận thì `405`; địa chỉ nằm dưới một mục (`/api/todos/1/comments`) không khớp rule. Request khác origin cũng chạy: preflight được trả lời và origin của trang được cho phép.
+
+- **Dữ liệu giữ trong phiên trình duyệt**, theo tab: còn sau khi tải lại trang, khi tab sang site khác rồi quay lại và khi worker của extension khởi động lại, mất khi đóng tab hoặc trình duyệt. Đổi seed, trường ID hoặc kiểu id thì bắt đầu lại từ seed; đổi delay, header hay điều kiện thì dữ liệu được giữ.
+- **Dữ liệu hiện tại** (trong editor, sau khi đã lưu rule) cho thấy danh sách đúng như trang đang thấy. Sửa rồi bấm **Lưu dữ liệu**, bấm **Làm mới** sau khi trang đã đổi nó, hoặc **Về lại seed** để bắt đầu lại.
+- Placeholder `{{...}}` và biến trong seed được điền một lần, lúc tạo danh sách từ seed, nên `{{$uuid}}` cho mỗi mục một giá trị cố định. Seed có placeholder nằm ngoài chuỗi chỉ được kiểm tra sau khi điền.
+- **Delay**, **Response headers**, **Method** và các điều kiện trong **Advanced** dùng như với mock response. Một collection giới hạn khoảng 1 MB JSON; thay đổi làm nó lớn hơn sẽ nhận `413`.
 
 ---
 

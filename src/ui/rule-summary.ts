@@ -86,8 +86,11 @@ namespace NetworkOverridesUi {
     } else if (rule.redirectUrl) {
       parts.push(t('summary_redirect', rule.redirectUrl));
     } else {
-      if (status) parts.push(status);
-      if (rule.mode === 'patch') {
+      if (rule.mode !== 'collection' && status) parts.push(status);
+      if (rule.mode === 'collection') {
+        parts.push(t('summary_collection'));
+        if (rule.collectionIdType === 'uuid') parts.push(t('summary_collection_uuid'));
+      } else if (rule.mode === 'patch') {
         const fields = rule.patch?.length || 0;
         parts.push(fields === 1 ? t('summary_patch_one') : t('summary_patch_other', fields));
       } else if (rule.mode === 'script') parts.push(t('summary_script'));
@@ -101,7 +104,8 @@ namespace NetworkOverridesUi {
       if (rule.respondAtRequest && rule.mode !== 'patch' && rule.mode !== 'passthrough') {
         parts.push(t('summary_no_server'));
       }
-      if (rule.processTemplates === false && (rule.mode === 'text' || rule.mode === 'file')) {
+      const filled = rule.mode === 'text' || rule.mode === 'file' || rule.mode === 'collection';
+      if (rule.processTemplates === false && filled) {
         parts.push(t('summary_templates_off'));
       }
     }

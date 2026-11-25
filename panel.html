@@ -244,6 +244,14 @@
               <input type="radio" name="modal-override-type" value="inject" />
               <span data-i18n="type_inject">Inject JS/CSS</span>
             </label>
+            <label
+              class="type-radio"
+              title="Answer a small REST API from a list kept for the session"
+              data-i18n-title="type_collection_title"
+            >
+              <input type="radio" name="modal-override-type" value="collection" />
+              <span data-i18n="type_collection">CRUD collection</span>
+            </label>
           </div>
           <div class="modal-field" id="modal-status-field">
             <label for="modal-status"><span data-i18n="field_status">Status code</span></label>
@@ -296,6 +304,19 @@
                 or a JSON Pointer such as <code>/data/items/0</code>. A response that is not JSON
                 passes through unchanged.
               </p>
+              <p
+                id="modal-collection-help"
+                class="modal-script-help"
+                style="display: none"
+                data-i18n-html="field_collection_help"
+              >
+                The seed data: a JSON array of objects (blank is an empty list). The pattern is the
+                list address, such as <code>/api/todos</code>: <code>GET</code> it for the list
+                (<code>?done=true</code> filters, <code>_page</code> and <code>_limit</code> page),
+                <code>POST</code> to add, and <code>GET</code>, <code>PUT</code>,
+                <code>PATCH</code> or <code>DELETE</code> <code>/api/todos/1</code> for one item.
+                Changes last for the browser session; the server is never called.
+              </p>
               <textarea
                 id="modal-body"
                 rows="8"
@@ -340,6 +361,73 @@
                 class="modal-preview-container"
                 style="display: none"
               ></div>
+            </div>
+          </div>
+          <div id="modal-collection-fields" style="display: none">
+            <div class="modal-field">
+              <label for="modal-collection-id-field"
+                ><span data-i18n="field_collection_id">ID field</span></label
+              >
+              <input
+                id="modal-collection-id-field"
+                type="text"
+                placeholder="id"
+                aria-describedby="modal-collection-id-hint"
+              />
+              <p
+                id="modal-collection-id-hint"
+                class="modal-field-hint"
+                data-i18n="field_collection_id_hint"
+              >
+                The field that holds each item's id. Blank is id.
+              </p>
+            </div>
+            <label class="modal-field">
+              <span data-i18n="field_collection_id_type">New items get</span>
+              <select id="modal-collection-id-type">
+                <option value="number" data-i18n="collection_id_number">
+                  The next number (1, 2, 3…)
+                </option>
+                <option value="uuid" data-i18n="collection_id_uuid">A random UUID</option>
+              </select>
+            </label>
+            <div class="modal-field" id="modal-collection-data-field">
+              <label for="modal-collection-data"
+                ><span data-i18n="field_collection_data">Current data</span></label
+              >
+              <textarea
+                id="modal-collection-data"
+                rows="6"
+                spellcheck="false"
+                aria-describedby="modal-collection-note"
+              ></textarea>
+              <p id="modal-collection-note" class="modal-field-hint"></p>
+              <div class="modal-body-footer">
+                <button
+                  id="modal-collection-reload"
+                  type="button"
+                  class="modal-action-btn"
+                  data-i18n="collection_reload"
+                >
+                  Refresh
+                </button>
+                <button
+                  id="modal-collection-save"
+                  type="button"
+                  class="modal-action-btn"
+                  data-i18n="collection_save"
+                >
+                  Save data
+                </button>
+                <button
+                  id="modal-collection-reset"
+                  type="button"
+                  class="modal-action-btn"
+                  data-i18n="collection_reset"
+                >
+                  Reset to seed
+                </button>
+              </div>
             </div>
           </div>
           <div id="modal-redirect-fields" style="display: none">

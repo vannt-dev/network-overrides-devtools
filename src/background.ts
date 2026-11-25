@@ -11,10 +11,12 @@ importScripts(
   'utils.js',
   'static-files.js',
   'rule-values.js',
+  'collection.js',
   'tab-state.js',
   'background/encoding.js',
   'background/api-capture.js',
   'background/response-script.js',
+  'background/collection-store.js',
   'background/interceptor.js',
   'background/debugger-controller.js',
   'background/message-router.js'

@@ -3,6 +3,7 @@
 /// <reference path="../shared.ts" />
 /// <reference path="../utils.ts" />
 /// <reference path="../tab-state.ts" />
+/// <reference path="./collection-store.ts" />
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
 
@@ -26,7 +27,44 @@ namespace NetworkOverridesBackground {
     | { type: 'resetRuleHits'; tabId: number }
     | { type: 'getStatus'; tabId: number }
     | { type: 'setThrottle'; tabId: number; preset: ThrottlePreset }
-    | { type: 'updateCapturedBodyTypes'; types: string[] };
+    | { type: 'updateCapturedBodyTypes'; types: string[] }
+    | { type: 'getCollection'; tabId: number; pattern: string }
+    | { type: 'resetCollection'; tabId: number; pattern: string }
+    | { type: 'setCollection'; tabId: number; pattern: string; items: unknown };
+
+  /**
+   * Reads, resets or replaces the list of a tab's collection rule, for the
+   * rule editor. The rule must have been sent to the tab already (saved).
+   */
+  function handleCollectionMessage(msg: Msg, sendResponse: (response: unknown) => void): void {
+    const type = `${msg.type}Response`;
+    const tabId = Number((msg as { tabId?: unknown }).tabId);
+    const pattern = String((msg as { pattern?: unknown }).pattern ?? '');
+    const rule = Number.isNaN(tabId) ? null : collectionRuleOf(tabId, pattern);
+    if (!rule) {
+      sendResponse({ type, success: false, error: 'not-saved' });
+      return;
+    }
+    let result: ReturnType<typeof collectionStore>;
+    if (msg.type === 'setCollection') {
+      const items = msg.items;
+      if (
+        !Array.isArray(items) ||
+        items.some(item => !item || typeof item !== 'object' || Array.isArray(item))
+      ) {
+        sendResponse({ type, success: false, error: 'not a JSON array of objects' });
+        return;
+      }
+      result = setCollectionItems(tabId, rule, items as NetworkOverridesCollection.Item[]);
+    } else {
+      result = collectionStore(tabId, rule, '', msg.type === 'resetCollection');
+    }
+    if ('error' in result) {
+      sendResponse({ type, success: false, error: result.error });
+      return;
+    }
+    sendResponse({ type, success: true, items: result.store.items });
+  }
 
   chrome.runtime.onMessage.addListener((msg: Msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
@@ -232,6 +270,12 @@ namespace NetworkOverridesBackground {
           }
         );
         return true;
+      }
+      case 'getCollection':
+      case 'resetCollection':
+      case 'setCollection': {
+        if (typeof sendResponse === 'function') handleCollectionMessage(msg, sendResponse);
+        return;
       }
       case 'updateCapturedBodyTypes': {
         if (Array.isArray((msg as any).types)) {

@@ -154,6 +154,24 @@ namespace NetworkOverridesUi {
       variablesGlobalTable: document.getElementById('variables-global-table') as HTMLDivElement,
       variablesFeedback: document.getElementById('variables-feedback') as HTMLElement,
       variablesSaveBtn: document.getElementById('variables-save') as HTMLButtonElement,
+      modalCollectionFields: document.getElementById('modal-collection-fields') as HTMLDivElement,
+      modalCollectionHelp: document.getElementById('modal-collection-help') as HTMLElement,
+      modalCollectionIdField: document.getElementById(
+        'modal-collection-id-field'
+      ) as HTMLInputElement,
+      modalCollectionIdType: document.getElementById(
+        'modal-collection-id-type'
+      ) as HTMLSelectElement,
+      modalCollectionData: document.getElementById('modal-collection-data') as HTMLTextAreaElement,
+      modalCollectionDataField: document.getElementById(
+        'modal-collection-data-field'
+      ) as HTMLElement,
+      modalCollectionReload: document.getElementById(
+        'modal-collection-reload'
+      ) as HTMLButtonElement,
+      modalCollectionSave: document.getElementById('modal-collection-save') as HTMLButtonElement,
+      modalCollectionReset: document.getElementById('modal-collection-reset') as HTMLButtonElement,
+      modalCollectionNote: document.getElementById('modal-collection-note') as HTMLElement,
       modalRequestHeadersTable: document.getElementById(
         'modal-request-headers-table'
       ) as HTMLDivElement,
@@ -381,6 +399,7 @@ namespace NetworkOverridesUi {
       let type: ModalType = 'body';
       if (rule.kind === 'websocket') type = 'websocket';
       else if (rule.kind === 'inject') type = 'inject';
+      else if (rule.mode === 'collection') type = 'collection';
       else if (rule.failReason) type = 'fail';
       else if (rule.redirectUrl) type = 'redirect';
 
@@ -391,7 +410,8 @@ namespace NetworkOverridesUi {
 
       prefillWebSocketFields(elements, rule);
       updateModalVisibility(elements, type);
-      elements.modalMode.value = rule.mode || 'text';
+      // The mode list holds the body types only; a collection keeps its own.
+      elements.modalMode.value = rule.mode && rule.mode !== 'collection' ? rule.mode : 'text';
       updateScriptHelp(elements);
       elements.modalBody.value =
         rule.mode === 'patch'
@@ -404,6 +424,7 @@ namespace NetworkOverridesUi {
       updateBodyFormatAction(elements);
       updateImagePreview(elements, elements.modalBody.value);
       openModal(elements);
+      if (type === 'collection') void collectionEditor.load();
     }
 
     async function fillModalBody(url: string): Promise<void> {
@@ -414,12 +435,10 @@ namespace NetworkOverridesUi {
       if (mode === 'script' || mode === 'patch' || mode === 'passthrough') return;
       // Nor is a file loaded from disk or an inject rule's code.
       if (mode === 'file' || heldFileName(elements)) return;
-      if (
-        state.currentEditIndex !== null &&
-        state.overrides[state.currentEditIndex]?.kind === 'inject'
-      ) {
-        return;
-      }
+      // A collection's seed is its own data, not the last response.
+      const editing =
+        state.currentEditIndex !== null ? state.overrides[state.currentEditIndex] : null;
+      if (editing?.kind === 'inject' || editing?.mode === 'collection') return;
       const response = await new Promise<any>(resolve => {
         chrome.runtime.sendMessage({ type: 'getApiData', tabId: activeTabId, url }, resolve);
       });
@@ -497,6 +516,18 @@ namespace NetworkOverridesUi {
     }
 
     bindModalController({ elements, state, saveState, renderRules });
+    const collectionEditor = bindCollectionEditor({
+      elements,
+      tabId: () => activeTabId,
+      savedRule: () => {
+        const rule =
+          state.currentEditIndex !== null ? state.overrides[state.currentEditIndex] : null;
+        return rule?.mode === 'collection' ? rule : null;
+      },
+    });
+    elements.modal
+      ?.querySelector('input[name="modal-override-type"][value="collection"]')
+      ?.addEventListener('change', () => void collectionEditor.load());
     bindVariablesDialog({
       elements,
       state,

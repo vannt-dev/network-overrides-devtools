@@ -6,6 +6,7 @@
 /// <reference path="./websocket-rule.ts" />
 /// <reference path="./static-rule.ts" />
 /// <reference path="./response-variants.ts" />
+/// <reference path="./collection-rule.ts" />
 
 namespace NetworkOverridesUi {
   export interface ModalControllerOptions {
@@ -188,6 +189,17 @@ namespace NetworkOverridesUi {
           // The real body is kept: nothing typed in the body box is saved.
           body = '';
         }
+      } else if (overrideType === 'collection') {
+        body = elements.modalBody.value;
+        mode = 'collection';
+        const seedError = collectionSeedError(
+          body,
+          elements.modalProcessTemplates?.checked !== false
+        );
+        if (seedError) {
+          showModalFeedback(elements, seedError, 'error', elements.modalBody);
+          return;
+        }
       } else if (overrideType === 'redirect') {
         redirectUrl = elements.modalRedirectUrl.value.trim();
         if (!redirectUrl) {
@@ -202,8 +214,13 @@ namespace NetworkOverridesUi {
       }
 
       let statusCode: number | undefined;
-      // Hidden for WebSocket rules, so a value left from another type must not block saving.
-      if (overrideType !== 'websocket' && elements.modalStatus.value.trim()) {
+      // Hidden for WebSocket and collection rules, so a value left from another
+      // type must not block saving.
+      if (
+        overrideType !== 'websocket' &&
+        overrideType !== 'collection' &&
+        elements.modalStatus.value.trim()
+      ) {
         statusCode = parseInt(elements.modalStatus.value.trim(), 10);
         if (isNaN(statusCode) || statusCode < 100 || statusCode > 599) {
           showModalFeedback(elements, t('error_status_range'), 'error', elements.modalStatus);
@@ -280,10 +297,13 @@ namespace NetworkOverridesUi {
         }
       }
 
+      const isCollection = overrideType === 'collection';
       const responseHeaders = parseHeadersText(elements.modalHeaders.value);
-      const requestHeaders = elements.modalRequestHeaders
-        ? parseHeadersText(elements.modalRequestHeaders.value)
-        : undefined;
+      // A collection rule never calls the server, so it changes no request.
+      const requestHeaders =
+        elements.modalRequestHeaders && !isCollection
+          ? parseHeadersText(elements.modalRequestHeaders.value)
+          : undefined;
       const rule: OverrideRule = { pattern, body, mode };
       const fileName = heldFileName(elements);
       if (overrideType === 'body' && fileName && (mode === 'text' || mode === 'file')) {
@@ -304,12 +324,13 @@ namespace NetworkOverridesUi {
       );
       if (matchHeaders.length > 0) rule.matchHeaders = matchHeaders;
       if (elements.modalMatchBody?.value) rule.matchBody = elements.modalMatchBody.value;
-      if (elements.modalRequestBody?.value.trim()) {
+      if (elements.modalRequestBody?.value.trim() && !isCollection) {
         rule.requestBody = elements.modalRequestBody.value;
       }
+      if (isCollection) Object.assign(rule, readCollectionSettings(elements));
       const realResponse = mode === 'patch' || mode === 'passthrough';
       if (
-        overrideType === 'body' &&
+        (overrideType === 'body' || isCollection) &&
         !realResponse &&
         elements.modalProcessTemplates?.checked === false
       ) {

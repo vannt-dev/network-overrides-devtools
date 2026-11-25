@@ -3,6 +3,7 @@
 /// <reference path="./shared.ts" />
 /// <reference path="./utils.ts" />
 /// <reference path="./rule-values.ts" />
+/// <reference path="./collection.ts" />
 
 // The pinned @types/chrome version predates the storage.session API;
 // augment it locally rather than upgrading the whole type package.
@@ -35,6 +36,8 @@ namespace NetworkOverridesTabState {
     // Times each rule was applied, by NetworkOverridesUtils.ruleHitKeys key.
     ruleHits: Map<string, RuleHit>;
     throttlePreset: ThrottlePreset;
+    // The lists collection rules answer from, by rule pattern; kept for the session.
+    collections: Map<string, NetworkOverridesCollection.Store>;
   }
 
   // Runtime-only artifacts: never mirrored to storage.
@@ -59,6 +62,8 @@ namespace NetworkOverridesTabState {
   export const RULE_HIT_URL_LIMIT = 300;
   /** Hits of rules that no longer exist are dropped once this many keys pile up. */
   export const RULE_HITS_LIMIT = 500;
+  /** Lists of collection rules that are gone are dropped once a tab holds this many. */
+  export const COLLECTIONS_LIMIT = 20;
 
   const states = new Map<number, TabState>();
   const runtimes = new Map<number, TabRuntime>();
@@ -85,6 +90,7 @@ namespace NetworkOverridesTabState {
         stats: { totalOverridden: 0, totalFailed: 0 },
         ruleHits: new Map(),
         throttlePreset: 'none',
+        collections: new Map(),
       };
       states.set(tabId, state);
     }
@@ -187,6 +193,16 @@ namespace NetworkOverridesTabState {
     const state = states.get(tabId);
     if (!state) return;
     const keys = ruleHitKeyMap(state.overrides);
+    // A list outlives its rule for a while: the rules change when the tab
+    // visits another site, and the list is still there on the way back.
+    if (state.collections.size > COLLECTIONS_LIMIT) {
+      const patterns = new Set(
+        state.overrides.filter(rule => rule.mode === 'collection').map(rule => rule.pattern)
+      );
+      for (const pattern of Array.from(state.collections.keys())) {
+        if (!patterns.has(pattern)) state.collections.delete(pattern);
+      }
+    }
     if (state.ruleHits.size <= RULE_HITS_LIMIT) return;
     const live = new Set(keys.values());
     for (const key of Array.from(state.ruleHits.keys())) {
@@ -267,6 +283,7 @@ namespace NetworkOverridesTabState {
       stats: state.stats,
       ruleHits: Object.fromEntries(state.ruleHits.entries()),
       throttlePreset: state.throttlePreset,
+      collections: Object.fromEntries(state.collections.entries()),
     };
   }
 
@@ -376,6 +393,16 @@ namespace NetworkOverridesTabState {
       }
       if (['none', 'fast3g', 'slow3g', 'offline'].includes(raw.throttlePreset)) {
         state.throttlePreset = raw.throttlePreset;
+      }
+      if (raw.collections && typeof raw.collections === 'object') {
+        for (const [pattern, store] of Object.entries(raw.collections as Record<string, any>)) {
+          if (!store || typeof store.seed !== 'string' || !Array.isArray(store.items)) continue;
+          state.collections.set(pattern, {
+            seed: store.seed,
+            items: store.items,
+            nextId: typeof store.nextId === 'number' ? store.nextId : 1,
+          });
+        }
       }
       if (state.enabled) toReattach.push(tabId);
     }

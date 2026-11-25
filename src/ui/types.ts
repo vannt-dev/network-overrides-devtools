@@ -4,7 +4,7 @@
 /// <reference path="../utils.ts" />
 
 namespace NetworkOverridesUi {
-  export type ModalType = 'body' | 'redirect' | 'fail' | 'websocket' | 'inject';
+  export type ModalType = 'body' | 'redirect' | 'fail' | 'websocket' | 'inject' | 'collection';
 
   export const KNOWN_METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   export type OverrideMode = NetworkOverridesShared.OverrideMode;
@@ -128,6 +128,16 @@ namespace NetworkOverridesUi {
     variablesGlobalTable?: HTMLDivElement;
     variablesFeedback?: HTMLElement;
     variablesSaveBtn?: HTMLButtonElement;
+    modalCollectionFields?: HTMLDivElement;
+    modalCollectionHelp?: HTMLElement;
+    modalCollectionIdField?: HTMLInputElement;
+    modalCollectionIdType?: HTMLSelectElement;
+    modalCollectionData?: HTMLTextAreaElement;
+    modalCollectionDataField?: HTMLElement;
+    modalCollectionReload?: HTMLButtonElement;
+    modalCollectionSave?: HTMLButtonElement;
+    modalCollectionReset?: HTMLButtonElement;
+    modalCollectionNote?: HTMLElement;
   }
 
   export interface AppOptions {

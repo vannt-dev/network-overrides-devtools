@@ -93,7 +93,12 @@ namespace NetworkOverridesUi {
         rule.mode === 'file' ||
         rule.mode === 'script' ||
         rule.mode === 'patch' ||
-        rule.mode === 'passthrough') &&
+        rule.mode === 'passthrough' ||
+        rule.mode === 'collection') &&
+      (rule.collectionIdField === undefined || typeof rule.collectionIdField === 'string') &&
+      (rule.collectionIdType === undefined ||
+        rule.collectionIdType === 'number' ||
+        rule.collectionIdType === 'uuid') &&
       // A patch rule carries its operations; no other rule may.
       (rule.mode === 'patch'
         ? NetworkOverridesUtils.validatePatchOperations(rule.patch) === null
@@ -169,6 +174,12 @@ namespace NetworkOverridesUi {
     } else if (source.mode === 'passthrough') {
       // The real body is kept, so no body is carried.
       clean.body = '';
+    } else if (source.mode === 'collection') {
+      // A collection always answers without the server; only its id settings go with it.
+      if (source.collectionIdField !== undefined) {
+        clean.collectionIdField = source.collectionIdField;
+      }
+      if (source.collectionIdType !== undefined) clean.collectionIdType = source.collectionIdType;
     } else if (source.respondAtRequest !== undefined) {
       // A patch or pass-through rule needs the real response, so it never
       // answers without the server.

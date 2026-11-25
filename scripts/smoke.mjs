@@ -434,6 +434,47 @@ return {
       JSON.stringify(preflighted)
     );
 
+    // {{$jwt}} gives a well-formed token whose payload holds the claims.
+    await popup.click('#add-api-btn');
+    await popup.waitForSelector('#override-modal', { state: 'visible' });
+    await popup.fill('#modal-pattern', '127.0.0.1:1/api/jwt');
+    await popup.check('input[name="modal-override-type"][value="body"]');
+    await openEditorGroup(popup, 'modal-group-body-type');
+    await popup.selectOption('#modal-mode', 'text');
+    await popup.fill('#modal-body', '{"token":"{{$jwt({\\"role\\":\\"admin\\"}, 120)}}"}');
+    await openEditorGroup(popup, 'modal-group-timing');
+    await popup.check('#modal-respond-at-request');
+    await popup.click('#save-override');
+    await popup.waitForSelector('#override-modal', { state: 'hidden' });
+    await popup.waitForTimeout(1000);
+    const jwt = await site.evaluate(
+      u =>
+        fetch(u).then(
+          async r => {
+            const token = JSON.parse(await r.text()).token;
+            const part = text => JSON.parse(atob(text.replace(/-/g, '+').replace(/_/g, '/')));
+            const [header, payload, signature] = token.split('.');
+            return {
+              token,
+              header: part(header),
+              payload: part(payload),
+              signature: signature.length,
+            };
+          },
+          error => ({ error: String(error) })
+        ),
+      'http://127.0.0.1:1/api/jwt'
+    );
+    report(
+      'a {{$jwt}} body gives a well-formed token with the claims and lifetime',
+      /^[\w-]+\.[\w-]+\.[\w-]+$/.test(jwt.token || '') &&
+        jwt.header?.alg === 'HS256' &&
+        jwt.payload?.role === 'admin' &&
+        jwt.payload?.exp - jwt.payload?.iat === 120 &&
+        jwt.signature === 43,
+      JSON.stringify(jwt)
+    );
+
     // An error status works on a preflighted request too: the preflight gets
     // its own 204, the request gets the 500.
     await popup.click('#add-api-btn');

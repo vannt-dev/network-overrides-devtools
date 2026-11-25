@@ -514,6 +514,13 @@ Cho phép chèn các biến sinh tự động vào nội dung Response Mock Body
 - `{{$randomName}}`: Tạo tên ngẫu nhiên (`Alex Rivers`).
 - `{{$randomInt(1, 100)}}`: Sinh số nguyên ngẫu nhiên trong khoảng `min` tới `max`.
 - `{{$query(id)}}`: Trích xuất trực tiếp giá trị của Query Parameter `id` từ Request URL.
+- `{{$jwt}}`: JWT giả nhưng đúng định dạng (`header.payload.signature`, base64url), dùng cho response đăng nhập hoặc cấp token. Payload có `sub`, `iat` (lúc này) và `exp` (lúc này + 1 giờ), tính bằng giây.
+  - Thêm hoặc đổi claim bằng một object JSON: `{{$jwt({"sub":"42","role":"admin"})}}`. Claim bạn ghi thắng claim mặc định, nên `"exp":1767225600` đặt hạn cố định.
+  - Đặt thời gian sống của token, tính bằng giây, ở đối số cuối: `{{$jwt(300)}}`, `{{$jwt({"sub":"42"}, 300)}}`. Dùng `0` hoặc số âm để có token đã hết hạn.
+  - Trong một chuỗi JSON, có thể viết dấu nháy là `\"` để body vẫn là JSON hợp lệ: `"token": "{{$jwt({\"sub\":\"42\"})}}"`.
+  - Claim có thể chứa biến và các placeholder khác, ví dụ `{"sub":"{{param:1}}"}`.
+  - Đối số không phải object JSON và/hoặc số nguyên thì placeholder được giữ nguyên như đã viết, để bạn thấy nó trong response.
+  - **Token này KHÔNG có chữ ký hợp lệ.** Header ghi HS256 nhưng chữ ký là các byte ngẫu nhiên, không dùng secret nào. Token dùng được cho code chỉ giải mã token (đọc user, role hay hạn dùng); server hoặc thư viện kiểm tra chữ ký sẽ từ chối nó.
 
 ### 9.6. Quy tắc Toàn cục (Global Rules)
 

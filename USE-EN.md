@@ -518,6 +518,13 @@ Insert dynamic placeholders into mock response bodies:
 - `{{$randomName}}`: Generates a random full name (`Alex Rivers`).
 - `{{$randomInt(min, max)}}`: Generates a random integer between `min` and `max`.
 - `{{$query(paramName)}}`: Extracts the query parameter `paramName` directly from the request URL.
+- `{{$jwt}}`: A well-formed fake JWT (`header.payload.signature`, base64url) for a mocked login or token response. The payload has `sub`, `iat` (now) and `exp` (now + 1 hour), in seconds.
+  - Add or change claims with a JSON object: `{{$jwt({"sub":"42","role":"admin"})}}`. A claim you give wins over the default one, so `"exp":1767225600` sets a fixed expiry.
+  - Set how long the token lasts, in seconds, as the last argument: `{{$jwt(300)}}`, `{{$jwt({"sub":"42"}, 300)}}`. Use `0` or a negative number for a token that has already expired.
+  - Inside a JSON string, the quotes may be written as `\"` to keep the body valid JSON: `"token": "{{$jwt({\"sub\":\"42\"})}}"`.
+  - Claims may hold variables and the other placeholders, such as `{"sub":"{{param:1}}"}`.
+  - An argument that is not a JSON object and/or a whole number leaves the placeholder as written, so you can see it in the response.
+  - **The token is NOT validly signed.** Its header says HS256, but the signature is random bytes made without a secret. It is good for code that only decodes a token (reads the user, the role or the expiry); a server or library that checks the signature rejects it.
 
 ### 9.6. Global Rules
 

@@ -848,6 +848,101 @@ namespace NetworkOverridesUtils {
       const idx = parseInt(indexStr, 10) - 1;
       return idx >= 0 && idx < captures.length ? captures[idx] : '';
     });
+    // Last, so the claims may hold the placeholders above and {{param:N}}.
+    result = result.replace(
+      /\{\{\$jwt(?:\(([\s\S]*?)\))?\}\}/gi,
+      (token, args: string | undefined) => fakeJwt(args) ?? token
+    );
     return result;
+  }
+
+  // ---- {{$jwt}} ----------------------------------------------------------------
+
+  /** Seconds a `{{$jwt}}` token lasts when no lifetime is given. */
+  export const DEFAULT_JWT_LIFETIME = 3600;
+
+  const BASE64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+  /** UTF-8 bytes of a string (lone surrogates become U+FFFD). */
+  function utf8Bytes(text: string): number[] {
+    const bytes: number[] = [];
+    for (const char of text) {
+      let code = char.codePointAt(0) as number;
+      if (code >= 0xd800 && code <= 0xdfff) code = 0xfffd;
+      if (code < 0x80) bytes.push(code);
+      else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 63));
+      else if (code < 0x10000) {
+        bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63));
+      } else {
+        bytes.push(
+          0xf0 | (code >> 18),
+          0x80 | ((code >> 12) & 63),
+          0x80 | ((code >> 6) & 63),
+          0x80 | (code & 63)
+        );
+      }
+    }
+    return bytes;
+  }
+
+  /** Base64url without `=` padding, as a JWT uses it. */
+  export function base64UrlEncode(input: string | number[]): string {
+    const bytes = typeof input === 'string' ? utf8Bytes(input) : input;
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const chunk = (bytes[i] << 16) | ((bytes[i + 1] ?? 0) << 8) | (bytes[i + 2] ?? 0);
+      const left = bytes.length - i;
+      out += BASE64URL[(chunk >> 18) & 63] + BASE64URL[(chunk >> 12) & 63];
+      if (left > 1) out += BASE64URL[(chunk >> 6) & 63];
+      if (left > 2) out += BASE64URL[chunk & 63];
+    }
+    return out;
+  }
+
+  function parseJwtArgs(text: string): unknown[] | null {
+    try {
+      return JSON.parse(`[${text}]`);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * A well-formed but unsigned token for `{{$jwt(claims, lifetime)}}`: an
+   * HS256 header, the claims with `sub`, `iat` (now) and `exp` (now +
+   * lifetime seconds) filled in unless given, and a random signature. Both
+   * arguments may be left out. Returns null when they are not a JSON object
+   * and/or a whole number of seconds, so the placeholder stays as written.
+   */
+  export function fakeJwt(args?: string, nowMs: number = Date.now()): string | null {
+    const text = (args ?? '').trim();
+    // Quotes typed as \" (to keep a JSON body valid) are read as plain quotes.
+    const parsed = text ? (parseJwtArgs(text) ?? parseJwtArgs(text.replace(/\\"/g, '"'))) : [];
+    if (!parsed || parsed.length > 2) return null;
+
+    let claims: Record<string, unknown> = {};
+    let lifetime = DEFAULT_JWT_LIFETIME;
+    const [first, second] = parsed;
+    if (typeof first === 'number' && parsed.length === 1) {
+      lifetime = first;
+    } else if (first !== undefined) {
+      if (!first || typeof first !== 'object' || Array.isArray(first)) return null;
+      claims = first as Record<string, unknown>;
+      if (parsed.length === 2) {
+        if (typeof second !== 'number') return null;
+        lifetime = second;
+      }
+    }
+    if (!Number.isInteger(lifetime)) return null;
+
+    const iat = Math.floor(nowMs / 1000);
+    const payload = { sub: '1234567890', iat, exp: iat + lifetime, ...claims };
+    const signature: number[] = [];
+    for (let i = 0; i < 32; i++) signature.push((Math.random() * 256) | 0);
+    return [
+      base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })),
+      base64UrlEncode(JSON.stringify(payload)),
+      base64UrlEncode(signature),
+    ].join('.');
   }
 }

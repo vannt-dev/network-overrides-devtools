@@ -12,6 +12,7 @@ Highlights:
 - Override request and response headers, or remove response headers (such as CSP or cache headers) while keeping the real response body.
 - Use {{name}} variables, set per site or for every site, in URL patterns, headers, and bodies.
 - Return weighted random responses from one rule, with an optional seed for repeatable tests.
+- Fill mock bodies with placeholders such as {{$uuid}}, dates, random names and numbers, query values, and {{$jwt}}: a well-formed fake JWT with your own claims and lifetime (not validly signed).
 - Simulate HTTP statuses, latency, redirects, and network failures.
 - Enable, disable, duplicate, import, export, and organize reusable rules.
 - Keep rules separated by domain and restore interception after service-worker restarts.

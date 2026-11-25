@@ -45,11 +45,11 @@ anything else is not published by vannt-dev.
 
 | Live API capture                                            | Override editor                                                 |
 | ----------------------------------------------------------- | --------------------------------------------------------------- |
-| ![Captured APIs](store-assets/v2.12.0/01-captured-apis.png) | ![Override editor](store-assets/v2.12.0/02-override-editor.png) |
+| ![Captured APIs](store-assets/v2.13.0/01-captured-apis.png) | ![Override editor](store-assets/v2.13.0/02-override-editor.png) |
 
 | Reusable override rules                                       | Save and apply feedback                                                |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| ![Override rules](store-assets/v2.12.0/03-override-rules.png) | ![Save and retry feedback](store-assets/v2.12.0/04-save-and-retry.png) |
+| ![Override rules](store-assets/v2.13.0/03-override-rules.png) | ![Save and retry feedback](store-assets/v2.13.0/04-save-and-retry.png) |
 
 - **Real-time API Type & Tab Counters**: Live request counters next to each resource filter (`XHR (5)`, `Fetch (12)`, `Doc (1)`, `JS (3)`, `CSS (0)`) and in tab headers (`Captured APIs (15)`, `Overridden (3)`, `Rules (2)`).
 - **High-Performance LRU Regex & Batch DOM Rendering**: LRU-cached `RegExp` pattern matching (`regexCache`) and `DocumentFragment` batch DOM rendering to handle heavy network traffic without UI lag.

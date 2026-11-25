@@ -2,6 +2,7 @@
 /// <reference path="./types.ts" />
 /// <reference path="./headers-editor.ts" />
 /// <reference path="./response-variants.ts" />
+/// <reference path="./collection-rule.ts" />
 
 namespace NetworkOverridesUi {
   export const FAIL_REASONS = [
@@ -45,6 +46,8 @@ namespace NetworkOverridesUi {
   export function updateModalVisibility(elements: Elements, type: ModalType): void {
     const isWs = type === 'websocket';
     const isInject = type === 'inject';
+    // A collection rule answers from its own list, seeded from the body box.
+    const isCollection = type === 'collection';
     // Neither a WebSocket rule nor an inject rule answers an HTTP request.
     const notHttp = isWs || isInject;
     const wsAction = elements.modalWsAction?.value || 'replace';
@@ -53,18 +56,22 @@ namespace NetworkOverridesUi {
       if (el) el.style.display = visible ? '' : 'none';
     };
 
-    show(elements.modalBodyFields, type === 'body' || (isWs && wsUsesBody));
+    show(elements.modalBodyFields, type === 'body' || isCollection || (isWs && wsUsesBody));
+    show(elements.modalCollectionFields, isCollection);
+    show(elements.modalBodyFileBtn, !isCollection);
     show(elements.modalRedirectFields, type === 'redirect');
     show(elements.modalFailFields, type === 'fail');
     show(elements.modalWsFields, isWs);
     show(elements.modalInjectFields, isInject);
-    show(elements.modalPresets, !notHttp);
+    show(elements.modalPresets, !notHttp && !isCollection);
     show(elements.modalStatusField, type === 'body');
     show(fieldOf(elements.modalRespondAtRequest), type === 'body');
-    show(elements.modalHeadersField, type === 'body');
+    show(elements.modalHeadersField, type === 'body' || isCollection);
     show(elements.modalRemoveHeadersField, type === 'body');
-    show(elements.modalRequestHeadersField, type !== 'fail' && type !== 'redirect' && !notHttp);
-    show(elements.modalRequestBodyField, type !== 'fail' && type !== 'redirect' && !notHttp);
+    // A collection rule never calls the server: there is no request to change.
+    const changesRequest = type !== 'fail' && type !== 'redirect' && !notHttp && !isCollection;
+    show(elements.modalRequestHeadersField, changesRequest);
+    show(elements.modalRequestBodyField, changesRequest);
     show(
       fieldOf(elements.modalDelay),
       isWs ? wsAction === 'delay' : type !== 'redirect' && !isInject
@@ -90,6 +97,7 @@ namespace NetworkOverridesUi {
       'input[name="modal-override-type"]:checked'
     ) as HTMLInputElement | null;
     const isBody = (checked?.value || 'body') === 'body';
+    const isCollection = checked?.value === 'collection';
     const isScript = isBody && elements.modalMode?.value === 'script';
     const isPatch = isBody && elements.modalMode?.value === 'patch';
     // A pass-through rule keeps the real body: there is no body to type.
@@ -112,6 +120,9 @@ namespace NetworkOverridesUi {
     if (help) help.style.display = isScript ? '' : 'none';
     const patchHelp = elements.modal?.querySelector('#modal-patch-help') as HTMLElement | null;
     if (patchHelp) patchHelp.style.display = isPatch ? '' : 'none';
+    if (elements.modalCollectionHelp) {
+      elements.modalCollectionHelp.style.display = isCollection ? '' : 'none';
+    }
     const templates = fieldOf(elements.modalProcessTemplates);
     // The option goes with the body: hidden for redirect and network-error rules.
     const bodyShown = elements.modalBodyFields?.style.display !== 'none';
@@ -125,9 +136,11 @@ namespace NetworkOverridesUi {
     if (elements.modalBody) {
       elements.modalBody.placeholder = isScript
         ? 'return { status: 200, body: { ok: true } };'
-        : isPatch
-          ? 'set data.user.plan = "pro"\nremove data.ads'
-          : t('modal_body_placeholder');
+        : isCollection
+          ? '[{ "id": 1, "title": "Buy milk", "done": false }]'
+          : isPatch
+            ? 'set data.user.plan = "pro"\nremove data.ads'
+            : t('modal_body_placeholder');
     }
   }
 
@@ -213,6 +226,7 @@ namespace NetworkOverridesUi {
       elements.modalRemoveHeaders.value = (existing?.removeResponseHeaders || []).join('\n');
     }
     prefillResponseVariants(elements, existing);
+    prefillCollectionFields(elements, existing);
     elements.modalFailReason.value =
       existing?.failReason && FAIL_REASONS.includes(existing.failReason)
         ? existing.failReason
@@ -280,7 +294,9 @@ namespace NetworkOverridesUi {
       type === 'body'
         ? countHeaderLines(elements.modalHeaders?.value) +
           ('names' in removed ? removed.names.length : 1)
-        : 0;
+        : type === 'collection'
+          ? countHeaderLines(elements.modalHeaders?.value)
+          : 0;
     const responses =
       type === 'body' && (mode === 'text' || mode === 'file') ? countResponseVariants(elements) : 0;
     const templatesOff =

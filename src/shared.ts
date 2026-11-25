@@ -3,7 +3,9 @@
 
 declare namespace NetworkOverridesShared {
   // 'passthrough' keeps the real body (and status, unless the rule sets one): only headers change.
-  type OverrideMode = 'text' | 'file' | 'script' | 'patch' | 'passthrough';
+  // 'collection' answers a small REST API from a list kept for the session; body = the seed list.
+  type OverrideMode = 'text' | 'file' | 'script' | 'patch' | 'passthrough' | 'collection';
+  type CollectionIdType = 'number' | 'uuid';
   type ThrottlePreset = 'none' | 'fast3g' | 'slow3g' | 'offline';
   type WsDirection = 'send' | 'receive' | 'both';
   type WsAction = 'replace' | 'substitute' | 'block' | 'delay';
@@ -41,6 +43,8 @@ declare namespace NetworkOverridesShared {
     wsMatch?: string; // websocket rules; empty/undefined = every text frame
     wsMatchRegex?: boolean; // wsMatch is a regular expression
     wsAction?: WsAction; // websocket rules
+    collectionIdField?: string; // collection rules: the field holding the id; undefined = 'id'
+    collectionIdType?: CollectionIdType; // mode 'collection': new ids; undefined = 'number'
   }
   /** One more answer of a rule with weighted random responses; unset fields come from the rule. */
   interface ResponseVariant {

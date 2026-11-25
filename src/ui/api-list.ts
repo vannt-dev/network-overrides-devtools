@@ -3,6 +3,7 @@
 /// <reference path="./primitives.ts" />
 /// <reference path="./curl.ts" />
 /// <reference path="./rule-summary.ts" />
+/// <reference path="../collection.ts" />
 
 namespace NetworkOverridesUi {
   export const TYPE_ORDER = [
@@ -57,12 +58,8 @@ namespace NetworkOverridesUi {
       if (!matchesMethod(rule.method, api.method)) continue;
       const request = { url: api.url, headers: api.headers, body: api.postData };
       if (!NetworkOverridesUtils.matchesRequestConditions(rule, request)) continue;
-      if (
-        NetworkOverridesUtils.patternMatches(
-          NetworkOverridesUtils.rulePattern(rule, variables),
-          api.url
-        )
-      ) {
+      const pattern = NetworkOverridesUtils.rulePattern(rule, variables);
+      if (NetworkOverridesCollection.matchRule(rule, pattern, api.url) !== null) {
         if (!firstMatch) firstMatch = { rule, index: i };
         if (rule.enabled !== false) {
           return { rule, index: i, isDisabledOnly: false };

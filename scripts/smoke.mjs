@@ -840,6 +840,75 @@ return {
     JSON.stringify(withVars)
   );
 
+  // A CRUD collection answers POST, GET and DELETE from a list kept for the
+  // session, at a host nothing listens on; the editor shows it and resets it.
+  await openNewRule('127.0.0.1:1/api/todos', 'collection');
+  await popup.fill('#modal-body', '[{"id":1,"title":"Buy milk","done":false}]');
+  await saveRule();
+  const crudCall = (method, suffix = '', body) =>
+    site.evaluate(
+      ([method, url, body]) =>
+        fetch(url, {
+          method,
+          headers: body ? { 'Content-Type': 'application/json' } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        }).then(
+          async r => {
+            const text = await r.text();
+            return {
+              status: r.status,
+              body: text ? JSON.parse(text) : null,
+              total: r.headers.get('X-Total-Count'),
+            };
+          },
+          error => ({ error: String(error) })
+        ),
+      [method, `http://127.0.0.1:1/api/todos${suffix}`, body]
+    );
+  const crudCreated = await crudCall('POST', '', { title: 'Walk', done: false });
+  const crudList = await crudCall('GET', '?_limit=10');
+  const crudDeleted = await crudCall('DELETE', '/1');
+  const crudAfter = await crudCall('GET');
+  const crudMissing = await crudCall('GET', '/1');
+  report(
+    'a CRUD collection creates with POST, lists with GET and removes with DELETE',
+    crudCreated.status === 201 &&
+      crudCreated.body?.id === 2 &&
+      crudList.status === 200 &&
+      crudList.body?.length === 2 &&
+      crudList.total === '2' &&
+      crudDeleted.status === 204 &&
+      crudDeleted.body === null &&
+      JSON.stringify(crudAfter.body) === '[{"title":"Walk","done":false,"id":2}]' &&
+      crudMissing.status === 404,
+    JSON.stringify({ crudCreated, crudList, crudDeleted, crudAfter, crudMissing })
+  );
+  await popup.click('button.tab-btn[data-tab="overrides"]');
+  await popup
+    .locator('#list li', {
+      has: popup.locator('.rule-pattern', { hasText: '127.0.0.1:1/api/todos' }),
+    })
+    .locator('.edit-btn')
+    .first()
+    .click();
+  await popup.waitForSelector('#override-modal', { state: 'visible' });
+  await popup.waitForFunction(() =>
+    document.getElementById('modal-collection-data').value.includes('Walk')
+  );
+  await popup.click('#modal-collection-reset');
+  await popup.waitForFunction(
+    () => !document.getElementById('modal-collection-data').value.includes('Walk')
+  );
+  await popup.click('#override-modal .modal-close');
+  await popup.waitForSelector('#override-modal', { state: 'hidden' });
+  await popup.click('button.tab-btn[data-tab="other"]');
+  const crudReset = await crudCall('GET');
+  report(
+    'the editor shows the collection data and "Reset to seed" brings the seed back',
+    JSON.stringify(crudReset.body) === '[{"id":1,"title":"Buy milk","done":false}]',
+    JSON.stringify(crudReset)
+  );
+
   // Weighted responses with a seed answer in the order the seed gives.
   await openNewRule('api/weighted', 'body');
   await popup.fill('#modal-body', '{"ok":true}');

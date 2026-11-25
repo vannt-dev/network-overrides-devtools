@@ -33,6 +33,7 @@ Chrome's built-in [Local Overrides](https://developer.chrome.com/docs/devtools/o
 - **Request changes**: add or overwrite request headers, replace the request payload, or redirect the request to another URL before it is sent.
 - **Narrower matching**: limit a rule to one HTTP method, one GraphQL `operationName`, given query parameters, request headers or a text in the request body, or match URLs with a regular expression.
 - **Computed responses and WebSocket frames**: a script rule builds the response in JavaScript from the request and the real response; WebSocket rules replace, substitute, block or delay text frames.
+- **A stateful fake REST API**: a CRUD collection rule answers `GET`, `POST`, `PUT`, `PATCH` and `DELETE` for a list and its items from data kept for the session, so a create, edit and delete flow works before the backend exists.
 - **Inject JS/CSS into the real page**: an inject rule adds your script and stylesheet to every page a pattern matches, while the page itself still comes from the server. The page keeps its Content-Security-Policy; only the injected code is let through, by its hash.
 
 🛒 **Chrome Web Store**: [Network Overrides API (DevTools)](https://chromewebstore.google.com/detail/network-overrides-api-dev/holdjgmcnpelgclhopiejilhhkfcmpba)
@@ -70,12 +71,13 @@ anything else is not published by vannt-dev.
   - Wildcard `*` glob (e.g. `https://old.com/api/*/users` → `*` captures matching segments)
   - Regex `/pattern/flags` (e.g. `/api\/v1\/users\/\d+/i`)
   - `*` or `all` matches every request.
-- **Five override types:**
+- **Six override types:**
   - **Mock response**: Replace the response body with custom text or raw base64 content, compute it with a script, or patch fields of the real JSON response. **Use a local file…** answers a script, stylesheet, image or font with a file from your computer (Content-Type set from the file).
   - **Redirect**: Redirect the request to a different URL (supports `*` wildcard substitution from captured groups).
   - **Network error**: Kill the request at the network layer with a chosen error reason — the page's `fetch`/XHR rejects as if the network failed.
   - **WebSocket frames**: rewrite, substitute (regex with `$1`), block or delay the text frames a page sends or receives on a real WebSocket. Pick "WebSocket" in the override dialog, or click a **WS** entry in the APIs tab. See [WebSocket frame rules](#websocket-frame-rules).
   - **Inject JS/CSS**: add your own script and stylesheet to the pages a rule matches, while the real page still loads. On pages with a Content-Security-Policy, the hash of the injected code is added to the policy, so only that code is let through and the rest of the policy stays; **Remove the page's Content-Security-Policy** is an opt-in last resort.
+  - **CRUD collection**: a fake REST API that remembers changes. Give the list address (`/api/todos`) and seed data (a JSON array of objects); `GET` lists (with `?field=value` filters, `_page`/`_limit` and `X-Total-Count`), `POST` adds with the next number id or a UUID (`201`), `GET`/`PUT`/`PATCH`/`DELETE /api/todos/1` read, replace, merge or remove one item (`404` when missing, `204` on delete). The data lasts for the browser session and can be viewed, edited or reset to the seed in the editor; the server is never called.
 - **Remove response headers, keep the real body**: list headers to drop from a response (`x-debug-*` drops every header with that start). The body mode **Keep the real response (headers only)** passes the server's body through untouched while the status and headers change; the **No CSP** and **No cache** presets set it up in one click.
 - **Variables**: `name: value` pairs for one site or every site (a site value wins), written as `{{name}}` in URL patterns, redirect URLs, header values and bodies, and read by scripts as `request.vars`. `\{{name}}` keeps the text as written.
 - **Weighted random responses**: a mock rule can hold more responses, each with a weight (`80` / `20` answers the first about 8 times in 10). A seed makes the order repeatable for automated tests, and the header `x-network-overrides-response` says which response was given.

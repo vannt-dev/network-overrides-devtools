@@ -5,6 +5,7 @@
 /// <reference path="../rule-values.ts" />
 /// <reference path="../tab-state.ts" />
 /// <reference path="./response-script.ts" />
+/// <reference path="./collection-store.ts" />
 
 namespace NetworkOverridesBackground {
   import TabState = NetworkOverridesTabState;
@@ -17,6 +18,17 @@ namespace NetworkOverridesBackground {
   /** A rule that edits the real response, so it waits for it and never answers early. */
   function needsRealResponse(rule: OverrideRule): boolean {
     return rule.mode === 'patch' || rule.mode === 'passthrough';
+  }
+
+  /**
+   * A rule that answers at the request stage, so the server is never called.
+   * A collection rule always does: its list is the server.
+   */
+  function answersAtRequest(rule: OverrideRule): boolean {
+    if (rule.mode === 'collection') return true;
+    return (
+      !!rule.respondAtRequest && !needsRealResponse(rule) && !rule.failReason && !rule.redirectUrl
+    );
   }
 
   /** The {{name}} values of a tab's rules. */
@@ -84,7 +96,11 @@ namespace NetworkOverridesBackground {
       if (!NetworkOverridesUtils.matchesMethod(test.method, method)) continue;
       if (!NetworkOverridesUtils.matchesGraphQLOperation(test.graphqlOperation, postData)) continue;
       if (!NetworkOverridesUtils.matchesRequestConditions(test, conditionRequest)) continue;
-      const captures = matchPattern(Values.rulePattern(test, variables), url);
+      const captures = NetworkOverridesCollection.matchRule(
+        test,
+        Values.rulePattern(test, variables),
+        url
+      );
       if (captures !== null) {
         return { override: test, captures };
       }
@@ -124,7 +140,8 @@ namespace NetworkOverridesBackground {
       if (rule.kind === 'websocket' || rule.kind === 'inject' || rule.enabled === false) continue;
       if (!NetworkOverridesUtils.matchesMethod(rule.method, method)) continue;
       if (!NetworkOverridesUtils.matchesQuery(rule.matchQuery, url)) continue;
-      if (matchPattern(Values.rulePattern(rule, variables), url) !== null) return rule;
+      const pattern = Values.rulePattern(rule, variables);
+      if (NetworkOverridesCollection.matchRule(rule, pattern, url) !== null) return rule;
     }
     return null;
   }
@@ -489,6 +506,29 @@ namespace NetworkOverridesBackground {
       });
       return;
     }
+    // A collection rule answers from its list, which the request may change.
+    if (ov.mode === 'collection') {
+      const answer = answerCollectionRequest(
+        tabId,
+        ov,
+        {
+          method: String(params.request?.method || 'GET'),
+          url,
+          // The body of this request only: never one remembered from another.
+          body: requestBodyText(params.request),
+        },
+        Values.rulePattern(ov, variables)
+      );
+      const body = answer.body === undefined ? '' : JSON.stringify(answer.body);
+      fulfill(NetworkOverridesStringToBase64Local(body), {
+        statusCode: answer.status,
+        headers: [
+          ...answer.headers,
+          { name: 'Access-Control-Expose-Headers', value: 'X-Total-Count' },
+        ],
+      });
+      return;
+    }
     // A script rule works the response out in the page, so it is answered
     // later; every other rule is answered here and now.
     if (ov.mode === 'script') {
@@ -750,12 +790,7 @@ namespace NetworkOverridesBackground {
         const optionsRule = match?.override.method?.toUpperCase() === 'OPTIONS';
         if (askedMethod && !optionsRule) {
           const target = findPreflightTarget(url, askedMethod, state.overrides, state.variables);
-          if (
-            target?.respondAtRequest &&
-            !needsRealResponse(target) &&
-            !target.failReason &&
-            !target.redirectUrl
-          ) {
+          if (target && answersAtRequest(target)) {
             answerPreflight(tabId, params, askedMethod, proceed);
             return;
           }
@@ -812,12 +847,7 @@ namespace NetworkOverridesBackground {
         // A body rule set to answer without calling the server is answered
         // now, so the request never leaves the browser. A patch or
         // pass-through rule needs the real response, so it never answers here.
-        if (
-          match &&
-          match.override.respondAtRequest &&
-          !needsRealResponse(match.override) &&
-          (!askedMethod || optionsRule)
-        ) {
+        if (match && answersAtRequest(match.override) && (!askedMethod || optionsRule)) {
           answerWithBody(tabId, params, match, proceed, true);
           return;
         }
@@ -916,6 +946,12 @@ namespace NetworkOverridesBackground {
       // for the redirected URL should pass through without alteration.
       // Fail rules are consumed at the request stage; seeing one here means a stale pause.
       if (match.override.failReason || match.override.redirectUrl) {
+        proceed();
+        return;
+      }
+      // A collection rule answers at the request stage only; a request that
+      // reached the server (the rule came after it left) is not answered twice.
+      if (match.override.mode === 'collection') {
         proceed();
         return;
       }

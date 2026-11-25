@@ -138,7 +138,10 @@
           bắt, method được điền sẵn theo request đó.
         </li>
         <li>
-          <strong>Mock response / Chuyển hướng / Lỗi mạng / WebSocket</strong>: chọn loại rule.
+          <strong
+            >Mock response / Chuyển hướng / Lỗi mạng / WebSocket / Chèn JS/CSS / CRUD
+            collection</strong
+          >: chọn loại rule (CRUD collection: xem <a href="#crud-collection">6.12</a>).
         </li>
         <li>
           <strong>Status code</strong> (mock response): để trống thì giữ status thật. Được điền sẵn
@@ -603,6 +606,47 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           các lần chọn theo cùng một thứ tự mỗi lần, hợp cho test tự động. Thứ tự đi theo số lần
           rule đã được áp dụng, nên vẫn tiếp tục khi worker khởi động lại;
           <strong>Đặt lại số đếm</strong>, hoặc sửa rule, sẽ bắt đầu lại từ đầu.
+        </li>
+      </ul>
+
+      <h3 id="crud-collection">6.12. CRUD collection (REST API giả)</h3>
+      <p>
+        Chọn loại <strong>CRUD collection</strong> để mock cả một REST resource có nhớ thay đổi, khi
+        chưa có API hoặc để thử luồng thêm, sửa, xóa mà không đụng dữ liệu thật. Server không bao
+        giờ được gọi. <strong>URL pattern</strong> là địa chỉ của danh sách, ví dụ
+        <code>/api/todos</code> (pattern <code>*</code> hoặc <code>/regex/</code> phải khớp địa chỉ
+        danh sách). <strong>Response body</strong> là seed: một mảng JSON gồm các object, để trống
+        là danh sách rỗng. <strong>Trường ID</strong> là trường chứa id của mỗi mục (để trống là
+        <code>id</code>); mục mới nhận số kế tiếp, không bao giờ cấp lại, hoặc một UUID ngẫu nhiên.
+      </p>
+      <ul>
+        <li>
+          <code>GET /api/todos</code>: <code>200</code> và danh sách; <code>?done=true</code> giữ
+          các mục có trường bằng giá trị đó, <code>_limit</code> và <code>_page</code> trả một
+          trang, và <code>X-Total-Count</code> cho số mục khớp.
+        </li>
+        <li>
+          <code>GET /api/todos/1</code>: mục đó, hoặc <code>404</code> và
+          <code>{"error":"Not found"}</code>. <code>POST /api/todos</code>: <code>201</code> và mục
+          mới cùng id (<code>409</code> nếu id gửi lên đã có).
+        </li>
+        <li>
+          <code>PUT /api/todos/1</code> thay cả mục, <code>PATCH</code> gộp các trường cấp ngoài
+          cùng của body vào mục (giữ id, <code>404</code> nếu không có); <code>DELETE</code> trả
+          <code>204</code> không có body. Body không phải object JSON nhận <code>400</code>, method
+          khác nhận <code>405</code>.
+        </li>
+        <li>
+          Dữ liệu giữ trong phiên trình duyệt, theo tab, qua các lần tải lại và khi worker khởi động
+          lại. Đổi seed, trường ID hoặc kiểu id thì bắt đầu lại từ seed. Sau khi lưu rule,
+          <strong>Dữ liệu hiện tại</strong> trong editor cho thấy danh sách:
+          <strong>Lưu dữ liệu</strong> sau khi sửa, <strong>Làm mới</strong>, hoặc
+          <strong>Về lại seed</strong>.
+        </li>
+        <li>
+          Placeholder và biến trong seed được điền một lần, lúc tạo danh sách. Delay, response
+          header, method và điều kiện dùng như với mock response; request khác origin được trả lời
+          preflight.
         </li>
       </ul>
 

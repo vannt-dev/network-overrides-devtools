@@ -138,8 +138,10 @@
           the captured request's method when opening the modal from a captured API.
         </li>
         <li>
-          <strong>Mock response / Redirect / Network error / WebSocket</strong>: Choose the rule
-          type.
+          <strong
+            >Mock response / Redirect / Network error / WebSocket / Inject JS/CSS / CRUD
+            collection</strong
+          >: Choose the rule type (CRUD collection: see <a href="#crud-collection">6.12</a>).
         </li>
         <li>
           <strong>Status code</strong> (mock response): blank keeps the real status. Pre-filled from
@@ -621,6 +623,48 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
           follow the same order every time, which suits automated tests. The order follows how many
           times the rule was applied, so it goes on across a worker restart;
           <strong>Reset counts</strong>, or an edit of the rule, starts it over.
+        </li>
+      </ul>
+
+      <h3 id="crud-collection">6.12. CRUD collection (a fake REST API)</h3>
+      <p>
+        Choose the type <strong>CRUD collection</strong> to mock a whole REST resource that
+        remembers changes, before its API exists or to try a create, edit and delete flow without
+        real data. The server is never called. The <strong>URL pattern</strong> is the address of
+        the list, such as <code>/api/todos</code> (a <code>*</code> pattern or a
+        <code>/regex/</code> must match the list address). The <strong>Response body</strong> is the
+        seed: a JSON array of objects, blank for an empty list. <strong>ID field</strong> names the
+        field that holds each item's id (blank is <code>id</code>); new items get the next number,
+        never given twice, or a random UUID.
+      </p>
+      <ul>
+        <li>
+          <code>GET /api/todos</code>: <code>200</code> and the list; <code>?done=true</code> keeps
+          the items whose field equals the value, <code>_limit</code> and <code>_page</code> return
+          one page, and <code>X-Total-Count</code> gives the number of matching items.
+        </li>
+        <li>
+          <code>GET /api/todos/1</code>: the item, or <code>404</code> and
+          <code>{"error":"Not found"}</code>. <code>POST /api/todos</code>: <code>201</code> and the
+          new item with its id (<code>409</code> when a given id is taken).
+        </li>
+        <li>
+          <code>PUT /api/todos/1</code> replaces the item, <code>PATCH</code> merges the body's
+          top-level fields into it (the id stays, <code>404</code> when missing);
+          <code>DELETE</code> answers <code>204</code> with no body. A body that is not a JSON
+          object gets <code>400</code>, another method <code>405</code>.
+        </li>
+        <li>
+          The data lasts for the browser session, for the tab, across reloads and worker restarts.
+          Changing the seed, the ID field or the id type starts again from the seed. Once the rule
+          is saved, <strong>Current data</strong> in the editor shows the list:
+          <strong>Save data</strong> after editing it, <strong>Refresh</strong>, or
+          <strong>Reset to seed</strong>.
+        </li>
+        <li>
+          Placeholders and variables in the seed are filled once, when the list is made. Delay,
+          response headers, method and conditions work as for a mock response; cross-origin requests
+          get their preflight answered.
         </li>
       </ul>
 

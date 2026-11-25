@@ -1,0 +1,29 @@
+Network Overrides API is a developer-focused Chrome and Edge extension for capturing and overriding network requests directly from a DevTools panel or popup.
+
+Inspect Fetch, XHR, GraphQL, document, script, stylesheet, and image requests in one focused view. Create reusable rules to mock response bodies, status codes, delays, request headers, response headers, redirects, and network failures without changing your application or backend.
+
+Highlights:
+- Capture and filter requests from the active tab.
+- Match requests by URL text, wildcard, regular expression, HTTP method, query, headers, and body.
+- Mock JSON, text, and base64 response bodies, or patch a few fields of the real JSON response.
+- Replace a script, stylesheet, image, or font with a file from your computer.
+- Add your own JavaScript and CSS to the pages you test; their Content-Security-Policy is kept.
+- One-click presets: empty list, server error, slow response, offline, no CSP, no cache.
+- Override request and response headers, or remove response headers (such as CSP or cache headers) while keeping the real response body.
+- Use {{name}} variables, set per site or for every site, in URL patterns, headers, and bodies.
+- Return weighted random responses from one rule, with an optional seed for repeatable tests.
+- Fill mock bodies with placeholders such as {{$uuid}}, dates, random names and numbers, query values, and {{$jwt}}: a well-formed fake JWT with your own claims and lifetime (not validly signed).
+- Simulate HTTP statuses, latency, redirects, and network failures.
+- Enable, disable, duplicate, import, export, and organize reusable rules.
+- Keep rules separated by domain and restore interception after service-worker restarts.
+- See clear save and apply feedback when Chrome cannot attach the debugger.
+- Use the interface in English or Vietnamese (Tiếng Việt), following the browser's language.
+
+Designed for frontend developers, QA engineers, and anyone who needs predictable API states while debugging edge cases and failure flows.
+
+Permissions:
+- debugger: required to intercept and fulfill requests through the Chrome DevTools Protocol.
+- storage: saves override rules and session state locally in the browser.
+- access to all URLs: lets rules operate on the sites and APIs you choose to debug.
+
+Network Overrides API is a development tool. Only enable interception on tabs you intend to test.

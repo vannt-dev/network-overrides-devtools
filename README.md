@@ -44,11 +44,11 @@ anything else is not published by vannt-dev.
 
 | Live API capture                                            | Override editor                                                 |
 | ----------------------------------------------------------- | --------------------------------------------------------------- |
-| ![Captured APIs](store-assets/v2.11.0/01-captured-apis.png) | ![Override editor](store-assets/v2.11.0/02-override-editor.png) |
+| ![Captured APIs](store-assets/v2.12.0/01-captured-apis.png) | ![Override editor](store-assets/v2.12.0/02-override-editor.png) |
 
 | Reusable override rules                                       | Save and apply feedback                                                |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| ![Override rules](store-assets/v2.11.0/03-override-rules.png) | ![Save and retry feedback](store-assets/v2.11.0/04-save-and-retry.png) |
+| ![Override rules](store-assets/v2.12.0/03-override-rules.png) | ![Save and retry feedback](store-assets/v2.12.0/04-save-and-retry.png) |
 
 - **Real-time API Type & Tab Counters**: Live request counters next to each resource filter (`XHR (5)`, `Fetch (12)`, `Doc (1)`, `JS (3)`, `CSS (0)`) and in tab headers (`Captured APIs (15)`, `Overridden (3)`, `Rules (2)`).
 - **High-Performance LRU Regex & Batch DOM Rendering**: LRU-cached `RegExp` pattern matching (`regexCache`) and `DocumentFragment` batch DOM rendering to handle heavy network traffic without UI lag.
@@ -86,7 +86,7 @@ anything else is not published by vannt-dev.
 - **A short editor**: the editor shows only the URL pattern, method, type, status and response body. Everything else sits in a collapsed **Advanced** section, grouped as Conditions, Timing & failure, Response headers, Body type (patch & script), Random responses and Change the request. A group that holds a value opens by itself and shows how many settings it holds, so nothing is hidden silently.
 - **One-click presets**: **Empty list** (status 200 with `[]`, or the real JSON with its lists emptied), **Server error** (500), **Slow (3 s)** (a 3000 ms delay), **Offline** (a network error), **No CSP** and **No cache** (keep the real response without its Content-Security-Policy or caching headers), filled into the editor's own fields.
 - **One line per rule**: the Rules tab shows each rule as what it matches and what it does, for example `GET /api/orders + query page=2 → 500 · slow 3 s` or `ws wss://example.com/socket → replace frames`. Click it for the full editor.
-- **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`).
+- **Dynamic Response Templating**: Insert dynamic placeholders into mock responses (`{{$uuid}}`, `{{$isoDate}}`, `{{$epoch}}`, `{{$randomEmail}}`, `{{$randomName}}`, `{{$randomInt(min, max)}}`, `{{$query(paramName)}}`, `{{$jwt}}` for a well-formed fake JWT with your own claims; it is not validly signed).
 - **Per-rule hit counter**: every rule in the Rules tab shows how many times it was applied in this session (`0` greyed, a number highlighted), with the time and URL of the last one in its tooltip, so you can tell at a glance whether a rule is being applied at all. **Reset counts** starts over. The counts live in the session only and are never saved, exported or imported with the rules.
 - **Global Cross-Domain Rules**: Scope rules globally across all domains (`isGlobal`), highlighted with a `GLOBAL` badge in the rules list.
 - **Request Payload Interception & Modification**: Modify outgoing request payloads (`postData`) during the CDP request stage.

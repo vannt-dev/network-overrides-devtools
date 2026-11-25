@@ -900,6 +900,14 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <li><code>{{$randomName}}</code> — Random full name</li>
         <li><code>{{$randomInt(1, 100)}}</code> — Random integer in range</li>
         <li><code>{{$query(name)}}</code> — Query parameter value from request URL</li>
+        <li>
+          <code>{{$jwt}}</code> — A well-formed fake JWT with <code>sub</code>,
+          <code>iat</code> (now) and <code>exp</code> (now + 1 hour). Add claims with a JSON object
+          and set the lifetime in seconds: <code>{{$jwt({"sub":"42","role":"admin"}, 300)}}</code>.
+          A negative lifetime gives an expired token; inside a JSON string the quotes may be written
+          as <code>\"</code>. <strong>It is not validly signed</strong>: the signature is random, so
+          it suits code that only decodes the token, not a check of the signature.
+        </li>
       </ul>
 
       <h3>9.8. Global Cross-Domain Rules</h3>

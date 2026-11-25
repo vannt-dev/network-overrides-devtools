@@ -866,6 +866,15 @@ return { status: 200, body: { ...data, items: data.items.slice(0, 3) } };</pre>
         <li><code>{{$randomName}}</code> — họ tên ngẫu nhiên</li>
         <li><code>{{$randomInt(1, 100)}}</code> — số nguyên ngẫu nhiên trong khoảng</li>
         <li><code>{{$query(name)}}</code> — giá trị query parameter trong URL của request</li>
+        <li>
+          <code>{{$jwt}}</code> — JWT giả nhưng đúng định dạng, có <code>sub</code>,
+          <code>iat</code> (lúc này) và <code>exp</code> (lúc này + 1 giờ). Thêm claim bằng object
+          JSON và đặt thời gian sống tính bằng giây:
+          <code>{{$jwt({"sub":"42","role":"admin"}, 300)}}</code>. Thời gian âm cho token đã hết
+          hạn; trong chuỗi JSON có thể viết dấu nháy là <code>\"</code>.
+          <strong>Token không có chữ ký hợp lệ</strong>: chữ ký là ngẫu nhiên, nên chỉ hợp với code
+          chỉ giải mã token, không qua được bước kiểm tra chữ ký.
+        </li>
       </ul>
 
       <h3>9.8. Rule toàn cục (mọi domain)</h3>

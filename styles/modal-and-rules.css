@@ -115,6 +115,11 @@
   background: #fff1f2;
 }
 
+/* The collection data box says here when its data could not be read or saved. */
+.modal-field-hint.is-error {
+  color: #9f1239;
+}
+
 .modal-feedback.is-info {
   display: block;
   color: #1d4f7a;

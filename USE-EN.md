@@ -93,7 +93,7 @@ Click **Mock this** on an API (or the API row) to open the modal. It shows the e
   - **No cache**: keep the real response and remove its caching headers (`Cache-Control`, `Expires`, `ETag`, `Last-Modified`, `Pragma`, `Age`).
 - **URL pattern**: URL pattern for matching. You can edit it, also after **Mock this**: change `/api/users/42` to `/api/users/*` so one rule matches more URLs.
 - **Method**: Dropdown (`Any`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`) to scope the rule to a specific request method. Defaults to `Any`, which matches every method. Pre-filled from the captured request's method when opening the modal from a captured API.
-- **Mock response / Redirect / Network error / WebSocket**: Choose the rule type.
+- **Mock response / Redirect / Network error / WebSocket / Inject JS/CSS / CRUD collection**: Choose the rule type (see [6.13](#613-crud-collection-a-fake-rest-api) for CRUD collection).
 - **Status code** (mock response): blank keeps the real status. Pre-filled from the captured request when it can carry a body (not 204, 304 or other 3xx).
 - **Response body**: Custom response content (for a mock response).
 - **Redirect URL**: Target URL (for redirect).
@@ -367,6 +367,32 @@ A **Mock response** rule (Text or Raw base64 body) can answer with one of severa
 Each request gets one response, picked by weight: weights `80` and `20` give the first one about 8 times in 10. A weight of `0` is never picked. Templates and variables work in every body. The answer carries the header `x-network-overrides-response`, the number of the response it gave (`1` is the rule's own).
 
 **Seed (repeatable order)**: blank picks at random. With a number, the picks follow the same order every time, which suits automated tests. The order follows how many times the rule was applied, so it goes on across a browser worker restart; **Reset counts** in the Rules tab, or an edit of the rule, starts it over.
+
+### 6.13. CRUD collection (a fake REST API)
+
+Choose the type **CRUD collection** to mock a whole REST resource that remembers changes, for a page you build before its API exists, or to try a create/edit/delete flow without touching real data. The server is never called, so the address does not have to exist.
+
+1. **URL pattern**: the address of the list, such as `/api/todos`. A plain pattern matches an address that ends with it; a `*` pattern or a `/regex/` must match the list address (`*/api/todos`).
+2. **Response body** is the **seed**: a JSON array of objects, such as `[{"id": 1, "title": "Buy milk", "done": false}]`. Blank is an empty list.
+3. **ID field**: the field that holds each item's id (blank is `id`). **New items get** the next number (one more than the largest number id; an id is never given twice, even after a delete) or a random UUID.
+
+The rule then answers:
+
+| Request               | Answer                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/todos`      | `200` and the list. `?done=true&user=2` keeps the items whose fields equal those values (compared as text); `_limit=10&_page=2` returns one page. The header `X-Total-Count` gives the number of matching items before paging. |
+| `GET /api/todos/1`    | `200` and the item, or `404` and `{"error":"Not found"}`. Ids are compared as text, so `/1` finds `"id": 1`.                                                                                                                   |
+| `POST /api/todos`     | `201` and the new item with its id. An id in the body is kept, or `409` when it is taken.                                                                                                                                      |
+| `PUT /api/todos/1`    | `200` and the item replaced by the body (the id stays), or `404`.                                                                                                                                                              |
+| `PATCH /api/todos/1`  | `200` and the item with the body's top-level fields merged in (the id stays), or `404`.                                                                                                                                        |
+| `DELETE /api/todos/1` | `204` with no body, or `404`.                                                                                                                                                                                                  |
+
+A `POST`, `PUT` or `PATCH` whose body is not a JSON object gets `400`; a method the address does not take gets `405`; an address below an item (`/api/todos/1/comments`) does not match the rule. A cross-origin request works too: its preflight is answered, and the page's origin is allowed.
+
+- **The data lasts for the browser session**, for the tab: it survives a reload, a visit to another site in the tab and a restart of the extension's worker, and goes when the tab or the browser is closed. Changing the seed, the ID field or the id type starts again from the seed; changing the delay, the headers or the conditions keeps the data.
+- **Current data** (in the editor, once the rule is saved) shows the list as the page sees it now. Edit it and press **Save data**, press **Refresh** after the page changed it, or **Reset to seed** to start over.
+- `{{...}}` placeholders and variables in the seed are filled once, when the list is made from it, so `{{$uuid}}` gives each item a fixed id-like value. A seed with placeholders outside strings is checked only once they are filled.
+- **Delay**, **Response headers**, **Method** and the conditions under **Advanced** work as for a mock response. A collection is limited to about 1 MB of JSON; a change that would make it larger gets `413`.
 
 ---
 

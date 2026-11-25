@@ -34,7 +34,9 @@ namespace NetworkOverridesUi {
     if (rule.mode === 'patch' && rule.kind !== 'websocket' && !rule.failReason) {
       lines.push(t('detail_patch'), NetworkOverridesUtils.formatPatchOperations(rule.patch));
     }
-    if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
+    if (rule.mode === 'collection') {
+      lines.push(t('detail_collection'));
+    } else if (rule.respondAtRequest && !rule.failReason && !rule.redirectUrl) {
       lines.push(t('detail_no_server'));
     }
     lines.push(t('detail_click_to_edit'));

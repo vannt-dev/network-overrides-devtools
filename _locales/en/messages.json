@@ -1105,5 +1105,71 @@
   },
   "error_variable_twice": {
     "message": "“$1” is listed twice in the same list."
+  },
+  "type_collection": {
+    "message": "CRUD collection"
+  },
+  "type_collection_title": {
+    "message": "Answer a small REST API from a list kept for the session"
+  },
+  "field_collection_help": {
+    "message": "The seed data: a JSON array of objects (blank is an empty list). The pattern is the list address, such as <code>/api/todos</code>: <code>GET</code> it for the list (<code>?done=true</code> filters, <code>_page</code> and <code>_limit</code> page), <code>POST</code> to add, and <code>GET</code>, <code>PUT</code>, <code>PATCH</code> or <code>DELETE</code> <code>/api/todos/1</code> for one item. Changes last for the browser session; the server is never called."
+  },
+  "field_collection_id": {
+    "message": "ID field"
+  },
+  "field_collection_id_hint": {
+    "message": "The field that holds each item's id. Blank is id."
+  },
+  "field_collection_id_type": {
+    "message": "New items get"
+  },
+  "collection_id_number": {
+    "message": "The next number (1, 2, 3…)"
+  },
+  "collection_id_uuid": {
+    "message": "A random UUID"
+  },
+  "field_collection_data": {
+    "message": "Current data"
+  },
+  "collection_reload": {
+    "message": "Refresh"
+  },
+  "collection_save": {
+    "message": "Save data"
+  },
+  "collection_reset": {
+    "message": "Reset to seed"
+  },
+  "collection_note_unsaved": {
+    "message": "Save the rule to see and edit the data it answers from."
+  },
+  "collection_note_loaded": {
+    "message": "Items: $1, as the page sees them now. Edit them and press Save data to change them."
+  },
+  "collection_note_saved": {
+    "message": "Saved. Items: $1."
+  },
+  "collection_note_reset": {
+    "message": "Back to the seed. Items: $1."
+  },
+  "collection_note_error": {
+    "message": "Could not reach the data: $1"
+  },
+  "error_collection_data": {
+    "message": "The data must be a JSON array of objects: $1"
+  },
+  "error_collection_seed": {
+    "message": "The seed data must be a JSON array of objects: $1"
+  },
+  "summary_collection": {
+    "message": "CRUD collection"
+  },
+  "summary_collection_uuid": {
+    "message": "UUID ids"
+  },
+  "detail_collection": {
+    "message": "Answered from the collection in the browser; the server is never called"
   }
 }

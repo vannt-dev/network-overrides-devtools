@@ -381,6 +381,57 @@ try {
   );
   await screenshot(popup, '04-save-and-retry.png');
 
+  // A CRUD collection rule: save it with a seed, add an item from the page,
+  // then reopen it so the editor shows the data kept for the session.
+  await popup.evaluate(() => document.getElementById('notification-region')?.remove());
+  await popup.click('[data-tab="other"]');
+  await popup.click('#add-api-btn');
+  await popup.waitForSelector('#override-modal', { state: 'visible' });
+  await popup.fill('#modal-pattern', '/api/todos');
+  await popup.check('input[name="modal-override-type"][value="collection"]');
+  await popup.fill(
+    '#modal-body',
+    json([
+      { id: 1, title: 'Write the release notes', done: true },
+      { id: 2, title: 'Review the sign-up form', done: false },
+    ])
+  );
+  await popup.click('#save-override');
+  await popup.waitForSelector('#override-modal', { state: 'hidden' });
+  await popup.waitForTimeout(1000);
+  await site.evaluate(
+    baseUrl =>
+      fetch(`${baseUrl}/api/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Test the empty state', done: false }),
+      }),
+    origin
+  );
+  await popup.click('[data-tab="overrides"]');
+  await popup
+    .locator('#list li', { has: popup.locator('.rule-pattern', { hasText: '/api/todos' }) })
+    .locator('.edit-btn')
+    .first()
+    .click();
+  await popup.waitForSelector('#override-modal', { state: 'visible' });
+  await popup.waitForFunction(() =>
+    document.getElementById('modal-collection-data').value.includes('empty state')
+  );
+  // Start the frame at the collection fields and show the item the page added.
+  await popup.evaluate(() => {
+    document.getElementById('modal-collection-fields').scrollIntoView({ block: 'start' });
+    const data = document.getElementById('modal-collection-data');
+    data.scrollTop = data.scrollHeight;
+  });
+  await setCaption(
+    popup,
+    'CRUD collection',
+    'A fake REST API that remembers.',
+    'GET, POST, PUT, PATCH and DELETE work on a list kept for the session, before the backend exists.'
+  );
+  await screenshot(popup, '05-crud-collection.png');
+
   await renderPromoImage('small-promo-source.png', 'small-promo-440x280.png', 440, 280);
   await renderPromoImage('marquee-promo-source.png', 'marquee-promo-1400x560.png', 1400, 560);
 } finally {

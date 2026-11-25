@@ -1105,5 +1105,71 @@
   },
   "error_variable_twice": {
     "message": "“$1” xuất hiện hai lần trong cùng một danh sách."
+  },
+  "type_collection": {
+    "message": "CRUD collection"
+  },
+  "type_collection_title": {
+    "message": "Trả lời một REST API nhỏ từ một danh sách giữ trong phiên trình duyệt"
+  },
+  "field_collection_help": {
+    "message": "Dữ liệu seed: một mảng JSON gồm các object (để trống là danh sách rỗng). Pattern là địa chỉ của danh sách, ví dụ <code>/api/todos</code>: <code>GET</code> để lấy danh sách (<code>?done=true</code> để lọc, <code>_page</code> và <code>_limit</code> để phân trang), <code>POST</code> để thêm, và <code>GET</code>, <code>PUT</code>, <code>PATCH</code> hoặc <code>DELETE</code> <code>/api/todos/1</code> cho một mục. Thay đổi giữ trong phiên trình duyệt; không gọi server."
+  },
+  "field_collection_id": {
+    "message": "Trường ID"
+  },
+  "field_collection_id_hint": {
+    "message": "Trường chứa id của mỗi mục. Để trống là id."
+  },
+  "field_collection_id_type": {
+    "message": "Mục mới nhận"
+  },
+  "collection_id_number": {
+    "message": "Số kế tiếp (1, 2, 3…)"
+  },
+  "collection_id_uuid": {
+    "message": "Một UUID ngẫu nhiên"
+  },
+  "field_collection_data": {
+    "message": "Dữ liệu hiện tại"
+  },
+  "collection_reload": {
+    "message": "Làm mới"
+  },
+  "collection_save": {
+    "message": "Lưu dữ liệu"
+  },
+  "collection_reset": {
+    "message": "Về lại seed"
+  },
+  "collection_note_unsaved": {
+    "message": "Lưu rule để xem và sửa dữ liệu nó dùng để trả lời."
+  },
+  "collection_note_loaded": {
+    "message": "Số mục: $1, đúng như trang đang thấy. Sửa rồi bấm Lưu dữ liệu để thay đổi."
+  },
+  "collection_note_saved": {
+    "message": "Đã lưu. Số mục: $1."
+  },
+  "collection_note_reset": {
+    "message": "Đã về lại seed. Số mục: $1."
+  },
+  "collection_note_error": {
+    "message": "Không lấy được dữ liệu: $1"
+  },
+  "error_collection_data": {
+    "message": "Dữ liệu phải là một mảng JSON gồm các object: $1"
+  },
+  "error_collection_seed": {
+    "message": "Dữ liệu seed phải là một mảng JSON gồm các object: $1"
+  },
+  "summary_collection": {
+    "message": "CRUD collection"
+  },
+  "summary_collection_uuid": {
+    "message": "id UUID"
+  },
+  "detail_collection": {
+    "message": "Trả lời từ collection ngay trong trình duyệt; không gọi server"
   }
 }
